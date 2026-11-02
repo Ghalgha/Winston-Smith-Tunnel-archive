@@ -517,6 +517,8 @@ internal fun SettingsTabContent(
         )
     }
 
+    val powerSaverEnabled by settingsStore.powerSaverEnabled.collectAsStateWithLifecycle(initialValue = false)
+
     CsqttScreen {
         Box(
             modifier = Modifier
@@ -529,6 +531,18 @@ internal fun SettingsTabContent(
                     .verticalScroll(scrollState),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
+            AppSectionCard(
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text("Энергосберегающий режим", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                        Text("Снижает число рабочих потоков туннеля. Для сайтов и мессенджеров; применится при следующем подключении.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Switch(checked = powerSaverEnabled, onCheckedChange = { enabled -> scope.launch { settingsStore.savePowerSaverEnabled(enabled) } })
+                }
+            }
             AppSectionCard(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(0.dp)
