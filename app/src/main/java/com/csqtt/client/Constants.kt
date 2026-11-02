@@ -2,7 +2,7 @@ package com.csqtt.client
 
 object CsqttConstants {
     object General {
-        const val APP_NAME = "WST"
+        const val APP_NAME = "WSTT"
         const val PACKAGE_VK = "com.vkontakte.android"
         const val PACKAGE_VK_CALLS = "com.vk.calls"
         const val CSQTT_EVENT_PREFIX = "__CSQTT_EVENT__|"
