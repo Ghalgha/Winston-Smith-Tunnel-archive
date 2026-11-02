@@ -4,7 +4,7 @@ on:
     branches: [main]
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -30,8 +30,20 @@ jobs:
           chmod +x ./gradlew
           ./gradlew --no-daemon :app:assembleDebug
       - uses: actions/upload-artifact@v4
-        if: success()
         with:
-          name: WST-debug-apk
+          name: WST-0.1-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+      - name: Publish GitHub release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.1
+          name: WST 0.1
+          target_commitish: ${{ github.sha }}
+          body: |
+            WST 0.1 — первая сборка.
+            
+            Установка: скачайте APK и разрешите установку приложений из выбранного источника.
+          files: app/build/outputs/apk/debug/*.apk
+          fail_on_unmatched_files: true
