@@ -9133,7 +9133,7 @@ const PANEL_HTML: &str = r##"
                 <button class="btn btn-ghost btn-icon" onclick="toggleTheme()" title="Сменить тему">
                     <svg id="themeIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
                 </button>
-                <span class="version-label" aria-label="WSTT">WSTT</span>
+                <span class="version-label" aria-label="Version 0.1.2">v0.1.2</span>
             </div>
         </div>
     </header>
