@@ -9337,24 +9337,6 @@ const PANEL_HTML: &str = r##"
                 </div>
             </section>
 
-            <section style="margin-top: 20px;">
-                <div class="glass-panel support-card">
-                    <h3 class="support-card-title">Поддержать автора исходного проекта</h3>
-                    <a class="telegram-button" href="https://t.me/amurcanov_telegram" target="_blank" rel="noopener noreferrer" aria-label="Telegram: amurcanov_telegram" title="Telegram: amurcanov_telegram">
-                        <svg class="tg-plane-icon" viewBox="0 0 24 24" width="22" height="22" fill="#ffffff" aria-hidden="true">
-                            <path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/>
-                        </svg>
-                        <span>t.me/amurcanov_telegram</span>
-                    </a>
-                    <button class="crypto-button" type="button" onclick="openCryptoDonateDlg()" aria-label="Поддержать криптовалютой" title="CRYPTO">
-                        <svg class="crypto-logo" viewBox="0 0 320 60" aria-hidden="true">
-                            <g transform="translate(160, 30) scale(0.9) translate(-160, -30)">
-                                <path fill="#FFFFFF" d="M35,30 C35,17 45,8 60,8 C70,8 78,13 82,21 L70,28 C68,23 64,20 60,20 C52,20 47,24 47,30 C47,36 52,40 60,40 C64,40 68,37 70,32 L82,39 C78,47 70,52 60,52 C45,52 35,43 35,30 Z M92,10 L115,10 C126,10 133,16 133,24 C133,30 129,35 122,37 L135,50 L120,50 L109,38 L104,38 L104,50 L92,50 L92,10 Z M104,20 L104,29 L114,29 C118,29 121,27 121,24 C121,21 118,20 114,20 L104,20 Z M148,10 L160,29 L172,10 L186,10 L167,36 L167,50 L153,50 L153,36 L134,10 L148,10 Z M196,10 L219,10 C231,10 238,17 238,26 C238,35 231,42 219,42 L208,42 L208,50 L196,50 L196,10 Z M208,20 L208,32 L218,32 C223,32 226,30 226,26 C226,22 223,20 218,20 L208,20 Z M243,10 L279,10 L279,21 L267,21 L267,50 L255,50 L255,21 L243,21 L243,10 Z M285,30 C285,17 296,8 310,8 C324,8 335,17 335,30 C335,43 324,52 310,52 C296,52 285,43 285,30 Z M297,30 C297,37 302,41 310,41 C318,41 323,37 323,30 C323,23 318,19 310,19 C302,19 297,23 297,30 Z"></path>
-                            </g>
-                        </svg>
-                    </button>
-                </div>
-            </section>
         </div>
     </main>
 
@@ -9364,45 +9346,6 @@ const PANEL_HTML: &str = r##"
         <div class="dlg-actions" style="margin-top: 0;">
             <button class="btn btn-ghost" onclick="document.getElementById('confirmDlg').close()">Отмена</button>
             <button class="btn btn-primary" id="confirmActionBtn">Подтвердить</button>
-        </div>
-    </dialog>
-
-    <dialog id="cryptoDonateDlg">
-        <h2 style="font-size: 20px; margin-bottom: 8px;">Поддержать криптовалютой</h2>
-        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5;">Переведите криптовалюту на один из указанных адресов кошельков.</p>
-
-        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 14px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                <span style="font-size: 13px; font-weight: 700; color: #31A1F5;">GRAM (Сеть TON)</span>
-            </div>
-            <div style="font-family: monospace; font-size: 13px; word-break: break-all; color: var(--text-main); line-height: 1.4; user-select: all;" id="gramWalletAddr">UQCsHSj_Bev5AG3vCz-84TQC7BSWjNdNdOjP9M2gWUEmbyD7</div>
-            <div style="margin-top: 8px; text-align: right;">
-                <button class="btn btn-ghost" style="padding: 4px 10px; font-size: 12px;" onclick="copyText('UQCsHSj_Bev5AG3vCz-84TQC7BSWjNdNdOjP9M2gWUEmbyD7', this)">Скопировать</button>
-            </div>
-        </div>
-
-        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 14px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                <span style="font-size: 13px; font-weight: 700; color: #50AF95;">USDT (Сеть TON)</span>
-            </div>
-            <div style="font-family: monospace; font-size: 13px; word-break: break-all; color: var(--text-main); line-height: 1.4; user-select: all;" id="usdtTonWalletAddr">UQCsHSj_Bev5AG3vCz-84TQC7BSWjNdNdOjP9M2gWUEmbyD7</div>
-            <div style="margin-top: 8px; text-align: right;">
-                <button class="btn btn-ghost" style="padding: 4px 10px; font-size: 12px;" onclick="copyText('UQCsHSj_Bev5AG3vCz-84TQC7BSWjNdNdOjP9M2gWUEmbyD7', this)">Скопировать</button>
-            </div>
-        </div>
-
-        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 20px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                <span style="font-size: 13px; font-weight: 700; color: #50AF95;">USDT (Сеть TRC20)</span>
-            </div>
-            <div style="font-family: monospace; font-size: 13px; word-break: break-all; color: var(--text-main); line-height: 1.4; user-select: all;" id="usdtTrcWalletAddr">TD1oiQiHmjqsRDPxfUjUbSWxEmcr4k7Lob</div>
-            <div style="margin-top: 8px; text-align: right;">
-                <button class="btn btn-ghost" style="padding: 4px 10px; font-size: 12px;" onclick="copyText('TD1oiQiHmjqsRDPxfUjUbSWxEmcr4k7Lob', this)">Скопировать</button>
-            </div>
-        </div>
-
-        <div class="dlg-actions" style="margin-top: 0;">
-            <button class="btn btn-primary" onclick="document.getElementById('cryptoDonateDlg').close()">Хорошо</button>
         </div>
     </dialog>
 
@@ -10607,10 +10550,7 @@ const PANEL_HTML: &str = r##"
                 navigator.serviceWorker.register((basePath || '') + '/sw.js', { scope: (basePath || '') + '/' }).catch(() => {});
             });
         }
-        function openCryptoDonateDlg() {
-            document.getElementById('cryptoDonateDlg').showModal();
-        }
-        async function copyText(text, btn) {
+async function copyText(text, btn) {
             if (await copyToClipboard(text)) {
                 if (btn) {
                     const orig = btn.textContent;
