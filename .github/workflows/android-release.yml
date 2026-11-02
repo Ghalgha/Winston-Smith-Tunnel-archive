@@ -63,7 +63,8 @@ jobs:
       - uses: mlugg/setup-zig@v2
         with:
           version: 0.15.2
-      - uses: microsoft/setup-powershell@v1
+      - name: Verify PowerShell for provenance checks
+        run: pwsh --version
       - name: Build Linux server binaries and embedded web panel
         run: |
           cargo install cargo-zigbuild --locked
