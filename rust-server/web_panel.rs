@@ -5583,9 +5583,9 @@ pub async fn run(
 
 const PWA_MANIFEST: &str = r##"{
   "id": "/",
-  "name": "CSQTT",
-  "short_name": "CSQTT",
-  "description": "Панель управления сервером CSQTT",
+  "name": "WSTT",
+  "short_name": "WSTT",
+  "description": "Панель управления сервером WSTT",
   "lang": "ru",
   "start_url": "/",
   "scope": "/",
@@ -5630,7 +5630,7 @@ static PWA_ICON_512_PNG: LazyLock<Vec<u8>> = LazyLock::new(|| {
         .unwrap_or_default()
 });
 
-const PWA_SERVICE_WORKER: &str = r##"const CACHE_NAME = 'csqtt-panel-shell-2.5.0-pwa4';
+const PWA_SERVICE_WORKER: &str = r##"const CACHE_NAME = 'wstt-panel-shell-0.1.2-pwa5';
 const base = self.location.pathname.replace(/\/sw\.js$/, '');
 const SHELL_ASSETS = ['/manifest.webmanifest', '/pwa-icon.svg', '/pwa-icon-192.png', '/pwa-icon-512.png', '/qrcode.min.js'].map(p => (base ? base : '') + p);
 
@@ -5680,10 +5680,10 @@ const LOGIN_HTML: &str = r##"
     <link rel="icon" type="image/svg+xml" href="/pwa-icon.svg">
     <link rel="apple-touch-icon" href="/pwa-icon.svg">
     <link rel="icon" type="image/png" sizes="192x192" href="/pwa-icon-192.png">
-    <meta property="og:title" content="CSQTT">
+    <meta property="og:title" content="WSTT">
     <meta property="og:type" content="website">
     <meta property="og:image" content="/pwa-icon.svg">
-    <title>CSQTT — Вход</title>
+    <title>WSTT — Вход</title>
     <style>
         :root {
             --bg-color: #f8fafc;
@@ -5790,7 +5790,7 @@ const CLIENT_SUB_HTML: &str = r##"<!DOCTYPE html>
     <meta name="theme-color" content="#0a0a0c">
     <link rel="icon" type="image/svg+xml" href="/pwa-icon.svg">
     <link rel="apple-touch-icon" href="/pwa-icon.svg">
-    <meta property="og:title" content="CSQTT">
+    <meta property="og:title" content="WSTT">
     <meta property="og:type" content="website">
     <meta property="og:image" content="/pwa-icon.svg">
     <title>Подписка: __CLIENT_NAME__</title>
@@ -5938,14 +5938,14 @@ const CLIENT_SUB_HTML: &str = r##"<!DOCTYPE html>
         <div style="display: flex; flex-direction: column; align-items: center; gap: 16px; margin: 16px 0;">
             <div id="qrCodeContainer" class="qr-box"></div>
             <div style="width: 100%; display: flex; gap: 8px; align-items: center;">
-                <input id="qrDlgLink" readonly="" value="__CSQTT_LINK__" style="flex: 1; height: 42px; font-size: 12px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; padding: 0 10px; background: var(--surface-hover); color: var(--text-muted); border-radius: 8px; border: 1px solid var(--border);" onclick="this.select()">
+                <input id="qrDlgLink" readonly="" value="__WSTT_LINK__" style="flex: 1; height: 42px; font-size: 12px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; padding: 0 10px; background: var(--surface-hover); color: var(--text-muted); border-radius: 8px; border: 1px solid var(--border);" onclick="this.select()">
                 <button class="btn btn-ghost" id="qrDlgCopyBtn" onclick="copyQrDlgLink(this)" style="height: 42px; width: 44px; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: #27272a; border: 1px solid #3f3f46; color: #ffffff; border-radius: 8px;" title="Копировать ссылку">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                 </button>
             </div>
         </div>
         <div class="dlg-actions" style="justify-content: center; display: flex; margin-top: 16px;">
-            <a id="qrDlgConnectBtn" href="__CSQTT_LINK__" class="btn btn-primary" style="width: 100%; height: 42px; text-decoration: none; display: flex; align-items: center; justify-content: center; font-weight: 500; font-size: 14px; border-radius: 8px;">Подключить в приложении CSQTT</a>
+            <a id="qrDlgConnectBtn" href="__WSTT_LINK__" class="btn btn-primary" style="width: 100%; height: 42px; text-decoration: none; display: flex; align-items: center; justify-content: center; font-weight: 500; font-size: 14px; border-radius: 8px;">Подключить в приложении WSTT</a>
         </div>
     </dialog>
 
@@ -6023,7 +6023,7 @@ const GROUP_SUB_HTML: &str = r##"<!DOCTYPE html>
     <meta name="theme-color" content="#0a0a0c">
     <link rel="icon" type="image/svg+xml" href="/pwa-icon.svg">
     <link rel="apple-touch-icon" href="/pwa-icon.svg">
-    <meta property="og:title" content="CSQTT">
+    <meta property="og:title" content="WSTT">
     <meta property="og:type" content="website">
     <title>Подписка группы: __GROUP_NAME__</title>
     <script src="/qrcode.min.js"></script>
@@ -6347,7 +6347,7 @@ const GROUP_SUB_HTML: &str = r##"<!DOCTYPE html>
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                         </button>
                     </div>
-                    <a href="${esc(c.link)}" class="btn btn-primary">Подключить в приложении CSQTT</a>
+                    <a href="${esc(c.link)}" class="btn btn-primary">Подключить в приложении WSTT</a>
                 </div>
                 `;
             });
@@ -6379,10 +6379,10 @@ const GROUP_ADMIN_HTML: &str = r##"<!DOCTYPE html>
     <meta name="theme-color" content="#0a0a0c">
     <link rel="icon" type="image/svg+xml" href="/pwa-icon.svg">
     <link rel="apple-touch-icon" href="/pwa-icon.svg">
-    <meta property="og:title" content="CSQTT">
+    <meta property="og:title" content="WSTT">
     <meta property="og:type" content="website">
     <meta property="og:image" content="/pwa-icon.svg">
-    <title>CSQTT — Панель группы</title>
+    <title>WSTT — Панель группы</title>
     <script src="/qrcode.min.js"></script>
     <style>
         :root {
@@ -7917,10 +7917,10 @@ const PANEL_HTML: &str = r##"
     <link rel="icon" type="image/svg+xml" href="/pwa-icon.svg">
     <link rel="apple-touch-icon" href="/pwa-icon.svg">
     <link rel="icon" type="image/png" sizes="192x192" href="/pwa-icon-192.png">
-    <meta property="og:title" content="CSQTT">
+    <meta property="og:title" content="WSTT">
     <meta property="og:type" content="website">
     <meta property="og:image" content="/pwa-icon.svg">
-    <title>CSQTT</title>
+    <title>WSTT</title>
     <script src="/qrcode.min.js"></script>
     <style>
         :root {
@@ -9114,15 +9114,8 @@ const PANEL_HTML: &str = r##"
 <body>
     <header>
         <div class="header-container">
-            <div class="brand" aria-label="CSQTT">
-                <svg class="brand-logo" viewBox="0 0 760 184" role="img" aria-label="CSQTT">
-                    <defs>
-                        <linearGradient id="csqttLogoGradient" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="68" y2="340">
-                            <stop offset="0" stop-color="#3DBFFD"></stop><stop offset="0.32" stop-color="#299BFD"></stop><stop offset="0.66" stop-color="#1475FD"></stop><stop offset="1" stop-color="#0450FC"></stop>
-                        </linearGradient>
-                    </defs>
-                    <path fill="url(#csqttLogoGradient)" fill-rule="evenodd" d="M79,11 L66,15 L48,25 L40,32 L27,49 L21,62 L17,78 L17,98 L19,108 L22,117 L33,136 L40,144 L56,156 L66,161 L84,166 L108,166 L118,164 L127,161 L143,152 L157,139 L160,135 L160,133 L137,116 L135,116 L123,128 L113,133 L106,135 L100,135 L99,136 L87,135 L73,130 L67,126 L57,116 L51,105 L48,93 L48,83 L51,71 L58,59 L67,50 L83,42 L105,41 L115,44 L129,53 L136,61 L160,44 L160,42 L155,35 L144,25 L135,19 L124,14 L108,10 Z M219,13 L208,18 L201,23 L191,35 L186,49 L186,66 L188,73 L193,82 L200,89 L208,94 L219,98 L248,103 L264,108 L270,113 L272,117 L272,125 L267,132 L260,136 L255,137 L234,137 L220,133 L212,129 L199,119 L181,141 L199,155 L212,161 L222,164 L232,165 L233,166 L257,166 L276,161 L285,156 L292,150 L298,142 L302,132 L303,112 L297,97 L287,87 L276,81 L258,76 L234,72 L224,68 L218,63 L216,58 L217,50 L222,44 L228,41 L237,39 L248,39 L258,41 L268,45 L279,53 L281,53 L299,32 L285,21 L270,14 L259,11 L233,10 Z M354,25 L344,34 L333,49 L328,60 L324,74 L324,79 L323,80 L324,103 L329,119 L336,132 L349,147 L360,155 L372,161 L391,166 L414,166 L430,162 L442,156 L460,174 L478,156 L462,140 L469,131 L474,122 L479,109 L481,99 L481,77 L479,68 L474,54 L466,41 L453,27 L441,19 L430,14 L414,10 L385,11 L372,15 Z M389,42 L411,41 L427,47 L442,61 L449,76 L450,96 L447,106 L444,112 L439,118 L421,100 L404,116 L405,119 L418,132 L416,134 L399,136 L385,133 L377,129 L363,116 L355,99 L354,83 L357,71 L361,63 L373,50 L379,46 Z M496,13 L496,44 L536,44 L537,45 L537,163 L568,163 L568,45 L569,44 L609,44 L610,43 L610,13 Z M628,13 L627,14 L627,37 L628,38 L627,43 L628,44 L666,44 L667,45 L667,163 L698,163 L699,162 L699,45 L700,44 L738,44 L738,13 Z"></path>
-                </svg>
+            <div class="brand" aria-label="WSTT">
+                <div class="brand-logo" role="img" aria-label="WSTT" style="font-size: 34px; font-weight: 800; letter-spacing: 2px; color: var(--text-main);">WSTT</div>
             </div>
             <div class="header-actions">
                 <button class="btn btn-api" onclick="openApiDocsDlg()" title="API Документация">
@@ -9140,14 +9133,11 @@ const PANEL_HTML: &str = r##"
                 <button class="btn btn-ghost btn-icon" onclick="toggleTheme()" title="Сменить тему">
                     <svg id="themeIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
                 </button>
-                <svg class="version-logo" viewBox="0 0 516 64" role="img" aria-label="v2.5.0 by amurcanov" fill="none" stroke="url(#versionLogoGradient)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
-                    <defs><linearGradient id="versionLogoGradient" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="516" y2="64"><stop offset="0" stop-color="#45B7FF"></stop><stop offset="0.45" stop-color="#2087FF"></stop><stop offset="1" stop-color="#075BFF"></stop></linearGradient></defs>
-                    <path d="M8,24 L18,48 L28,24 M34,20 Q38,14 46,14 H50 Q58,14 58,22 Q58,28 52,33 L36,48 H58 M67,47 L67.8,47 M102,14 H80 V28 H92 Q102,28 102,38 Q102,48 90,48 Q80,48 78,42 M110,47 L110.8,47 M122,22 Q122,14 134,14 Q146,14 146,22 V40 Q146,48 134,48 Q122,48 122,40 Z M158,12 V48 M158,31 Q163,24 170,24 Q180,24 180,36 Q180,48 170,48 Q163,48 158,41 M190,24 L200,47 M210,24 L200,47 L196,57 Q194,60 189,58 M250,30 Q246,24 239,24 Q228,24 228,36 Q228,48 239,48 Q246,48 250,42 M250,24 V48 M260,48 V24 M260,31 Q264,24 270,24 Q277,24 277,32 V48 M277,31 Q281,24 287,24 Q294,24 294,32 V48 M304,24 V39 Q304,48 314,48 Q324,48 324,39 V24 M334,48 V24 M334,32 Q338,24 348,24 M382,29 Q378,24 370,24 Q360,24 360,36 Q360,48 370,48 Q378,48 382,43 M414,30 Q410,24 403,24 Q392,24 392,36 Q392,48 403,48 Q410,48 414,42 M414,24 V48 M424,48 V24 M424,32 Q429,24 436,24 Q446,24 446,35 V48 M467,24 Q456,24 456,36 Q456,48 467,48 Q478,48 478,36 Q478,24 467,24 Z M488,24 L498,48 L508,24"></path>
-                </svg>
+                <span class="version-label" aria-label="WSTT">WSTT</span>
             </div>
         </div>
     </header>
-    <div id="restartRequiredBanner" class="restart-required-banner">Для применения изменений необходимо перезагрузить CSQTT на сервере (перейдите в настройки)</div>
+    <div id="restartRequiredBanner" class="restart-required-banner">Для применения изменений необходимо перезагрузить WSTT на сервере (перейдите в настройки)</div>
 
     <main>
         <div class="tabs-container">
@@ -9419,9 +9409,9 @@ const PANEL_HTML: &str = r##"
     <dialog id="localProxyInfoDlg">
         <h2 style="font-size: 20px; margin-bottom: 20px;">SOCKS5 UDP</h2>
         <ul class="proxy-info-list">
-            <li><strong>Зачем нужно?</strong> Маршрутизировать трафик из CSQTT в Xray, 3x-ui и другие панели. Это нужно, чтобы маршрутизировать трафик через geoip/geodat и работать с любыми возможностями ваших панелей.</li>
-            <li><strong>Как работает?</strong> CSQTT передаёт TCP и UDP в локальный SOCKS5. Если прокси недоступен, используется прямой выход через основной VPS.</li>
-            <li><strong>Как настроить?</strong> В соответствующем ядре или веб-панели заранее создайте инбаунд SOCKS5-прокси (в некоторых панелях он может называться mixed) с предпочитаемым портом и включите UDP в настройках прокси. Затем укажите в панели CSQTT тот же самый порт.</li>
+            <li><strong>Зачем нужно?</strong> Маршрутизировать трафик из WSTT в Xray, 3x-ui и другие панели. Это нужно, чтобы маршрутизировать трафик через geoip/geodat и работать с любыми возможностями ваших панелей.</li>
+            <li><strong>Как работает?</strong> WSTT передаёт TCP и UDP в локальный SOCKS5. Если прокси недоступен, используется прямой выход через основной VPS.</li>
+            <li><strong>Как настроить?</strong> В соответствующем ядре или веб-панели заранее создайте инбаунд SOCKS5-прокси (в некоторых панелях он может называться mixed) с предпочитаемым портом и включите UDP в настройках прокси. Затем укажите в панели WSTT тот же самый порт.</li>
         </ul>
         <div class="dlg-actions" style="margin-top: 24px;">
             <button class="btn btn-primary" onclick="document.getElementById('localProxyInfoDlg').close()">Понятно</button>
@@ -9430,7 +9420,7 @@ const PANEL_HTML: &str = r##"
 
     <dialog id="vkHashesInfoDlg">
         <h2 style="font-size: 20px; margin-bottom: 16px;">VK хеши в ссылке</h2>
-        <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6; margin: 0;">Укажите от 1 до 6 VK-хешей через запятую без пробелов. Вставляйте только сами значения хешей. Они будут добавлены в ссылку CSQTT v2, и пользователю не придётся вводить их вручную.</p>
+        <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6; margin: 0;">Укажите от 1 до 6 VK-хешей через запятую без пробелов. Вставляйте только сами значения хешей. Они будут добавлены в ссылку WSTT v2, и пользователю не придётся вводить их вручную.</p>
         <div class="dlg-actions" style="margin-top: 24px;">
             <button class="btn btn-primary" onclick="document.getElementById('vkHashesInfoDlg').close()">Понятно</button>
         </div>
@@ -9438,7 +9428,7 @@ const PANEL_HTML: &str = r##"
 
     <dialog id="vkTokenSettingsDlg">
         <h2 style="font-size: 20px; margin-bottom: 16px;">Настройка VK токенов</h2>
-        <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6; margin: 0 0 18px;">Если сохранить VK токен здесь, все CSQTT-ссылки с включённой функцией VK токена будут автоматически использовать этот общий токен.</p>
+        <p style="color: var(--text-muted); font-size: 14px; line-height: 1.6; margin: 0 0 18px;">Если сохранить VK токен здесь, все WSTT-ссылки с включённой функцией VK токена будут автоматически использовать этот общий токен.</p>
         <div class="input-group" style="margin-bottom: 0;">
             <label for="vkTokenSettingsInput">Бессрочный VK токен</label>
             <input id="vkTokenSettingsInput" type="password" maxlength="4096" autocomplete="off" spellcheck="false">
@@ -10288,7 +10278,7 @@ const PANEL_HTML: &str = r##"
                 </div>
                 <div class="api-card-body">
                     <p style="font-size: 12px; color: var(--text-muted);">
-                        Публичная веб-страница подписки клиента или Главного пароля (без необходимости авторизации). Содержит живой векторный QR-код, прямую ссылку <code>csqtt://connect?...</code>, кнопку «Подключить в приложении CSQTT» (с нативным уведомлением в приложении), контрастную кнопку копирования и инструкции.
+                        Публичная веб-страница подписки клиента или Главного пароля (без необходимости авторизации). Содержит живой векторный QR-код, прямую ссылку <code>csqtt://connect?...</code>, кнопку «Подключить в приложении WSTT» (с нативным уведомлением в приложении), контрастную кнопку копирования и инструкции.
                     </p>
                 </div>
             </div>
@@ -10324,7 +10314,7 @@ const PANEL_HTML: &str = r##"
                 </div>
                 <div class="api-card-body">
                     <p style="font-size: 12px; color: var(--text-muted);">
-                        Публичная адаптивная страница для группы. Выводит всех активных клиентов группы в виде аккуратной сетки с QR-кодами, ссылками, кнопками копирования и быстрого подключения в CSQTT.
+                        Публичная адаптивная страница для группы. Выводит всех активных клиентов группы в виде аккуратной сетки с QR-кодами, ссылками, кнопками копирования и быстрого подключения в WSTT.
                     </p>
                 </div>
             </div>
@@ -10576,11 +10566,11 @@ const PANEL_HTML: &str = r##"
                 <div class="api-card-header">
                     <span class="api-method post">POST</span>
                     <span class="api-path">/api/reboot</span>
-                    <span class="api-desc">Перезапуск сервера CSQTT</span>
+                    <span class="api-desc">Перезапуск сервера WSTT</span>
                 </div>
                 <div class="api-card-body">
                     <p style="font-size: 12px; color: var(--text-muted);">
-                        Инициирует контролируемый мягкий перезапуск процесса CSQTT на сервере.
+                        Инициирует контролируемый мягкий перезапуск процесса WSTT на сервере.
                     </p>
                 </div>
             </div>
@@ -10593,7 +10583,7 @@ const PANEL_HTML: &str = r##"
 
     <dialog id="rebootDlg">
         <h2>Перезапуск сервера</h2>
-        <p style="color: var(--text-muted); font-size: 15px; margin-bottom: 24px;">Вы уверены, что хотите перезапустить CSQTT? Активные соединения будут прерваны на несколько секунд.</p>
+        <p style="color: var(--text-muted); font-size: 15px; margin-bottom: 24px;">Вы уверены, что хотите перезапустить WSTT? Активные соединения будут прерваны на несколько секунд.</p>
         <div class="dlg-actions">
             <button class="btn btn-ghost" onclick="document.getElementById('rebootDlg').close()">Отмена</button>
             <button class="btn btn-primary" onclick="executeReboot()">Перезапустить</button>
