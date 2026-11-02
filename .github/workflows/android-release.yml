@@ -1,0 +1,71 @@
+name: WSTT release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: wstt-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      KEYSTORE_FILE: ${{ secrets.KEYSTORE_FILE }}
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify release signing secrets
+        shell: bash
+        run: |
+          missing=()
+          for key in KEYSTORE_FILE KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!key}" ]; then missing+=("$key"); fi
+          done
+          if [ "${#missing[@]}" -ne 0 ]; then
+            printf 'Missing GitHub Actions secrets: %s\n' "${missing[*]}"
+            exit 1
+          fi
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - name: Install Android platform and build tools
+        run: |
+          sdkmanager --install "platforms;android-37.0" "build-tools;37.0.0"
+          SDK_ROOT="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          if [ -d "$SDK_ROOT/platforms/android-37.0" ] && [ ! -e "$SDK_ROOT/platforms/android-37" ]; then
+            ln -s android-37.0 "$SDK_ROOT/platforms/android-37"
+          fi
+          test -d "$SDK_ROOT/platforms/android-37"
+      - name: Restore signing key
+        shell: bash
+        run: |
+          printf '%s' "$KEYSTORE_FILE" > /tmp/wstt-keystore-path
+          if [ ! -f "$KEYSTORE_FILE" ]; then
+            echo "KEYSTORE_FILE must point to an existing keystore on the runner; configure a base64 keystore secret and restore it before this step."
+            exit 1
+          fi
+      - name: Build signed release APKs
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --no-daemon :app:assembleRelease
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.1.2
+          name: WSTT 0.1.2
+          target_commitish: ${{ github.sha }}
+          body: |
+            WSTT 0.1.2 — ребрендинг Android-клиента и веб-панели.
+            Подписанные release APK для установки и обновления.
+          files: app/build/outputs/apk/release/*.apk
+          fail_on_unmatched_files: true
