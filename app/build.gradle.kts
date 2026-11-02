@@ -64,8 +64,8 @@ android {
         applicationId = "com.wstunnel.client"
         minSdk = 26
         targetSdk = 37
-        versionCode = 230
-        versionName = "2.5.0"
+        versionCode = 231
+        versionName = "0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
