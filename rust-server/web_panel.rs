@@ -8218,9 +8218,10 @@ const PANEL_HTML: &str = r##"
         @media (max-width: 600px) { .settings-grid { grid-template-columns: minmax(0, 1fr); } }
         .setting-card { padding: 24px; }
         .dns-selection { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
-        .dns-selection.is-custom { grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr); }
+        .dns-selection.is-custom { grid-template-columns: minmax(0, 1fr); }
         .dns-selection .dns-manual-input { display: none; }
-        .dns-selection.is-custom .dns-manual-input { display: block; }
+        .dns-selection.is-custom .dns-manual-input { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+        @media (max-width: 600px) { .dns-selection.is-custom .dns-manual-input { grid-template-columns: minmax(0, 1fr); } }
         .settings-actions-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; }
         .settings-action-btn {
             width: 100%; min-width: 0; padding: 10px 8px; border: 0; background: transparent;
@@ -9299,7 +9300,7 @@ const PANEL_HTML: &str = r##"
                                 <option value="bizone">BI.ZONE DNS</option>
                                 <option value="nsdi">НСДИ DNS</option>
                             </select>
-                            <input id="dns_manual" class="dns-manual-input" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="ipv4,ipv4" aria-label="Ручной DNS">
+                            <div class="dns-manual-input"><input id="dns_primary" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="Основной IPv4 DNS" aria-label="Основной DNS"><input id="dns_secondary" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="Дополнительный IPv4 DNS (необязательно)" aria-label="Дополнительный DNS"></div>
                             </div>
                         </div>
                         <button id="saveDnsBtn" class="btn btn-primary" style="width: 100%; margin-top: 22px;" onclick="saveDnsSettings()" disabled>Применить DNS</button>
@@ -10791,7 +10792,7 @@ async function copyText(text, btn) {
         function updateSettingsDirtyState() {
             const mainPassword = document.getElementById('mainpass')?.value ?? '';
             const dnsProvider = document.getElementById('dns_provider')?.value ?? '';
-            const manualDns = document.getElementById('dns_manual')?.value ?? '';
+            const manualDns = [document.getElementById('dns_primary')?.value ?? '', document.getElementById('dns_secondary')?.value ?? ''].join(',');
             const autoRestartInterval = Number(document.getElementById('auto_restart_interval')?.value ?? 0);
             const mainButton = document.getElementById('saveMainPasswordBtn');
             const dnsButton = document.getElementById('saveDnsBtn');
@@ -10820,7 +10821,8 @@ async function copyText(text, btn) {
             sharedVkHashes = x.vk_hashes || '';
             document.getElementById('mainpass').value = savedMainPassword;
             document.getElementById('dns_provider').value = savedDnsProvider;
-            document.getElementById('dns_manual').value = savedManualDns;
+            document.getElementById('dns_primary').value = x.dns_primary || '';
+            document.getElementById('dns_secondary').value = x.dns_secondary || '';
             document.getElementById('auto_restart_interval').value = String(savedAutoRestartInterval);
             syncDnsControls();
             setRestartRequired(x.restart_required);
@@ -12889,24 +12891,22 @@ async function copyText(text, btn) {
             if (!button || button.disabled) return;
             let payload;
             if (provider === 'custom') {
-                const value = document.getElementById('dns_manual')?.value || '';
-                const addresses = value.split(',');
-                const valid = value === value.trim()
-                    && !value.includes(' ')
-                    && (addresses.length === 1 || addresses.length === 2)
-                    && addresses.every(address => {
-                        const octets = address.split('.');
-                        return octets.length === 4
-                            && octets.every(octet => /^[0-9]{1,3}$/.test(octet) && Number(octet) <= 255);
-                    });
+                const primary = document.getElementById('dns_primary')?.value.trim() || '';
+                const secondary = document.getElementById('dns_secondary')?.value.trim() || '';
+                const isIpv4 = address => {
+                    const octets = address.split('.');
+                    return octets.length === 4
+                        && octets.every(octet => /^[0-9]{1,3}$/.test(octet) && Number(octet) <= 255);
+                };
+                const valid = isIpv4(primary) && (!secondary || isIpv4(secondary));
                 if (!valid) {
-                    showToast('Введите один или два IPv4-адреса через запятую без пробелов', 'error');
+                    showToast('Укажите корректный основной IPv4 DNS. Дополнительный адрес необязателен.', 'error');
                     return;
                 }
                 payload = {
                     dns_provider: 'custom',
-                    dns_primary: addresses[0],
-                    dns_secondary: addresses[1] || ''
+                    dns_primary: primary,
+                    dns_secondary: secondary
                 };
             } else {
                 payload = { dns_provider: provider };
@@ -13015,7 +13015,8 @@ async function copyText(text, btn) {
             syncDnsControls();
             updateSettingsDirtyState();
         });
-        document.getElementById('dns_manual')?.addEventListener('input', updateSettingsDirtyState);
+        document.getElementById('dns_primary')?.addEventListener('input', updateSettingsDirtyState);
+        document.getElementById('dns_secondary')?.addEventListener('input', updateSettingsDirtyState);
         document.getElementById('auto_restart_interval')?.addEventListener('change', updateSettingsDirtyState);
         const dlBtn = document.getElementById('downloadLogBtn');
         if (dlBtn) dlBtn.href = (basePath || '') + '/api/logs/download';
