@@ -137,7 +137,7 @@ private fun fetchReleaseFromLatestWebRedirect(): AppReleaseInfo? {
         conn.instanceFollowRedirects = false
         conn.requestMethod = "GET"
         conn.setRequestProperty("Accept", "text/html,*/*")
-        conn.setRequestProperty("User-Agent", "CSQTTAndroid/${BuildConfig.VERSION_NAME}")
+        conn.setRequestProperty("User-Agent", "WSTTAndroid/${BuildConfig.VERSION_NAME}")
         conn.connectTimeout = 8_000
         conn.readTimeout = 8_000
 
@@ -195,7 +195,7 @@ private fun fetchHttpText(
         if (isGitHubApi) {
             conn.setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
         }
-        conn.setRequestProperty("User-Agent", "CSQTTAndroid/${BuildConfig.VERSION_NAME}")
+        conn.setRequestProperty("User-Agent", "WSTTAndroid/${BuildConfig.VERSION_NAME}")
         conn.connectTimeout = 8_000
         conn.readTimeout = 8_000
 
