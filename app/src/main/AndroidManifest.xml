@@ -78,7 +78,7 @@
         <service
             android:name=".QuickToggleTileService"
             android:exported="true"
-            android:icon="@drawable/ic_c_logo"
+            android:icon="@drawable/ic_wst_launcher"
             android:label="CSQTT"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter>
