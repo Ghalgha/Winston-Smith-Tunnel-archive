@@ -29,16 +29,25 @@ jobs:
           packages: platform-tools
       - name: Install Android platform and build tools
         run: |
-          sdkmanager --install "platforms;android-37.0" "build-tools;37.0.0"
+          sdkmanager --install "platforms;android-37.0" "build-tools;37.0.0" "ndk;28.2.13676358" "cmake;3.31.1"
           SDK_ROOT="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
           if [ -d "$SDK_ROOT/platforms/android-37.0" ] && [ ! -e "$SDK_ROOT/platforms/android-37" ]; then
             ln -s android-37.0 "$SDK_ROOT/platforms/android-37"
           fi
           test -d "$SDK_ROOT/platforms/android-37"
+      - name: Install Rust and build native Android libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build
+          chmod +x scripts/build_android_native.sh
+          scripts/build_android_native.sh
       - name: Build debug APK for CI verification only
         run: |
           chmod +x ./gradlew
           ./gradlew --no-daemon :app:assembleDebug
+          for apk in app/build/outputs/apk/debug/*.apk; do
+            unzip -l "$apk" | grep -q "lib/arm64-v8a/libclient.so"
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: WSTT-${{ github.sha }}-CI-debug
