@@ -65,6 +65,7 @@ class SettingsStore(context: Context) {
         private val ACTIVE_PROFILE = intPreferencesKey("active_profile")
         private val SHOW_SYSTEM_APPS = booleanPreferencesKey("show_system_apps")
         private val LOGGING_ENABLED = booleanPreferencesKey("logging_enabled")
+        private val POWER_SAVER_ENABLED = booleanPreferencesKey("power_saver_enabled")
         private val INFO_ACTIONS_EXPANDED = booleanPreferencesKey("info_actions_expanded")
         private val INFO_PROJECT_EXPANDED = booleanPreferencesKey("info_project_expanded")
         private val CSQTT_LINK = stringPreferencesKey("csqtt_link")
@@ -334,6 +335,7 @@ class SettingsStore(context: Context) {
     }
     val showSystemApps: Flow<Boolean> = dataStore.data.map { it[SHOW_SYSTEM_APPS] ?: false }
     val loggingEnabled: Flow<Boolean> = dataStore.data.map { it[LOGGING_ENABLED] ?: true }
+    val powerSaverEnabled: Flow<Boolean> = dataStore.data.map { it[POWER_SAVER_ENABLED] ?: false }
     val infoActionsExpanded: Flow<Boolean> = dataStore.data.map { it[INFO_ACTIONS_EXPANDED] ?: false }
     val infoProjectExpanded: Flow<Boolean> = dataStore.data.map { it[INFO_PROJECT_EXPANDED] ?: false }
     val csqttLink: Flow<String> = dataStore.data.map { prefs ->
@@ -844,6 +846,10 @@ class SettingsStore(context: Context) {
         dataStore.edit { prefs ->
             prefs[SHOW_SYSTEM_APPS] = enabled
         }
+    }
+
+    suspend fun savePowerSaverEnabled(enabled: Boolean) {
+        dataStore.edit { prefs -> prefs[POWER_SAVER_ENABLED] = enabled }
     }
 
     suspend fun saveLoggingEnabled(enabled: Boolean) {
