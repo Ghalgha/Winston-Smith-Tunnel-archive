@@ -15,7 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
-      KEYSTORE_FILE: ${{ secrets.KEYSTORE_FILE }}
+      KEYSTORE_FILE: /tmp/wstt-release.jks
+      KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
       KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
       KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
       KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
@@ -25,7 +26,7 @@ jobs:
         shell: bash
         run: |
           missing=()
-          for key in KEYSTORE_FILE KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+          for key in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
             if [ -z "${!key}" ]; then missing+=("$key"); fi
           done
           if [ "${#missing[@]}" -ne 0 ]; then
@@ -50,11 +51,9 @@ jobs:
       - name: Restore signing key
         shell: bash
         run: |
-          printf '%s' "$KEYSTORE_FILE" > /tmp/wstt-keystore-path
-          if [ ! -f "$KEYSTORE_FILE" ]; then
-            echo "KEYSTORE_FILE must point to an existing keystore on the runner; configure a base64 keystore secret and restore it before this step."
-            exit 1
-          fi
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_FILE"
+          chmod 600 "$KEYSTORE_FILE"
+          test -s "$KEYSTORE_FILE"
       - name: Build signed release APKs
         run: |
           chmod +x ./gradlew
