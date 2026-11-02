@@ -94,7 +94,6 @@ import kotlinx.coroutines.launch
 import com.csqtt.client.ui.components.CsqttScreen
 import com.csqtt.client.ui.design.CsqttShapes
 import com.csqtt.client.ui.design.CsqttSpacing
-import com.csqtt.client.ui.dialogs.CryptoDonateDialog
 
 private const val ReleasesUrl = CsqttConstants.Links.RELEASES
 private const val IssuesUrl = CsqttConstants.Links.ISSUES
@@ -155,7 +154,6 @@ fun InfoTab(
     val currentVersion = remember { "v${BuildConfig.VERSION_NAME.removePrefix("v")}" }
     var isCheckingUpdates by remember { mutableStateOf(false) }
     var pendingManualRelease by remember { mutableStateOf<com.csqtt.client.AppReleaseInfo?>(null) }
-    var showCryptoDialog by remember { mutableStateOf(false) }
     val updateLatestVersion by settingsStore.updateLatestVersion.collectAsStateWithLifecycle(initialValue = "")
     val updateLastError by settingsStore.updateLastError.collectAsStateWithLifecycle(initialValue = "")
     val updateStatus = remember(isCheckingUpdates, updateLatestVersion, updateLastError, currentVersion) {
@@ -178,12 +176,6 @@ fun InfoTab(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            InfoHeroCard(
-                currentVersion = currentVersion,
-                onCryptoClick = { showCryptoDialog = true },
-                onTelegramClick = { openUrlInBrowser(context, TelegramUrl) },
-            )
-
         ExpandableSectionCard(
             title = "Действия",
             expanded = actionsExpanded,
@@ -315,10 +307,6 @@ fun InfoTab(
                     }
                 }
             )
-        }
-
-        if (showCryptoDialog) {
-            CryptoDonateDialog(onDismiss = { showCryptoDialog = false })
         }
 
         ExpandableSectionCard(
