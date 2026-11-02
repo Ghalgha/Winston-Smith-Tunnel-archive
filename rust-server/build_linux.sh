@@ -73,6 +73,7 @@ args=()
 for arg in "$@"; do
   [[ "$arg" == --target=* ]] || args+=("$arg")
 done
+if [[ "$CSQTT_ZIG_TARGET" == arm-linux-musleabihf ]]; then args+=("-mcpu=cortex_a7"); fi
 exec zig cc -target "$CSQTT_ZIG_TARGET" "${args[@]}"
 SH
 cat > "$WRAP/zigcxx" <<'SH'
@@ -81,6 +82,7 @@ args=()
 for arg in "$@"; do
   [[ "$arg" == --target=* ]] || args+=("$arg")
 done
+if [[ "$CSQTT_ZIG_TARGET" == arm-linux-musleabihf ]]; then args+=("-mcpu=cortex_a7"); fi
 exec zig c++ -target "$CSQTT_ZIG_TARGET" "${args[@]}"
 SH
 cat > "$WRAP/zigar" <<'SH'
@@ -131,7 +133,7 @@ build_variant() {
 }
 build_variant x86_64-unknown-linux-musl x86_64-linux-musl csqtt-linux-amd64
 build_variant aarch64-unknown-linux-musl aarch64-linux-musl csqtt-linux-arm64
-build_variant armv7-unknown-linux-musleabihf armv7-linux-musleabihf csqtt-linux-armv7
+build_variant armv7-unknown-linux-musleabihf arm-linux-musleabihf csqtt-linux-armv7
 rm -f "$ROOT/../app/src/main/assets/csqtt"
 if command -v pwsh >/dev/null; then
   pwsh -NoProfile -File "$ROOT/../scripts/server_asset_provenance.ps1" -Mode Write
