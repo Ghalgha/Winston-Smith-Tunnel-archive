@@ -37,7 +37,7 @@
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="false"
         android:icon="@drawable/ic_wst_launcher"
-        android:label="WST"
+        android:label="WSTT"
         android:roundIcon="@drawable/ic_wst_launcher"
         android:supportsRtl="true"
         android:theme="@style/Theme.CSQTTClient">
