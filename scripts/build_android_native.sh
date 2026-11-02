@@ -41,3 +41,6 @@ copy_native() {
 copy_native aarch64-linux-android arm64-v8a
 copy_native armv7-linux-androideabi armeabi-v7a
 copy_native x86_64-linux-android x86_64
+
+pwsh -NoProfile -File "$ROOT/scripts/native_client_provenance.ps1" -Mode Write
+pwsh -NoProfile -File "$ROOT/scripts/native_client_provenance.ps1" -Mode Verify
