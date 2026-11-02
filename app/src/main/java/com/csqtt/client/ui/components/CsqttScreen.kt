@@ -30,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.csqtt.client.R
+import com.csqtt.client.BuildConfig
 
 internal val LocalCsqttHeaderActions = staticCompositionLocalOf<(@Composable RowScope.() -> Unit)?> { null }
 
@@ -67,12 +68,13 @@ fun CsqttScreen(
                     verticalArrangement = Arrangement.spacedBy(1.dp),
                     horizontalAlignment = Alignment.Start
                 ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_wst_launcher),
-                        contentDescription = "WST",
-                        tint = Color.Unspecified,
-                        modifier = Modifier.height(22.dp)
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(painter = painterResource(id = R.drawable.ic_wst_launcher), contentDescription = "WST", tint = Color.Unspecified, modifier = Modifier.height(22.dp))
+                        Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
+                            Text("WSTT", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+                            Text("v${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
                 }
 
                 headerActions?.let { Row(content = it) }
