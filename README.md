@@ -1,22 +1,85 @@
-# Winston Smith Tunnel (WST)
+# WST
 
-Winston Smith Tunnel is an Android client and Rust-based tunnelling project derived from the CSQTT codebase.
+WST — Android-приложение для работы с туннельным VPN-подключением. Проект включает Android-клиент и компоненты на Rust.
 
-## Project status
+## Возможности
 
-This repository contains the imported source tree. The public-facing Android application ID is `com.wstunnel.client`. The Kotlin namespace remains `com.csqtt.client` for source compatibility; this is an internal package namespace, not the installed application identity.
+- Подключение и отключение туннеля.
+- Управление параметрами подключения.
+- Настройка маршрутизации приложений через списки исключений.
+- Просмотр журнала событий и диагностика соединения.
+- Управление подключением через плитку быстрых настроек и виджет.
+- Импорт конфигураций по ссылкам с поддержкой схем `wst://` и `csqtt://`.
 
-## Build
+## Требования для сборки
 
-- Android Studio with Android SDK 37
-- JDK 17
-- Rust toolchain required for native components
-- Use the Gradle wrapper: `./gradlew :app:assembleDebug`
+- Android Studio или Android SDK Command-line Tools.
+- JDK 17.
+- Android SDK Platform 37.0.
+- Android Build Tools 37.0.0.
+- Rust toolchain — для сборки и изменения нативных компонентов проекта.
 
-Release builds require a separately configured signing keystore. Keep signing credentials and `local.properties` out of version control.
+В проекте используется Gradle Wrapper, поэтому отдельная установка Gradle не требуется.
 
-## Licensing and attribution
+## Сборка Android-приложения
 
-This project retains the upstream **PolyForm Noncommercial License 1.0.0** and all required notices. The original CSQTT project and its author remain credited in the license and legal notices. Commercial use requires separate written permission from the licensor. See [LICENSE](LICENSE) and the in-app third-party/license notices.
+Клонируйте репозиторий:
 
-WST is a derivative work; rebranding does not change the upstream license terms.
+```bash
+git clone https://github.com/Ghalgha/Winston-Smith-Tunnel.git
+cd Winston-Smith-Tunnel
+```
+
+Соберите отладочную версию:
+
+**Linux / macOS**
+```bash
+chmod +x gradlew
+./gradlew :app:assembleDebug
+```
+
+**Windows**
+```powershell
+.\\gradlew.bat :app:assembleDebug
+```
+
+Готовый APK будет находиться в каталоге:
+
+```
+app/build/outputs/apk/debug/
+```
+
+Для сборки нужны установленные Android SDK Platform 37.0 и Build Tools 37.0.0. Если Gradle в вашей среде ожидает каталог `platforms/android-37`, а SDK установлен в `platforms/android-37.0`, настройте совместимый путь к каталогу платформы.
+
+## Подпись релизной версии
+
+Для сборки релиза необходимо отдельно настроить ключ подписи. Используются следующие параметры:
+
+- `KEYSTORE_FILE` — путь к файлу хранилища ключей;
+- `KEYSTORE_PASSWORD` — пароль хранилища;
+- `KEY_ALIAS` — имя ключа;
+- `KEY_PASSWORD` — пароль ключа.
+
+Их можно передать через Gradle properties, переменные окружения или локальный файл `local.properties`. Не добавляйте этот файл, keystore и пароли в Git. Не используйте отладочный ключ для публикации релизов.
+
+## Структура проекта
+
+- `app/` — Android-приложение на Kotlin.
+- `app/src/main/` — исходный код, ресурсы и манифест Android.
+- `rust-client/` — Rust-компоненты клиента.
+- `gradle/` и `gradlew*` — Gradle Wrapper и настройки сборки.
+- `LICENSE` — лицензия и обязательные уведомления об авторстве.
+
+## Идентификаторы
+
+- Название приложения: **WST**.
+- Android Application ID: `com.wstunnel.client`.
+- Внутреннее пространство имён Kotlin пока сохранено как `com.csqtt.client` для совместимости с существующим исходным кодом.
+
+## Лицензия и происхождение
+
+Проект основан на исходном коде CSQTT и распространяется с сохранением лицензии **PolyForm Noncommercial 1.0.0** и обязательных уведомлений об авторстве. Лицензия допускает использование в некоммерческих целях; коммерческое использование требует отдельного письменного разрешения правообладателя.
+
+При распространении WST необходимо сохранять текст лицензии, все строки `Required Notice` и указание на исходный проект. Переименование приложения не отменяет этих условий.
+
+Полный текст условий находится в файле [LICENSE](LICENSE). Это описание не заменяет текст лицензии.
