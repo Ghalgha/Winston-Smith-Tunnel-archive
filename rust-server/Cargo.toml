@@ -3,7 +3,7 @@ name = "csqtt"
 version = "2.5.0"
 edition = "2024"
 rust-version = "1.97.1"
-license = "Unlicense"
+license = "PolyForm-Noncommercial-1.0.0"
 
 [[bin]]
 name = "csqtt"
