@@ -42,7 +42,7 @@ jobs:
           packages: platform-tools
       - name: Install Android platform and build tools
         run: |
-          sdkmanager --install "platforms;android-37.0" "build-tools;37.0.0"
+          sdkmanager --install "platforms;android-37.0" "build-tools;37.0.0" "ndk;28.2.13676358" "cmake;3.31.1"
           SDK_ROOT="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
           if [ -d "$SDK_ROOT/platforms/android-37.0" ] && [ ! -e "$SDK_ROOT/platforms/android-37" ]; then
             ln -s android-37.0 "$SDK_ROOT/platforms/android-37"
@@ -54,10 +54,19 @@ jobs:
           printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_FILE"
           chmod 600 "$KEYSTORE_FILE"
           test -s "$KEYSTORE_FILE"
+      - name: Install Rust and build native Android libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build
+          chmod +x scripts/build_android_native.sh
+          scripts/build_android_native.sh
       - name: Build signed release APKs
         run: |
           chmod +x ./gradlew
           ./gradlew --no-daemon :app:assembleRelease
+          for abi in arm64-v8a armeabi-v7a x86_64; do
+            test -s "app/src/main/jniLibs/$abi/libclient.so"
+          done
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: v0.1.2
