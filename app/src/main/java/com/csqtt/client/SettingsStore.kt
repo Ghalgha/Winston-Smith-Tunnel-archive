@@ -368,7 +368,8 @@ class SettingsStore(context: Context) {
         val isExtra = prefs[getProfileKey(EXTRA_WORKERS, profile)] ?: false
         val max = WorkerCountPolicy.defaultMaximum(isExtra)
         val current = prefs[getProfileKey(WORKERS_PER_HASH, profile)] ?: 18
-        WorkerCountPolicy.normalize(current, maximum = max)
+        val normalized = WorkerCountPolicy.normalize(current, maximum = max)
+        if (prefs[POWER_SAVER_ENABLED] == true) normalized.coerceAtMost(10) else normalized
     }
     val protocol: Flow<String> = dataStore.data.map { prefs ->
         val profile = prefs[ACTIVE_PROFILE] ?: 0
