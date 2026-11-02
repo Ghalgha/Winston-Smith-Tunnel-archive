@@ -41,6 +41,18 @@ jobs:
           sudo apt-get install -y build-essential cmake ninja-build
           chmod +x scripts/build_android_native.sh
           scripts/build_android_native.sh
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.15.2
+      - uses: microsoft/setup-powershell@v1
+      - name: Build Linux server binaries and embedded web panel
+        run: |
+          cargo install cargo-zigbuild --locked
+          chmod +x rust-server/build_linux.sh
+          rust-server/build_linux.sh --no-tests
+          for asset in csqtt-linux-amd64 csqtt-linux-arm64 csqtt-linux-armv7; do
+            test -s "app/src/main/assets/$asset"
+          done
       - name: Build debug APK for CI verification only
         run: |
           chmod +x ./gradlew
