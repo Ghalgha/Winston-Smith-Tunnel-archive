@@ -31,7 +31,7 @@ $specs = @(
         Target = "aarch64-linux-android"
         RelativePath = "app/src/main/jniLibs/arm64-v8a/libclient.so"
         ProductionPath = Join-Path $projectRoot "app\src\main\jniLibs\arm64-v8a\libclient.so"
-        CargoPath = Join-Path $projectRoot "build\rust-client-android-arm64\aarch64-linux-android\release\client"
+        CargoPath = Join-Path $projectRoot "rust-client\target\aarch64-linux-android\release\client"
         ElfClass = 2
         ElfMachine = 183
     },
@@ -40,7 +40,7 @@ $specs = @(
         Target = "armv7-linux-androideabi"
         RelativePath = "app/src/main/jniLibs/armeabi-v7a/libclient.so"
         ProductionPath = Join-Path $projectRoot "app\src\main\jniLibs\armeabi-v7a\libclient.so"
-        CargoPath = Join-Path $projectRoot "build\rust-client-android-armv7\armv7-linux-androideabi\release\client"
+        CargoPath = Join-Path $projectRoot "rust-client\target\armv7-linux-androideabi\release\client"
         ElfClass = 1
         ElfMachine = 40
     },
@@ -49,7 +49,7 @@ $specs = @(
         Target = "x86_64-linux-android"
         RelativePath = "app/src/main/jniLibs/x86_64/libclient.so"
         ProductionPath = Join-Path $projectRoot "app\src\main\jniLibs\x86_64\libclient.so"
-        CargoPath = Join-Path $projectRoot "build\rust-client-android-x86_64\x86_64-linux-android\release\client"
+        CargoPath = Join-Path $projectRoot "rust-client\target\x86_64-linux-android\release\client"
         ElfClass = 2
         ElfMachine = 62
     }
