@@ -18,7 +18,13 @@ jobs:
         with:
           packages: platform-tools
       - name: Install Android platform and build tools
-        run: sdkmanager --install "platforms;android-37" "build-tools;37.0.0"
+        run: |
+          sdkmanager --install "platforms;android-37.0" "build-tools;37.0.0"
+          SDK_ROOT="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          if [ -d "$SDK_ROOT/platforms/android-37.0" ] && [ ! -e "$SDK_ROOT/platforms/android-37" ]; then
+            ln -s android-37.0 "$SDK_ROOT/platforms/android-37"
+          fi
+          test -d "$SDK_ROOT/platforms/android-37"
       - name: Build debug APK
         run: |
           chmod +x ./gradlew
