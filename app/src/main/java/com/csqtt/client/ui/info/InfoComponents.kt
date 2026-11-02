@@ -75,7 +75,7 @@ internal fun InfoHeroCard(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                text = "Поддержать разработчика Amurcanov",
+                text = "Поддержать автора исходного проекта",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = colors.onSurface,
