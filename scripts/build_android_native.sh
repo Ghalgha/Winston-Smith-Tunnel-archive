@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
 if [[ -z "$SDK_ROOT" ]]; then
   echo "Android SDK root is not configured" >&2
