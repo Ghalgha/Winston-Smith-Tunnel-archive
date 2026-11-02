@@ -35,6 +35,8 @@ jobs:
             ln -s android-37.0 "$SDK_ROOT/platforms/android-37"
           fi
           test -d "$SDK_ROOT/platforms/android-37"
+      - name: Verify PowerShell for provenance checks
+        run: pwsh --version
       - name: Install Rust and build native Android libraries
         run: |
           sudo apt-get update
@@ -44,8 +46,6 @@ jobs:
       - uses: mlugg/setup-zig@v2
         with:
           version: 0.15.2
-      - name: Verify PowerShell for provenance checks
-        run: pwsh --version
       - name: Build Linux server binaries and embedded web panel
         run: |
           cargo install cargo-zigbuild --locked
