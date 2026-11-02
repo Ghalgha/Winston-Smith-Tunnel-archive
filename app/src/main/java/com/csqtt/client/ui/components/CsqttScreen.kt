@@ -68,16 +68,16 @@ fun CsqttScreen(
                     horizontalAlignment = Alignment.Start
                 ) {
                     Icon(
-                        painter = painterResource(id = R.drawable.ic_csqtt_logo),
-                        contentDescription = "CSQTT",
+                        painter = painterResource(id = R.drawable.ic_wst_launcher),
+                        contentDescription = "WST",
                         tint = Color.Unspecified,
                         modifier = Modifier.height(22.dp)
                     )
                     Icon(
-                        painter = painterResource(id = R.drawable.ic_v250_by_amurcanov),
-                        contentDescription = "v2.5.0 by amurcanov",
+                        painter = painterResource(id = R.drawable.ic_wst_launcher),
+                        contentDescription = "WST",
                         tint = Color.Unspecified,
-                        modifier = Modifier.height(13.dp)
+                        modifier = Modifier.height(0.dp)
                     )
                 }
 
