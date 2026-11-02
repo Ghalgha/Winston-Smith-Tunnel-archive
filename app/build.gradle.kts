@@ -61,7 +61,7 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "csqtt.quic.amurcanov"
+        applicationId = "com.wstunnel.client"
         minSdk = 26
         targetSdk = 37
         versionCode = 230
