@@ -5616,7 +5616,7 @@ const PWA_MANIFEST: &str = r##"{
   ]
 }"##;
 
-const PWA_ICON_SVG: &str = r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="122" fill="#0a0a0c"/><defs><linearGradient id="c" x1="128" y1="152" x2="390" y2="360" gradientUnits="userSpaceOnUse"><stop stop-color="#55adff"/><stop offset="1" stop-color="#0875f5"/></linearGradient></defs><path fill="url(#c)" d="M374 151a148 148 0 1 0 0 210l-44-37a91 91 0 1 1 0-136z"/></svg>"##;
+const PWA_ICON_SVG: &str = r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#101827"/><path fill="#55adff" d="M92 128h328v58H299v198h-68V186H92z"/><path fill="#ffffff" d="M145 260h222v48H145z"/></svg>"##;
 
 static PWA_ICON_192_PNG: LazyLock<Vec<u8>> = LazyLock::new(|| {
     base64::engine::general_purpose::STANDARD
@@ -5938,14 +5938,14 @@ const CLIENT_SUB_HTML: &str = r##"<!DOCTYPE html>
         <div style="display: flex; flex-direction: column; align-items: center; gap: 16px; margin: 16px 0;">
             <div id="qrCodeContainer" class="qr-box"></div>
             <div style="width: 100%; display: flex; gap: 8px; align-items: center;">
-                <input id="qrDlgLink" readonly="" value="__WSTT_LINK__" style="flex: 1; height: 42px; font-size: 12px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; padding: 0 10px; background: var(--surface-hover); color: var(--text-muted); border-radius: 8px; border: 1px solid var(--border);" onclick="this.select()">
+                <input id="qrDlgLink" readonly="" value="__CSQTT_LINK__" style="flex: 1; height: 42px; font-size: 12px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; padding: 0 10px; background: var(--surface-hover); color: var(--text-muted); border-radius: 8px; border: 1px solid var(--border);" onclick="this.select()">
                 <button class="btn btn-ghost" id="qrDlgCopyBtn" onclick="copyQrDlgLink(this)" style="height: 42px; width: 44px; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: #27272a; border: 1px solid #3f3f46; color: #ffffff; border-radius: 8px;" title="Копировать ссылку">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                 </button>
             </div>
         </div>
         <div class="dlg-actions" style="justify-content: center; display: flex; margin-top: 16px;">
-            <a id="qrDlgConnectBtn" href="__WSTT_LINK__" class="btn btn-primary" style="width: 100%; height: 42px; text-decoration: none; display: flex; align-items: center; justify-content: center; font-weight: 500; font-size: 14px; border-radius: 8px;">Подключить в приложении WSTT</a>
+            <a id="qrDlgConnectBtn" href="__CSQTT_LINK__" class="btn btn-primary" style="width: 100%; height: 42px; text-decoration: none; display: flex; align-items: center; justify-content: center; font-weight: 500; font-size: 14px; border-radius: 8px;">Подключить в приложении WSTT</a>
         </div>
     </dialog>
 
