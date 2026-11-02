@@ -58,8 +58,18 @@ jobs:
         run: |
           chmod +x ./gradlew
           ./gradlew --no-daemon :app:assembleDebug
-          for apk in app/build/outputs/apk/debug/*.apk; do
-            unzip -l "$apk" | grep -q "lib/arm64-v8a/libclient.so"
+          for abi in arm64-v8a armeabi-v7a x86_64; do
+            found=false
+            for apk in app/build/outputs/apk/debug/*.apk; do
+              if unzip -l "$apk" | grep -q "lib/$abi/libclient.so"; then
+                found=true
+                break
+              fi
+            done
+            if [ "$found" != true ]; then
+              echo "Missing native client library for $abi in debug APK outputs" >&2
+              exit 1
+            fi
           done
       - uses: actions/upload-artifact@v4
         with:
