@@ -15,5 +15,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "Winston Smith Tunnel"
+rootProject.name = "WSTT"
 include(":app")
