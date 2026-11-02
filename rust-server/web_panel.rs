@@ -9339,7 +9339,7 @@ const PANEL_HTML: &str = r##"
 
             <section style="margin-top: 20px;">
                 <div class="glass-panel support-card">
-                    <h3 class="support-card-title">Поддержать разработчика Amurcanov</h3>
+                    <h3 class="support-card-title">Поддержать автора исходного проекта</h3>
                     <a class="telegram-button" href="https://t.me/amurcanov_telegram" target="_blank" rel="noopener noreferrer" aria-label="Telegram: amurcanov_telegram" title="Telegram: amurcanov_telegram">
                         <svg class="tg-plane-icon" viewBox="0 0 24 24" width="22" height="22" fill="#ffffff" aria-hidden="true">
                             <path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/>
