@@ -73,12 +73,6 @@ fun CsqttScreen(
                         tint = Color.Unspecified,
                         modifier = Modifier.height(22.dp)
                     )
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_wst_launcher),
-                        contentDescription = "WST",
-                        tint = Color.Unspecified,
-                        modifier = Modifier.height(0.dp)
-                    )
                 }
 
                 headerActions?.let { Row(content = it) }
