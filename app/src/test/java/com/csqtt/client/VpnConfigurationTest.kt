@@ -8,4 +8,9 @@ class VpnConfigurationTest {
     fun defaultMtuIs1500() {
         assertEquals(1500, CsqttConstants.Vpn.DEFAULT_MTU)
     }
+
+    @Test
+    fun wsttUsesItsOwnTunSocketNamespace() {
+        assertEquals("wstt_tun_uds", TunnelManager.TUN_UDS_NAME)
+    }
 }
