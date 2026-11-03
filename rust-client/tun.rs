@@ -191,7 +191,7 @@ fn peer_uid_matches(descriptor: std::os::fd::RawFd) -> bool {
             &mut length,
         )
     };
-    if result != 0 || length as usize < size_of::<libc::ucred>() {
+    if result != 0 || (length as usize) < size_of::<libc::ucred>() {
         return false;
     }
     unsafe { credentials.assume_init().uid == libc::geteuid() }
