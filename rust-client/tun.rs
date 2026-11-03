@@ -67,6 +67,9 @@ impl FdReceiver {
                         match accept(self.listener.get_ref().as_raw_fd()) {
                             Ok(descriptor) => {
                                 let descriptor = unsafe { OwnedFd::from_raw_fd(descriptor) };
+                                if !peer_uid_matches(descriptor.as_raw_fd()) {
+                                    continue;
+                                }
                                 if let Err(error) = configure_nonblocking(descriptor.as_fd()) {
                                     crate::log_error!(
                                         "[ОШИБКА] Не удалось перевести TUN FD (UDS accept) в nonblocking: {error}"
@@ -112,7 +115,7 @@ impl FdReceiver {
                             MsgFlags::empty(),
                         ) {
                             Ok(message) => {
-                                if message.bytes == 0 {
+                                if message.bytes != 1 || data[0] != 1 {
                                     break 'conn;
                                 }
                                 let controls = match message.cmsgs() {
@@ -138,7 +141,9 @@ impl FdReceiver {
                                 }
                                 let mut received = owned.into_iter();
                                 let descriptor = received.next();
-                                drop(received);
+                                if received.next().is_some() {
+                                    break 'conn;
+                                }
                                 if let Some(descriptor) = descriptor {
                                     let file = File::from(descriptor);
                                     if let Err(error) = configure_nonblocking(file.as_fd()) {
@@ -169,6 +174,32 @@ impl FdReceiver {
             }
         }
     }
+}
+
+#[cfg(any(target_os = "android", target_os = "linux"))]
+fn peer_uid_matches(descriptor: std::os::fd::RawFd) -> bool {
+    use std::mem::{MaybeUninit, size_of};
+
+    let mut credentials = MaybeUninit::<libc::ucred>::uninit();
+    let mut length = size_of::<libc::ucred>() as libc::socklen_t;
+    let result = unsafe {
+        libc::getsockopt(
+            descriptor,
+            libc::SOL_SOCKET,
+            libc::SO_PEERCRED,
+            credentials.as_mut_ptr().cast(),
+            &mut length,
+        )
+    };
+    if result != 0 || length as usize < size_of::<libc::ucred>() {
+        return false;
+    }
+    unsafe { credentials.assume_init().uid == libc::geteuid() }
+}
+
+#[cfg(not(any(target_os = "android", target_os = "linux")))]
+fn peer_uid_matches(_descriptor: std::os::fd::RawFd) -> bool {
+    true
 }
 
 #[cfg(unix)]
