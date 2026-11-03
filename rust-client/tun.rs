@@ -116,6 +116,7 @@ impl FdReceiver {
                         ) {
                             Ok(message) => {
                                 let byte_count = message.bytes;
+                                let control_truncated = message.flags.contains(MsgFlags::MSG_CTRUNC);
                                 let controls = match message.cmsgs() {
                                     Ok(controls) => controls,
                                     Err(error) => {
@@ -139,7 +140,7 @@ impl FdReceiver {
                                 }
                                 drop(message);
                                 drop(slices);
-                                if byte_count != 1 || data[0] != 1 {
+                                if control_truncated || byte_count != 1 || data[0] != 1 {
                                     break 'conn;
                                 }
                                 let mut received = owned.into_iter();
