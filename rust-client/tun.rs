@@ -252,7 +252,7 @@ mod tests {
     };
     use tokio_util::sync::CancellationToken;
 
-    fn send_fd(name: &str, file: &File) -> OwnedFd {
+    fn send_fds(name: &str, files: &[&File]) -> OwnedFd {
         let socket = socket(
             AddressFamily::Unix,
             SockType::Stream,
@@ -267,7 +267,8 @@ mod tests {
         .unwrap();
         let payload = [1u8];
         let slices = [IoSlice::new(&payload)];
-        let controls = [ControlMessage::ScmRights(&[file.as_raw_fd()])];
+        let raw_fds: Vec<_> = files.iter().map(|file| file.as_raw_fd()).collect();
+        let controls = [ControlMessage::ScmRights(&raw_fds)];
         sendmsg::<UnixAddr>(
             socket.as_raw_fd(),
             &slices,
@@ -279,12 +280,39 @@ mod tests {
         socket
     }
 
+    fn send_fd(name: &str, file: &File) -> OwnedFd {
+        send_fds(name, &[file])
+    }
+
     fn receive_ack(socket: &OwnedFd) -> u8 {
         let mut ack = [0u8; 1];
         let received =
             unsafe { libc::recv(socket.as_raw_fd(), ack.as_mut_ptr().cast(), ack.len(), 0) };
         assert_eq!(received, 1);
         ack[0]
+    }
+
+    #[tokio::test]
+    async fn receiver_rejects_truncated_control_messages() {
+        let name = format!(
+            "wstt-tun-truncated-test-{}-{}",
+            std::process::id(),
+            rand::random::<u64>()
+        );
+        let receiver = FdReceiver::bind(&name).unwrap();
+        let cancel = CancellationToken::new();
+        let sources: Vec<File> = (0..5)
+            .map(|_| File::open("/dev/null").unwrap())
+            .collect();
+        let references: Vec<&File> = sources.iter().collect();
+        let _truncated_socket = send_fds(&name, &references);
+
+        let valid_source = File::open("/dev/null").unwrap();
+        let valid_socket = send_fd(&name, &valid_source);
+        let received = receiver.receive(&cancel).await.unwrap();
+
+        assert_eq!(receive_ack(&valid_socket), 1);
+        assert!(received.metadata().unwrap().file_type().is_char_device());
     }
 
     #[tokio::test]
