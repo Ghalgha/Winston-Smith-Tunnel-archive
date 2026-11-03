@@ -11,7 +11,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CsqttLinkTest {
-    private fun enc(plain: String): String = "csqtt://" + encryptCsqttPayload(plain)
+    private fun enc(plain: String): String = "wst://" + encryptCsqttPayload(plain)
 
     @Test
     fun parsesV2WithoutHashes() {
@@ -65,6 +65,7 @@ class CsqttLinkTest {
     @Test
     fun formatsAndParsesCleanV2LinkWithPassword() {
         val formatted = formatCsqttLink("203.0.113.7", 46000, "SecretPass123456", listOf("abcdefghijklmnop1"))
+        assertTrue(formatted.startsWith("wst://"))
         val link = parseCsqttLink(formatted)
         requireNotNull(link)
         assertEquals("203.0.113.7", link.host)
@@ -132,11 +133,20 @@ class CsqttLinkTest {
     fun parsesEncryptedLink() {
         val rawPayload = "connect?v=2&host=203.0.113.7&peer=46000&workers=36"
         val encryptedBase64 = encryptCsqttPayload(rawPayload)
-        val encryptedLink = "csqtt://$encryptedBase64"
+        val encryptedLink = "wst://$encryptedBase64"
         val link = parseCsqttLink(encryptedLink)
         requireNotNull(link)
         assertEquals("203.0.113.7", link.host)
         assertEquals(46000, link.port)
+    }
+
+    @Test
+    fun parsesLegacyCsqttSchemeForExistingWsttLinks() {
+        val legacy = "csqtt://" + encryptCsqttPayload("connect?v=2&host=203.0.113.7&peer=46100&password=legacy")
+        val link = parseCsqttLink(legacy)
+        requireNotNull(link)
+        assertEquals("203.0.113.7", link.host)
+        assertEquals(46100, link.port)
     }
 
     @Test
@@ -181,11 +191,11 @@ class CsqttLinkTest {
         val decoded = java.util.Base64.getUrlDecoder().decode(validEncrypted)
         decoded[decoded.size - 1] = (decoded[decoded.size - 1].toInt() xor 1).toByte()
         val tamperedBase64 = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(decoded)
-        assertNull(parseCsqttLink("csqtt://$tamperedBase64"))
+        assertNull(parseCsqttLink("wst://$tamperedBase64"))
     }
 
     @Test
     fun truncatedEncryptedLinkFailsToDecrypt() {
-        assertNull(parseCsqttLink("csqtt://" + java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(ByteArray(10))))
+        assertNull(parseCsqttLink("wst://" + java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(ByteArray(10))))
     }
 }

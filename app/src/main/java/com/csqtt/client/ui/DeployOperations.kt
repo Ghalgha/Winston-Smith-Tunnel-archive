@@ -182,9 +182,9 @@ internal fun serverArchitectureForMachine(output: String): ServerArchitecture {
 
 private fun deployAssetLabel(fileName: String): String = when (fileName) {
     "deploy.sh" -> "скрипт установки"
-    "csqtt-linux-amd64" -> "сервер CSQTT (amd64)"
-    "csqtt-linux-arm64" -> "сервер CSQTT (ARM64)"
-    "csqtt-linux-armv7" -> "сервер CSQTT (ARM32)"
+    "csqtt-linux-amd64" -> "сервер WSTT (amd64)"
+    "csqtt-linux-arm64" -> "сервер WSTT (ARM64)"
+    "csqtt-linux-armv7" -> "сервер WSTT (ARM32)"
     "csqtt.env" -> "настройки веб-панели"
     "csqtt-deploy.json" -> "настройки доступа"
     "hev-socks5-tunnel" -> "C-движок туннеля"
@@ -561,6 +561,7 @@ internal suspend fun performDeploy(
 ): Boolean = withContext(Dispatchers.IO) {
     var ssh: SshjClient? = null
     var tempDir: File? = null
+    var remoteTempCleanup: (() -> Unit)? = null
     try {
         TunnelManager.beginDeployLog("Начало установки на $host:$port")
         onProgress(0.02f, "Подключение...")
@@ -609,11 +610,11 @@ internal suspend fun performDeploy(
         val environmentFile = File(workingDir, "csqtt.env").apply {
             writeText(
                 buildString {
-                    appendLine("CSQTT_WEB_USER=${deployEnvironmentValue(webLogin, installInDocker)}")
-                    appendLine("CSQTT_WEB_PASS=${deployEnvironmentValue(webPass, installInDocker)}")
-                    appendLine("CSQTT_PUBLIC_IP=${deployEnvironmentValue(host.trim(), installInDocker)}")
+                    appendLine("WSTT_WEB_USER=${deployEnvironmentValue(webLogin, installInDocker)}")
+                    appendLine("WSTT_WEB_PASS=${deployEnvironmentValue(webPass, installInDocker)}")
+                    appendLine("WSTT_PUBLIC_IP=${deployEnvironmentValue(host.trim(), installInDocker)}")
                     if (secretPath.isNotBlank()) {
-                        appendLine("CSQTT_WEB_SECRET_PATH=${deployEnvironmentValue(secretPath.trim(), installInDocker)}")
+                        appendLine("WSTT_WEB_SECRET_PATH=${deployEnvironmentValue(secretPath.trim(), installInDocker)}")
                     }
                 }
             )
@@ -628,21 +629,31 @@ internal suspend fun performDeploy(
         TunnelManager.addDeploySuccessLog("Файлы установки подготовлены")
 
         onProgress(0.06f, "Подготовка сервера...")
-        sshClient.upload(scriptFile, "/tmp/deploy.sh")
+        val uploadToken = java.util.UUID.randomUUID().toString().replace("-", "")
+        val remoteScriptPath = "/tmp/.wstt-deploy-$uploadToken.sh"
+        val remoteBinaryPath = "/tmp/.wstt-upload-$uploadToken-server"
+        val remoteEnvironmentPath = "/tmp/.wstt-upload-$uploadToken-web.env"
+        val remoteOverridesPath = "/tmp/.wstt-upload-$uploadToken-overrides.json"
+        val remoteTempPaths = listOf(remoteScriptPath, remoteBinaryPath, remoteEnvironmentPath, remoteOverridesPath)
+        remoteTempCleanup = {
+            sshClient.exec("rm -f " + remoteTempPaths.joinToString(" ") { shellQuote(it) }, timeout = 10000L)
+        }
+        sshClient.upload(scriptFile, remoteScriptPath)
 
-        val secretEnv = if (secretPath.isNotBlank()) "CSQTT_WEB_SECRET_PATH=${deployEnvironmentValue(secretPath.trim(), false)} " else ""
+        val secretEnv = if (secretPath.isNotBlank()) "WSTT_WEB_SECRET_PATH=${shellQuote(secretPath.trim())} " else ""
         val deployEnvironment =
-            "env ${secretEnv}CSQTT_PEER_PORT=$peerPort CSQTT_SSH_PORT=$port CSQTT_WEB_PORT=$webPort CSQTT_PUBLIC_IP=${host.trim()} " +
-                "CSQTT_DEPLOY_MODE=${deployMode(installInDocker)}"
+            "env ${secretEnv}WSTT_PEER_PORT=$peerPort WSTT_SSH_PORT=$port WSTT_WEB_PORT=$webPort WSTT_PUBLIC_IP=${shellQuote(host.trim())} " +
+                "WSTT_UPLOAD_BINARY=$remoteBinaryPath WSTT_UPLOAD_ENV_FILE=$remoteEnvironmentPath WSTT_UPLOAD_OVERRIDES_FILE=$remoteOverridesPath " +
+                "WSTT_DEPLOY_MODE=${deployMode(installInDocker)}"
         onProgress(0.10f, "Загрузка нового сервера...")
-        sshClient.upload(serverFile, "/tmp/.csqtt-upload-server")
-        sshClient.upload(environmentFile, "/tmp/.csqtt-upload-web.env")
-        sshClient.upload(overridesFile, "/tmp/.csqtt-upload-overrides.json")
+        sshClient.upload(serverFile, remoteBinaryPath)
+        sshClient.upload(environmentFile, remoteEnvironmentPath)
+        sshClient.upload(overridesFile, remoteOverridesPath)
 
         onProgress(0.18f, "Установка нового сервера...")
         TunnelManager.addDeployInfoLog("Запуск установщика на VPS")
         val deployResult = sshClient.execResult(
-            rootCommand("$deployEnvironment bash /tmp/deploy.sh install", pass),
+            rootCommand("$deployEnvironment bash $remoteScriptPath install; status=\$?; rm -f $remoteScriptPath; exit \$status", pass),
             timeout = CMD_TIMEOUT
         )
         val output = deployResult.output
@@ -650,9 +661,9 @@ internal suspend fun performDeploy(
         if (isSuccessfulDeployResult(deployResult.exitStatus, output)) {
             TunnelManager.addDeploySuccessLog(
                 if (installInDocker) {
-                    "Установка завершена · Docker-контейнер CSQTT активен"
+                    "Установка завершена · Docker-контейнер WSTT активен"
                 } else {
-                    "Установка завершена · служба CSQTT активна"
+                    "Установка завершена · служба WSTT активна"
                 }
             )
             DeployManager.stopDeploy("success")
@@ -682,6 +693,7 @@ internal suspend fun performDeploy(
         DeployManager.stopDeploy(friendly)
         return@withContext false
     } finally {
+        runCatching { remoteTempCleanup?.invoke() }
         try { ssh?.disconnect() } catch (_: Exception) {}
         DeployManager.activeSession = null
         runCatching { tempDir?.deleteRecursively() }
@@ -699,6 +711,7 @@ internal suspend fun performUninstall(
 ): Boolean = withContext(Dispatchers.IO) {
     var ssh: SshjClient? = null
     var uninstallScript: File? = null
+    var remoteTempCleanup: (() -> Unit)? = null
     try {
         TunnelManager.beginDeployLog("Начало удаления с $host:$port")
         onProgress(0.05f, "Подключение...")
@@ -718,17 +731,26 @@ internal suspend fun performUninstall(
         if (!uninstallScript.isFile || uninstallScript.length() == 0L) {
             throw IOException("Не удалось подготовить штатный установщик CSQTT")
         }
-        sshClient.upload(uninstallScript, "/tmp/deploy.sh")
+        val remoteScriptPath = "/tmp/.wstt-uninstall-${System.nanoTime()}.sh"
+        remoteTempCleanup = {
+            sshClient.exec("rm -f ${shellQuote(remoteScriptPath)}", timeout = 10000L)
+        }
+        sshClient.upload(uninstallScript, remoteScriptPath)
 
         onProgress(0.30f, "Удаление через deploy.sh...")
         TunnelManager.addDeployInfoLog("Запуск серверного удаления")
-        sshClient.exec(
-            rootCommand("env CSQTT_PEER_PORT=$peerPort CSQTT_SSH_PORT=$port bash /tmp/deploy.sh uninstall", pass),
-            timeout = 30000L,
+        val uninstallResult = sshClient.execResult(
+            rootCommand("env WSTT_PEER_PORT=$peerPort WSTT_SSH_PORT=$port bash $remoteScriptPath uninstall; status=\$?; rm -f $remoteScriptPath; exit \$status", pass),
+            timeout = 180000L,
         )
+        if (uninstallResult.exitStatus != 0) {
+            throw IOException(
+                "Удаление WSTT завершилось с кодом ${uninstallResult.exitStatus}: ${uninstallResult.output.takeLast(800)}"
+            )
+        }
 
         onProgress(1.0f, "Готово!")
-        TunnelManager.addDeploySuccessLog("Удаление CSQTT завершено")
+        TunnelManager.addDeploySuccessLog("Удаление WSTT завершено")
         DeployManager.stopDeploy("success")
         return@withContext true
 
@@ -744,6 +766,7 @@ internal suspend fun performUninstall(
         DeployManager.stopDeploy(friendly)
         return@withContext false
     } finally {
+        runCatching { remoteTempCleanup?.invoke() }
         try { ssh?.disconnect() } catch (_: Exception) {}
         DeployManager.activeSession = null
         uninstallScript?.delete()

@@ -20,9 +20,9 @@ object CsqttConstants {
     object Network {
         const val LOCAL_LISTEN_HOST = "127.0.0.1"
         const val DEFAULT_LOCAL_PORT = 0
-        const val DEFAULT_SERVER_PEER_PORT = 46000
+        const val DEFAULT_SERVER_PEER_PORT = 46100
         const val DEFAULT_SSH_PORT = 22
-        const val DEFAULT_SERVER_WEB_PORT = 46002
+        const val DEFAULT_SERVER_WEB_PORT = 46102
     }
 
     object Tunnel {

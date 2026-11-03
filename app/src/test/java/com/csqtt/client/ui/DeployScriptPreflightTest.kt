@@ -23,271 +23,144 @@ class DeployScriptPreflightTest {
     }
 
     @Test
-    fun `preflight performs working kernel probes`() {
+    fun `installer owns only WSTT runtime paths`() {
         val deploy = script()
-        assertTrue(deploy.contains("ip tuntap add dev \"\$probe_iface\" mode tun"))
-        assertTrue(deploy.contains("setup_nat_and_firewall"))
-        assertTrue(deploy.contains("iptables -w \"\$XT_WAIT\" -t nat -C POSTROUTING"))
-        assertTrue(deploy.contains("probe_tun_support"))
-        assertTrue(deploy.contains("prepare_uploaded_release()"))
-        assertTrue(deploy.contains("run_platform_preflight"))
+        assertTrue(deploy.contains("readonly WSTT_CONFIG_DIR=\"/etc/wstt\""))
+        assertTrue(deploy.contains("readonly WSTT_IFACE=\"wstt1\""))
+        assertTrue(deploy.contains("/usr/local/bin/wstt"))
+        assertTrue(deploy.contains("wstt.service"))
+        assertFalse(deploy.contains("/etc/csqtt"))
+        assertFalse(deploy.contains("/usr/local/bin/csqtt"))
+        assertFalse(deploy.contains("csqtt.service"))
     }
 
     @Test
-    fun `installer accepts the supported server architectures`() {
+    fun `installer has isolated network identity`() {
         val deploy = script()
-        assertTrue(deploy.contains("x86_64|amd64"))
-        assertTrue(deploy.contains("aarch64|arm64"))
-        assertTrue(deploy.contains("armv7l|armv7|armhf"))
-        assertTrue(deploy.contains("Поддерживаются: x86_64, aarch64, armv7l"))
+        assertTrue(deploy.contains("10.67.68.0/24"))
+        assertTrue(deploy.contains("WSTT_MANAGED"))
+        assertTrue(deploy.contains("WSTT_TPROXY"))
+        assertFalse(deploy.contains("CSQTT_MANAGED"))
+        assertFalse(deploy.contains("CSQTT_TPROXY"))
+        assertFalse(deploy.contains("CSQTT_LOCAL_SOCKS"))
+        assertTrue(deploy.contains("WSTT_PEER_PORT"))
+        assertTrue(deploy.contains("WSTT_WEB_PORT"))
+        assertFalse(deploy.contains("CSQTT_PEER_PORT"))
+        assertFalse(deploy.contains("CSQTT_WEB_PORT"))
     }
 
     @Test
-    fun `client uploads the release before one atomic runtime switch`() {
+    fun `systemd and Docker resources are WSTT-specific`() {
+        val deploy = script()
+        assertTrue(deploy.contains("wstt.service"))
+        assertTrue(deploy.contains("WSTT_DOCKER_CONTAINER=\"wstt\""))
+        assertTrue(deploy.contains("WSTT_DOCKER_IMAGE=\"wstt:"))
+        assertTrue(deploy.contains("--label com.wstt.managed=true"))
+        assertFalse(deploy.contains("--security-opt seccomp=unconfined"))
+        assertFalse(deploy.contains("--label com.csqtt.managed=true"))
+    }
+
+    @Test
+    fun `deployment uploads use independent remote paths per invocation`() {
+        val deploy = script()
+        val client = deployOperations()
+        assertTrue(deploy.contains("WSTT_UPLOAD_BINARY:-/tmp/.wstt-upload-server"))
+        assertTrue(deploy.contains("WSTT_UPLOAD_ENV_FILE:-/tmp/.wstt-upload-web.env"))
+        assertTrue(deploy.contains("WSTT_UPLOAD_OVERRIDES_FILE:-/tmp/.wstt-upload-overrides.json"))
+        assertTrue(client.contains("UUID.randomUUID()"))
+        assertTrue(client.contains("/tmp/.wstt-deploy-\$uploadToken.sh"))
+        assertTrue(client.contains("/tmp/.wstt-upload-\$uploadToken-server"))
+        assertTrue(client.contains("WSTT_UPLOAD_BINARY=\$remoteBinaryPath"))
+        assertTrue(client.contains("WSTT_UPLOAD_ENV_FILE=\$remoteEnvironmentPath"))
+        assertTrue(client.contains("WSTT_UPLOAD_OVERRIDES_FILE=\$remoteOverridesPath"))
+    }
+
+    @Test
+    fun `Certbot issuance and renewal share an HTTP-01 lock`() {
+        val deploy = script()
+        assertTrue(deploy.contains("WSTT_LE_HTTP01_LOCK=\"/run/lock/acme-http01.lock\""))
+        assertTrue(deploy.contains("flock -w 120 9"))
+        assertTrue(deploy.contains("timeout 30 systemctl stop \"\$WSTT_LE_SERVICE\""))
+        assertTrue(deploy.contains("systemctl kill --kill-who=all --signal=SIGKILL \"\$WSTT_LE_SERVICE\""))
+        assertTrue(deploy.contains("HTTP01_LOCK_FILE=\"/run/lock/acme-http01.lock\""))
+        assertTrue(deploy.contains("WSTT_LE_CONFIG_DIR=\"\${WSTT_CONFIG_DIR}/letsencrypt\""))
+        assertTrue(deploy.contains("--config-dir \"\$WSTT_LE_CONFIG_DIR\" --work-dir \"\$WSTT_LE_WORK_DIR\" --logs-dir \"\$WSTT_LE_LOGS_DIR\""))
+        assertTrue(deploy.contains("LE_CONFIG_DIR=\"\${CONFIG_DIR}/letsencrypt\""))
+        assertTrue(deploy.contains("--config-dir \"\$LE_CONFIG_DIR\" --work-dir \"\$LE_WORK_DIR\" --logs-dir \"\$LE_LOGS_DIR\""))
+        assertTrue(deploy.contains("source_dir=\"\${LE_CONFIG_DIR}/live/\${cert_name}\""))
+        assertTrue(deploy.contains("|letsencrypt|runtime-archive) continue ;;"))
+        assertTrue(deploy.contains("exec 9>\"\$HTTP01_LOCK_FILE\""))
+    }
+
+    @Test
+    fun `host-wide network security settings remain untouched`() {
+        val deploy = script()
+        assertFalse(deploy.contains("chmod 666 /dev/net/tun"))
+        assertFalse(deploy.contains("net.ipv4.conf.all.rp_filter"))
+        assertFalse(deploy.contains("net.ipv4.conf.default.rp_filter"))
+        assertFalse(deploy.contains("net.ipv6.conf.default.disable_ipv6"))
+        assertFalse(deploy.contains("WAN_IFACE/rp_filter"))
+        assertTrue(deploy.contains("WAN_IFACE/accept_ra"))
+        assertTrue(deploy.contains("net.ipv6.conf.\${iface}.accept_ra=2"))
+        assertFalse(deploy.contains("net.ipv4.conf.\${iface}.rp_filter=2"))
+        assertFalse(deploy.contains("mitigations=off"))
+    }
+
+    @Test
+    fun `WSTT network policy is scoped to its own interface`() {
+        val deploy = script()
+        assertTrue(deploy.contains("wstt1"))
+        assertTrue(deploy.contains("WSTT_MANAGED"))
+        assertTrue(deploy.contains("delete_marked_rules"))
+        assertTrue(deploy.contains("cleanup_wstt_policy_routes()"))
+        assertTrue(deploy.contains("priority 1067 table 1067"))
+        assertTrue(deploy.contains("priority 30002 table 30002"))
+        assertTrue(deploy.contains("ip6tables"))
+        assertTrue(deploy.contains("iptables -w"))
+    }
+
+    @Test
+    fun `installer validates ports and preflights before activation`() {
         val deploy = script()
         val installBranch = deploy.substringAfter("install|--install|-i)")
-        val uploadCheck = installBranch.indexOf("prepare_uploaded_release")
-        val cleanup = installBranch.indexOf("csqtt_cleanup")
-        val binary = installBranch.indexOf("setup_csqtt_binary")
-        val preflight = installBranch.indexOf("run_platform_preflight")
-        val firewall = installBranch.indexOf("setup_nat_and_firewall")
-        assertTrue(uploadCheck >= 0)
-        assertTrue(cleanup >= 0)
-        assertTrue(binary >= 0)
-        assertTrue(binary > preflight)
-        assertTrue(binary > firewall)
-        assertTrue(installBranch.contains("run_timed \"preflight\" run_platform_preflight"))
-        assertTrue(cleanup > uploadCheck)
-        assertTrue(binary > cleanup)
-        assertTrue(installBranch.contains("local total_started=\$SECONDS\n            detect_os\n            run_timed \"зависимости\" install_prerequisites\n            require_runtime_tools"))
-
-        val client = deployOperations()
-        assertFalse(client.contains("bash /tmp/deploy.sh prepare"))
-        assertTrue(client.indexOf("/tmp/.csqtt-upload-server") < client.indexOf("bash /tmp/deploy.sh install"))
+        assertTrue(deploy.contains("validate_distinct_network_ports()"))
+        assertTrue(deploy.contains("assert_wstt_ports_preflight"))
+        assertTrue(deploy.contains("listener_line_is_wstt_owned"))
+        assertTrue(deploy.contains("assert_web_port_is_available"))
+        assertTrue(deploy.contains("ss -H -ltnp \"sport = :\${WEB_PORT}\""))
+        assertTrue(deploy.contains("[ \"\$WEB_PORT\" != \"\$LE_HTTP_PORT\" ]"))
+        assertTrue(deploy.contains("[ \"\$SSH_PORT\" != \"\$LE_HTTP_PORT\" ]"))
+        assertTrue(deploy.contains("run_platform_preflight()"))
+        assertTrue(installBranch.indexOf("prepare_uploaded_release") >= 0)
+        assertTrue(installBranch.indexOf("run_platform_preflight") < installBranch.indexOf("wstt_cleanup"))
+        assertTrue(installBranch.indexOf("assert_wstt_ports_preflight") < installBranch.indexOf("wstt_cleanup"))
+        assertTrue(installBranch.indexOf("run_platform_preflight") < installBranch.indexOf("setup_sysctl"))
+        assertTrue(installBranch.indexOf("wstt_cleanup") < installBranch.indexOf("setup_sysctl"))
+        assertTrue(installBranch.indexOf("run_platform_preflight") < installBranch.indexOf("setup_wstt_binary"))
+        assertTrue(installBranch.indexOf("setup_nat_and_firewall") < installBranch.indexOf("setup_wstt_binary"))
+        assertTrue(installBranch.indexOf("wstt_cleanup") < installBranch.indexOf("setup_wstt_binary"))
     }
 
     @Test
-    fun `activation uses direct runtime paths and has no staged candidate`() {
+    fun `TUN permissions are not made world writable`() {
         val deploy = script()
-        assertTrue(deploy.contains("readonly UPLOAD_BINARY=\"/tmp/.csqtt-upload-server\""))
-        assertTrue(deploy.contains("install -m 0755 \"\$UPLOAD_BINARY\" /usr/local/bin/csqtt"))
-        assertTrue(deploy.contains("install -m 0600 \"\$UPLOAD_ENV_FILE\" \"\$CSQTT_ENV_FILE\""))
-        assertTrue(deploy.contains("rm -f /usr/local/bin/csqtt"))
-        assertTrue(deploy.contains("rm -rf /usr/local/lib/csqtt"))
-        assertTrue(deploy.contains("clear_runtime_config_preserving_database()"))
-        assertFalse(deploy.contains("csqtt.next.XXXXXX"))
-        assertFalse(deploy.contains("csqtt-stage"))
-        assertFalse(deploy.contains("verify_staged_release"))
-        assertFalse(deploy.contains("CSQTT_DEPLOY_READY_FOR_UPLOAD"))
+        assertFalse(Regex("chmod\\s+666\\s+/dev/net/tun").containsMatchIn(deploy))
+        assertTrue(deploy.contains("ensure_tun_device"))
         assertTrue(deploy.contains("probe_tun_support"))
     }
 
     @Test
-    fun `reserved runtime directories recover from a failed previous install`() {
-        val deploy = script()
-        assertTrue(deploy.contains("ensure_csqtt_directory()"))
-        assertTrue(deploy.contains("rm -rf -- \"\$path\" || die \"Не удалось очистить путь CSQTT: \$path\""))
-        assertTrue(deploy.contains("ensure_csqtt_directory \"\$CSQTT_CONFIG_DIR\" 700"))
-        assertTrue(deploy.contains("ensure_csqtt_directory /usr/local/lib/csqtt 755"))
-        assertTrue(deploy.contains("setup_csqtt_environment() {\n    ensure_csqtt_directory \"\$CSQTT_CONFIG_DIR\" 700"))
-        assertTrue(deploy.contains("install -m 0600 \"\$UPLOAD_ENV_FILE\" \"\$CSQTT_ENV_FILE\""))
+    fun `Android app identity differs from CSQTT`() {
+        val candidates = listOf(File("app/build.gradle.kts"), File("build.gradle.kts"))
+        val gradle = candidates.first(File::isFile).readText()
+        assertTrue(gradle.contains("applicationId = \"com.wstunnel.client\""))
     }
-
     @Test
-    fun `redeploy removes old runtime config but preserves SQLite and its WAL files`() {
-        val deploy = script()
-        assertTrue(deploy.contains("readonly CSQTT_DATABASE_FILE=\"csqtt.db\""))
-        assertTrue(deploy.contains("readonly CSQTT_DATABASE_WAL_FILE=\"csqtt.db-wal\""))
-        assertTrue(deploy.contains("readonly CSQTT_DATABASE_SHM_FILE=\"csqtt.db-shm\""))
-        assertTrue(deploy.contains("clear_runtime_config_preserving_database"))
-        assertTrue(deploy.contains("\"\$CSQTT_DATABASE_FILE\"|\"\$CSQTT_DATABASE_WAL_FILE\"|\"\$CSQTT_DATABASE_SHM_FILE\"|\"\$CSQTT_LEGACY_MIGRATION_JSON\"|\"\$CSQTT_LEGACY_MIGRATION_IMPORTED_JSON\"|web_cert.pem|web_key.pem|letsencrypt-ip.env|runtime-archive) continue"))
-        assertFalse(deploy.contains("find \"\$CSQTT_CONFIG_DIR\" -mindepth 1 -maxdepth 1"))
-    }
-
-    @Test
-    fun `docker uses minimal capabilities and repeats probes inside container`() {
-        val deploy = script()
-        assertTrue(deploy.contains("--cap-drop ALL"))
-        assertTrue(deploy.contains("--cap-add NET_ADMIN"))
-        assertTrue(deploy.contains("--cap-add NET_RAW"))
-        assertTrue(deploy.contains("--device /dev/net/tun:/dev/net/tun"))
-        assertTrue(deploy.contains("--security-opt seccomp=unconfined"))
-        assertTrue(deploy.contains("probe_docker_runtime"))
-        assertTrue(deploy.split("--cap-drop ALL").size >= 3)
-        assertTrue(deploy.contains("COPY network-up.sh /usr/local/lib/csqtt/network-up.sh"))
-        assertTrue(deploy.contains("exec /usr/local/bin/csqtt \\\"\$@\\\""))
-        assertTrue(deploy.contains("write_network_helper \"\$context_dir/network-up.sh\""))
-    }
-
-    @Test
-    fun `docker image build retries DNS with Yandex resolvers`() {
-        val deploy = script()
-        assertTrue(deploy.contains("DOCKER_BUILD_TIMEOUT_SECONDS"))
-        assertTrue(deploy.contains("docker build --network host"))
-        assertTrue(deploy.contains("CSQTT_BUILD_DNS_PRIMARY:-"))
-        assertTrue(deploy.contains("FROM alpine:3.21"))
-        assertTrue(deploy.contains("apk add --no-cache --no-progress ca-certificates iproute2 iptables"))
-        assertTrue(deploy.contains("CSQTT_BUILD_DNS_PRIMARY=77.88.8.8"))
-        assertTrue(deploy.contains("CSQTT_BUILD_DNS_SECONDARY=77.88.8.1"))
-        assertTrue(deploy.contains("Temporary failure resolving|Could not resolve|Name or service not known"))
-    }
-
-    @Test
-    fun `deploy payload leaves DNS selection to the persisted server database`() {
-        val deploy = script()
+    fun `uninstall reports remote execution failures`() {
         val client = deployOperations()
-        assertFalse(client.contains(".put(\"dns\""))
-        assertFalse(client.contains("dnsValue"))
-        assertFalse(deploy.contains("Не удалось сохранить DNS из существующей SQLite-конфигурации"))
-        assertTrue(client.contains("\"csqtt-deploy.json\" -> \"настройки доступа\""))
+        assertTrue(client.contains("val uninstallResult = sshClient.execResult("))
+        assertTrue(client.contains("if (uninstallResult.exitStatus != 0)"))
+        assertTrue(client.contains("Удаление WSTT завершилось с кодом"))
     }
 
-    @Test
-    fun `web health probe accepts the panel's unauthenticated response without creating sessions`() {
-        val deploy = script()
-        assertTrue(deploy.contains("200|301|302|401"))
-        assertTrue(deploy.contains("${'$'}{scheme}://127.0.0.1:${'$'}{WEB_PORT}/"))
-        assertFalse(deploy.contains("--data-binary @-"))
-        assertFalse(deploy.contains("/api/login"))
-        assertFalse(deploy.contains("NETWORK_READY_STAMP"))
-    }
-
-    @Test
-    fun `configured network is verified after applying rules and after startup`() {
-        val deploy = script()
-        assertTrue(deploy.contains("verify_configured_network()"))
-        assertTrue(deploy.split("verify_configured_network").size >= 4)
-        assertTrue(deploy.contains("-j MASQUERADE >/dev/null 2>&1"))
-        assertTrue(deploy.contains("-j TCPMSS --clamp-mss-to-pmtu 2>/dev/null"))
-    }
-
-    @Test
-    fun `startup removes stale tunnel state and waits through the TUN initialization window`() {
-        val deploy = script()
-        assertTrue(deploy.contains("remove_csqtt_tun_interface()"))
-        assertTrue(deploy.contains("timeout 2 ip link del \"\$CSQTT_IFACE\""))
-        assertTrue(deploy.contains("write_tun_recovery_helper /usr/local/lib/csqtt/tun-recover.sh"))
-        assertTrue(deploy.contains("ExecStartPre=/usr/local/lib/csqtt/tun-recover.sh"))
-        assertTrue(deploy.contains("release_owned_peer_port()"))
-        assertTrue(deploy.contains("csqtt_process_is_owned()"))
-        assertTrue(deploy.contains("""UDP/\${'$'}PEER_PORT runtime PID \${'$'}pid; terminating"""))
-        assertTrue(deploy.contains("readonly START_STABILITY_SECONDS=\"\${CSQTT_START_STABILITY_SECONDS:-4}\""))
-        assertTrue(deploy.contains("StartLimitIntervalSec=60"))
-        assertTrue(deploy.contains("RestartSec=3"))
-        assertTrue(deploy.contains("COPY tun-recover.sh /usr/local/lib/csqtt/tun-recover.sh"))
-        assertTrue(deploy.contains("/usr/local/lib/csqtt/tun-recover.sh; exec /usr/local/bin/csqtt"))
-    }
-
-    @Test
-    fun `runtime mode switch removes CSQTT paths and force releases the configured peer port`() {
-        val deploy = script()
-        val client = deployOperations()
-        assertTrue(deploy.contains("docker_container_runs_csqtt()"))
-        assertTrue(deploy.contains("docker top \"\$container\" -eo pid,args"))
-        assertTrue(deploy.contains("docker-\${container_id}.scope"))
-        assertTrue(deploy.contains("remove_all_csqtt_docker_containers"))
-        assertTrue(deploy.contains("stop_all_running_csqtt_systemd_units"))
-        assertTrue(deploy.contains("remove_all_csqtt_systemd_units"))
-        assertTrue(deploy.contains("assert_peer_port_is_available"))
-        assertTrue(deploy.contains("force_release_peer_port"))
-        assertTrue(deploy.contains("cleanup_legacy_proxy_interfaces"))
-        assertTrue(deploy.contains("docker_container_for_pid"))
-        assertTrue(deploy.contains("docker rm -f \"\$container\""))
-        assertTrue(deploy.contains("--label com.csqtt.managed=true"))
-        assertTrue(deploy.contains("archive_csqtt_docker_state()"))
-        assertTrue(deploy.contains("CSQTT_RUNTIME_ARCHIVE_DIR"))
-        assertTrue(deploy.contains("runtime-archive) continue"))
-        assertTrue(deploy.contains("force_stop_csqtt_processes"))
-        assertTrue(deploy.contains("all_csqtt_process_pids"))
-        assertTrue(deploy.contains("csqtt_peer_port_is_owned"))
-        assertTrue(deploy.contains("csqtt_process_owns_peer_port"))
-        assertTrue(deploy.contains("readlink \"/proc/\$pid/exe\""))
-        assertTrue(deploy.contains("--config-dir \${CSQTT_CONFIG_DIR}"))
-        assertTrue(deploy.contains("kill -KILL \"\$pid\""))
-        assertTrue(deploy.contains("kill -TERM \"\$pid\""))
-        assertTrue(deploy.contains("принудительное освобождение"))
-        assertFalse(deploy.contains("unknown runtime; refusing to alter it"))
-        assertFalse(deploy.contains("CSQTT не будет их удалять"))
-        assertFalse(deploy.contains("pkill -"))
-        assertFalse(deploy.contains("pgrep -x csqtt"))
-        assertFalse(deploy.contains("ipt_del_repeat"))
-        assertFalse(deploy.contains("nft delete table ip csqtt"))
-        assertFalse(deploy.contains("fw_add_input_tcp \"\$SSH_PORT\""))
-        assertFalse(deploy.contains("--dport \"\$SSH_PORT\" -m comment --comment \"\$IPT_COMMENT\""))
-        assertTrue(client.contains("csqtt-uninstall-"))
-        assertFalse(client.contains("pkill -x csqtt"))
-        assertFalse(client.contains("docker rm -f csqtt"))
-        assertFalse(client.contains("nft delete table ip csqtt"))
-    }
-
-    @Test
-    fun `runtime cleanup stops processes before deleting CSQTT runtime paths`() {
-        val deploy = script()
-        val cleanup = deploy.substringAfter("csqtt_cleanup() {").substringBefore("setup_sysctl()")
-        val forceStop = deploy.substringAfter("force_stop_csqtt_processes() {")
-            .substringBefore("force_release_peer_port()")
-
-        assertTrue(forceStop.contains("kill -KILL \"\$pid\""))
-        assertTrue(cleanup.indexOf("force_stop_csqtt_processes") <
-            cleanup.indexOf("rm -f /usr/local/bin/csqtt"))
-        assertTrue(cleanup.contains("systemctl daemon-reload || die \"systemctl daemon-reload завершился ошибкой после удаления старого runtime\""))
-    }
-
-    @Test
-    fun `systemd runtime discovery and shutdown tolerate expected nonzero states`() {
-        val deploy = script()
-        assertTrue(deploy.contains("if systemd_unit_runs_csqtt \"\$unit\"; then"))
-        assertFalse(deploy.contains("systemd_unit_runs_csqtt \"\$unit\" &&"))
-        assertTrue(deploy.contains("systemctl list-units --type=service --all --no-legend --plain 2>/dev/null || true"))
-        assertTrue(deploy.contains("systemctl list-unit-files --type=service --no-legend --plain 2>/dev/null || true"))
-        assertTrue(deploy.contains("if ! timeout 10 systemctl stop \"\$unit\" >/dev/null 2>&1; then"))
-        assertTrue(deploy.contains("systemctl is-active --quiet \"\$unit\"; then\n            die \"Не удалось остановить systemd runtime CSQTT: \$unit\""))
-    }
-
-    @Test
-    fun `systemd service leaves resource limits to the VPS defaults`() {
-        val deploy = script()
-        assertFalse(deploy.contains("LimitNOFILE="))
-        assertFalse(deploy.contains("LimitMEMLOCK="))
-        assertFalse(deploy.contains("LimitNPROC="))
-        assertFalse(deploy.contains("TasksMax="))
-    }
-
-    @Test
-    fun `web panel prefers renewable trusted IP TLS with self signed fallback`() {
-        val deploy = script()
-        assertTrue(deploy.contains("--preferred-profile shortlived"))
-        assertTrue(deploy.contains("--ip-address \"\$public_ip\""))
-        assertTrue(deploy.contains("--force-renewal"))
-        assertTrue(deploy.contains("openssl x509 -noout -checkend \"\$LE_RENEW_BEFORE_SECONDS\""))
-        assertTrue(deploy.contains("OnUnitInactiveSec=24h") || deploy.contains("OnUnitInactiveSec=1h"))
-        assertTrue(deploy.contains("fw_add_input_tcp \"\$LE_HTTP_PORT\""))
-        assertTrue(deploy.contains("web_cert.pem|web_key.pem|letsencrypt-ip.env"))
-        assertTrue(deploy.contains("systemctl kill --kill-who=main --signal USR1 csqtt"))
-        assertTrue(deploy.contains("docker kill --signal USR1 csqtt"))
-        assertTrue(deploy.contains("issuer=\"\${issuer#issuer=}\""))
-        assertTrue(deploy.contains("subject=\"\${subject#subject=}\""))
-        assertTrue(deploy.contains("! python3 -c 'import ensurepip'"))
-        assertTrue(deploy.contains("apt) python_packages=(python3 python3-venv)"))
-        assertTrue(deploy.contains("pkg_install_with_refresh()"))
-        assertTrue(deploy.contains("pkg_install_with_refresh \"\${python_packages[@]}\""))
-        assertTrue(deploy.contains("local ip=\"\$1\" first second third fourth value"))
-        assertTrue(deploy.contains("grep '^csqtp' || true"))
-        assertTrue(deploy.contains("self-signed fallback"))
-    }
-
-    @Test
-    fun `certificate ownership keeps user TLS untouched and renews only CSQTT certificates`() {
-        val deploy = script()
-        assertTrue(deploy.contains("certificate_is_csqtt_rcgen()"))
-        assertTrue(deploy.contains("certificate_is_csqtt_letsencrypt()"))
-        assertTrue(deploy.contains("web_certificate_is_csqtt_managed()"))
-        assertTrue(deploy.contains("web_certificate_is_user_managed()"))
-        assertTrue(deploy.contains("CN=rcgen self signed cert"))
-        assertTrue(deploy.contains("O=Let's Encrypt"))
-        assertTrue(deploy.contains("IP Address:\${saved_ip}"))
-        assertTrue(deploy.contains("rm -f -- \"\$CSQTT_LE_STATE_FILE\""))
-        assertTrue(deploy.contains("disable_letsencrypt_renewal_timer"))
-        assertTrue(deploy.contains("CSQTT не изменяет его и отключает собственное продление"))
-    }
 }

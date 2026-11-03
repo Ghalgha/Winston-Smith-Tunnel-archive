@@ -46,7 +46,7 @@ internal fun DockerInstallInfoDialog(onDismiss: () -> Unit) {
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    text = "Если включено, CSQTT устанавливается и запускается в отдельном Docker-контейнере вместо службы csqtt.service. Если Docker отсутствует, установщик загрузит актуальную стабильную версию и запустит Docker автоматически.",
+                    text = "Если включено, WSTT устанавливается и запускается в отдельном Docker-контейнере вместо службы wstt.service. Если Docker отсутствует, установщик загрузит актуальную стабильную версию и запустит Docker автоматически.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 16.sp,
@@ -58,7 +58,7 @@ internal fun DockerInstallInfoDialog(onDismiss: () -> Unit) {
                     lineHeight = 16.sp,
                 )
                 Text(
-                    text = "Конфигурация и база клиентов остаются на VPS в /etc/csqtt и используются одинаково в Docker и systemd. Контейнер автоматически запускается после перезагрузки. Включайте этот режим только на доверенном VPS, где вы принимаете риск расширенных прав контейнера.",
+                    text = "Конфигурация и база клиентов остаются на VPS в /etc/wstt и используются одинаково в Docker и systemd. Контейнер автоматически запускается после перезагрузки. Включайте этот режим только на доверенном VPS, где вы принимаете риск расширенных прав контейнера.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 16.sp,

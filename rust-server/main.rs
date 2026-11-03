@@ -61,31 +61,31 @@ use tokio::{
 };
 
 #[derive(Parser, Debug)]
-#[command(name = "csqtt", version, about = "Сервер и консоль управления CSQTT")]
+#[command(name = "wstt", version, about = "Сервер и консоль управления WSTT")]
 struct Args {
     #[arg(long, hide = true)]
     protocol_revision: bool,
 
-    #[arg(long, default_value = "0.0.0.0:46000", help = "UDP-адрес сервера")]
+    #[arg(long, default_value = "0.0.0.0:46100", help = "UDP-адрес сервера")]
     listen: SocketAddr,
 
-    #[arg(long, default_value_t = 46002, help = "HTTPS-порт веб-панели")]
+    #[arg(long, default_value_t = 46102, help = "HTTPS-порт веб-панели")]
     web_port: u16,
 
-    #[arg(long, default_value = "/etc/csqtt", help = "Каталог конфигурации")]
+    #[arg(long, default_value = "/etc/wstt", help = "Каталог конфигурации")]
     config_dir: std::path::PathBuf,
 
     #[arg(
         long,
-        env = "CSQTT_MAIN_PASSWORD",
+        env = "WSTT_MAIN_PASSWORD",
         default_value = "",
-        help = "Основной пароль CSQTT"
+        help = "Основной пароль WSTT"
     )]
     password: String,
 
     #[arg(
         long,
-        env = "CSQTT_WEB_USER",
+        env = "WSTT_WEB_USER",
         default_value = "admin",
         help = "Логин веб-панели"
     )]
@@ -93,7 +93,7 @@ struct Args {
 
     #[arg(
         long,
-        env = "CSQTT_WEB_PASS",
+        env = "WSTT_WEB_PASS",
         default_value = "",
         help = "Пароль веб-панели"
     )]
@@ -101,7 +101,7 @@ struct Args {
 
     #[arg(
         long,
-        env = "CSQTT_PUBLIC_IP",
+        env = "WSTT_PUBLIC_IP",
         default_value = "",
         help = "Внешний IPv4-адрес сервера для клиентских ссылок"
     )]
@@ -109,14 +109,14 @@ struct Args {
 
     #[arg(
         long,
-        env = "CSQTT_DNS",
+        env = "WSTT_DNS",
         help = "Один или два DNS IPv4-адреса через запятую"
     )]
     dns: Option<String>,
 
     #[arg(
         long,
-        env = "CSQTT_WEB_SECRET_PATH",
+        env = "WSTT_WEB_SECRET_PATH",
         default_value = "",
         help = "Секретный префикс пути к веб-панели"
     )]
@@ -124,19 +124,19 @@ struct Args {
 
     #[arg(
         long,
-        env = "CSQTT_SECURE_COOKIE",
+        env = "WSTT_SECURE_COOKIE",
         default_value_t = false,
         help = "Выдавать cookie только по HTTPS"
     )]
     secure_cookie: bool,
 
-    #[arg(long, help = "Запустить службу CSQTT")]
+    #[arg(long, help = "Запустить службу WSTT")]
     start: bool,
 
-    #[arg(long, help = "Остановить службу CSQTT")]
+    #[arg(long, help = "Остановить службу WSTT")]
     stop: bool,
 
-    #[arg(long, help = "Перезапустить службу CSQTT")]
+    #[arg(long, help = "Перезапустить службу WSTT")]
     restart: bool,
 
     #[arg(long, short = 'd', help = "Открыть DPI-монитор")]
@@ -400,7 +400,7 @@ fn enqueue_log_write(path: std::path::PathBuf, line: String) {
     let sender = SENDER.get_or_init(|| {
         let (sender, receiver) = std::sync::mpsc::sync_channel(512);
         let _ = std::thread::Builder::new()
-            .name("csqtt-log-writer".to_owned())
+            .name("wstt-log-writer".to_owned())
             .spawn(move || {
                 while let Ok((path, line)) = receiver.recv() {
                     use std::io::Write;
@@ -617,17 +617,15 @@ async fn web_tls_reload_loop(
 }
 
 fn run_systemctl(action: &str) -> Result<()> {
-    if std::env::var("CSQTT_SERVICE_MANAGER").is_ok_and(|value| value == "docker") {
+    if std::env::var("WSTT_SERVICE_MANAGER").is_ok_and(|value| value == "docker") {
         if action != "restart" {
-            bail!("для управления контейнером используйте docker start/stop csqtt");
+            bail!("для управления контейнером используйте docker start/stop wstt");
         }
         #[cfg(unix)]
         {
             let init_exe = std::fs::read_link("/proc/1/exe").ok();
             if init_exe.is_none() || init_exe != std::env::current_exe().ok() {
-                bail!(
-                    "PID 1 контейнера не является этим процессом; выполните docker restart csqtt"
-                );
+                bail!("PID 1 контейнера не является этим процессом; выполните docker restart wstt");
             }
             if unsafe { libc::kill(1, libc::SIGTERM) } == 0 {
                 println!("[CLI] Docker-контейнер перезапускается");
@@ -641,15 +639,15 @@ fn run_systemctl(action: &str) -> Result<()> {
     #[cfg(unix)]
     {
         if unsafe { libc_geteuid() } != 0 {
-            bail!("для управления службой csqtt нужны права root");
+            bail!("для управления службой wstt нужны права root");
         }
     }
-    println!("[CLI] Выполняется systemctl {action} csqtt...");
+    println!("[CLI] Выполняется systemctl {action} wstt...");
     let mut command = std::process::Command::new("systemctl");
     if action == "restart" {
         command.arg("--no-block");
     }
-    let status = command.args([action, "csqtt"]).status();
+    let status = command.args([action, "wstt"]).status();
     match status {
         Ok(s) if s.success() => {
             println!("[CLI] Готово");
@@ -668,9 +666,9 @@ const PANEL_RESTART_DELAY_MILLIS: u64 = 750;
 static PANEL_RESTART_SEQUENCE: AtomicU64 = AtomicU64::new(1);
 
 pub(crate) fn request_service_restart() -> Result<()> {
-    if std::env::var("CSQTT_SERVICE_MANAGER").is_ok_and(|value| value == "systemd") {
+    if std::env::var("WSTT_SERVICE_MANAGER").is_ok_and(|value| value == "systemd") {
         let sequence = PANEL_RESTART_SEQUENCE.fetch_add(1, Ordering::Relaxed);
-        let unit = format!("csqtt-panel-restart-{}-{sequence}", std::process::id());
+        let unit = format!("wstt-panel-restart-{}-{sequence}", std::process::id());
         let status = std::process::Command::new("systemd-run")
             .arg("--quiet")
             .arg(format!("--unit={unit}"))
@@ -678,7 +676,7 @@ pub(crate) fn request_service_restart() -> Result<()> {
             .arg("--timer-property=AccuracySec=100ms")
             .arg("--collect")
             .arg("/usr/bin/systemctl")
-            .args(["--no-block", "restart", "csqtt"])
+            .args(["--no-block", "restart", "wstt"])
             .status()
             .context("schedule delayed systemd restart with systemd-run")?;
         if status.success() {
@@ -689,7 +687,7 @@ pub(crate) fn request_service_restart() -> Result<()> {
     #[cfg(unix)]
     {
         std::thread::Builder::new()
-            .name("csqtt-panel-restart".to_owned())
+            .name("wstt-panel-restart".to_owned())
             .spawn(|| {
                 std::thread::sleep(Duration::from_millis(PANEL_RESTART_DELAY_MILLIS));
                 let pid = unsafe { libc::getpid() };
@@ -807,7 +805,7 @@ fn acquire_instance_lock(config_dir: &std::path::Path) -> Result<std::fs::File> 
         use std::os::unix::fs::PermissionsExt;
         std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600))?;
         if unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } != 0 {
-            bail!("another CSQTT server instance owns {}", path.display());
+            bail!("another WSTT server instance owns {}", path.display());
         }
     }
     Ok(file)
@@ -835,7 +833,7 @@ fn diagnostic_heartbeat(
 
 async fn run_dpi_client(samples: usize) -> Result<()> {
     if !cfg!(feature = "diagnostics") {
-        bail!("csqtt was built without diagnostics; rebuild with --diagnostics");
+        bail!("wstt was built without diagnostics; rebuild with --diagnostics");
     }
     use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
@@ -843,17 +841,17 @@ async fn run_dpi_client(samples: usize) -> Result<()> {
         "\x1b[1;36m════════════════════════════════════════════════════════════════════════════════════\x1b[0m"
     );
     println!(
-        "\x1b[1;33m               CSQTT DEEP PACKET INSPECTION (DPI) LIVE TRAFFIC SNIFFER               \x1b[0m"
+        "\x1b[1;33m               WSTT DEEP PACKET INSPECTION (DPI) LIVE TRAFFIC SNIFFER               \x1b[0m"
     );
     println!(
         "\x1b[1;36m════════════════════════════════════════════════════════════════════════════════════\x1b[0m"
     );
 
-    let mut stream = match tokio::net::TcpStream::connect("127.0.0.1:46003").await {
+    let mut stream = match tokio::net::TcpStream::connect("127.0.0.1:46103").await {
         Ok(s) => s,
         Err(e) => {
             bail!(
-                "Could not connect to running CSQTT server DPI socket (127.0.0.1:46003): {e}. Ensure csqtt is active!"
+                "Could not connect to running WSTT server DPI socket (127.0.0.1:46103): {e}. Ensure wstt is active!"
             );
         }
     };
@@ -921,19 +919,19 @@ async fn run_dpi_client(samples: usize) -> Result<()> {
 
 fn print_cli_help() {
     println!(
-        "CSQTT — сервер и консоль управления\n\n\
+        "WSTT — сервер и консоль управления\n\n\
 Использование:\n  \
-  csqtt start                 Запустить службу\n  \
-  csqtt stop                  Остановить службу\n  \
-  csqtt restart               Перезапустить службу\n  \
-  csqtt dpi                   Открыть DPI-монитор\n  \
-  csqtt dpi s 50              Показать последние 50 DPI-записей и выйти\n  \
-  csqtt help                  Показать эту справку\n\n\
+  wstt start                 Запустить службу\n  \
+  wstt stop                  Остановить службу\n  \
+  wstt restart               Перезапустить службу\n  \
+  wstt dpi                   Открыть DPI-монитор\n  \
+  wstt dpi s 50              Показать последние 50 DPI-записей и выйти\n  \
+  wstt help                  Показать эту справку\n\n\
 Ручной запуск сервера:\n  \
-  --listen АДРЕС              UDP-адрес, по умолчанию 0.0.0.0:46000\n  \
-  --web-port ПОРТ             HTTPS-порт панели, по умолчанию 46002\n  \
-  --config-dir ПУТЬ           Каталог конфигурации, по умолчанию /etc/csqtt\n  \
-  --password ПАРОЛЬ           Основной пароль CSQTT\n  \
+  --listen АДРЕС              UDP-адрес, по умолчанию 0.0.0.0:46100\n  \
+  --web-port ПОРТ             HTTPS-порт панели, по умолчанию 46102\n  \
+  --config-dir ПУТЬ           Каталог конфигурации, по умолчанию /etc/wstt\n  \
+  --password ПАРОЛЬ           Основной пароль WSTT\n  \
   --web-user ЛОГИН            Логин веб-панели\n  \
   --web-pass ПАРОЛЬ           Пароль веб-панели\n  \
   --dns IP[,IP]               Один или два DNS IPv4-адреса\n  \
@@ -1003,7 +1001,7 @@ async fn async_main() -> Result<()> {
     }
 
     if unsafe { libc_geteuid() } != 0 {
-        bail!("csqtt-server must run as root");
+        bail!("wstt-server must run as root");
     }
 
     if args.tproxy_child {
@@ -1144,7 +1142,7 @@ async fn async_main() -> Result<()> {
         logs: std::sync::Mutex::new(std::collections::VecDeque::with_capacity(LOG_RING_CAPACITY)),
         logging_active: std::sync::atomic::AtomicBool::new(logging_active_val),
         stream_debug_active: Arc::new(AtomicBool::new(false)),
-        log_file_path: args.config_dir.join("csqtt.log"),
+        log_file_path: args.config_dir.join("wstt.log"),
         proxy_route: RwLock::new(None),
         proxy_operation: tokio::sync::Mutex::new(()),
         proxy_trigger: tokio::sync::Notify::new(),
@@ -1182,14 +1180,14 @@ async fn async_main() -> Result<()> {
         });
     }
 
-    log_event(&app, "INFO", "SYSTEM", " CSQTT Server 2.5.0");
+    log_event(&app, "INFO", "SYSTEM", " WSTT Server 2.5.0");
     log_event(
         &app,
         "INFO",
         "SYSTEM",
         &format!(" RTP AEAD: {}", app.listen),
     );
-    log_event(&app, "INFO", "SYSTEM", " Tunnel: Userspace TUN (CSQTT)");
+    log_event(&app, "INFO", "SYSTEM", " Tunnel: Userspace TUN (WSTT)");
     log_event(
         &app,
         "INFO",
@@ -1457,7 +1455,7 @@ fn arm_tproxy_child_parent_death() -> Result<()> {
     if result != 0 {
         return Err(std::io::Error::last_os_error()).context("arm TPROXY parent-death signal");
     }
-    let docker_mode = std::env::var("CSQTT_SERVICE_MANAGER").is_ok_and(|value| value == "docker");
+    let docker_mode = std::env::var("WSTT_SERVICE_MANAGER").is_ok_and(|value| value == "docker");
     if tproxy_parent_exited_during_startup(unsafe { libc::getppid() }, docker_mode) {
         bail!("TPROXY parent exited before child startup");
     }
@@ -1727,7 +1725,7 @@ mod lock_tests {
     fn parses_linux_cpu_counters_and_process_name_with_spaces() {
         let host = "cpu  100 2 30 400 10 0 0 0 0 0\ncpu0 50 1 15 200\ncpu1 50 1 15 200\n";
         assert_eq!(parse_host_cpu(host), Some((542, 2)));
-        let process = "77 (csqtt worker) R 1 2 3 4 5 6 7 8 9 10 11 12 13 14";
+        let process = "77 (wstt worker) R 1 2 3 4 5 6 7 8 9 10 11 12 13 14";
         assert_eq!(parse_process_cpu(process), Some(23));
     }
 

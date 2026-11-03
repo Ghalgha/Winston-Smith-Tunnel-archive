@@ -85,15 +85,19 @@ fun encryptCsqttPayload(plaintext: String): String {
 
 fun parseCsqttLink(raw: String): CsqttLink? {
     val trimmed = raw.trim()
-    if (!trimmed.startsWith("csqtt://", ignoreCase = true)) return null
-    val payload = trimmed.substring(8).trim()
-    val decoded = decryptCsqttPayload(payload) ?: return null
+    val payloadStart = when {
+        trimmed.startsWith("wst://", ignoreCase = true) -> 6
+        trimmed.startsWith("csqtt://", ignoreCase = true) -> 8 // legacy WSTT links
+        else -> return null
+    }
+    val decoded = decryptCsqttPayload(trimmed.substring(payloadStart).trim()) ?: return null
     if (decoded.contains("host=") || decoded.contains("connect?")) {
         val candidate = when {
-            decoded.startsWith("csqtt://connect?", ignoreCase = true) -> decoded
-            decoded.startsWith("connect?", ignoreCase = true) -> "csqtt://$decoded"
-            decoded.startsWith("csqtt://", ignoreCase = true) -> "csqtt://connect?" + decoded.substring(8)
-            else -> "csqtt://connect?$decoded"
+            decoded.startsWith("wst://connect?", ignoreCase = true) -> decoded
+            decoded.startsWith("csqtt://connect?", ignoreCase = true) -> "wst://connect?" + decoded.substring(8)
+            decoded.startsWith("connect?", ignoreCase = true) -> "wst://$decoded"
+            decoded.startsWith("csqtt://", ignoreCase = true) -> "wst://connect?" + decoded.substring(8)
+            else -> "wst://connect?$decoded"
         }
         val decodedUri = runCatching { java.net.URI(candidate) }.getOrNull()
         if (decodedUri != null) {
@@ -240,5 +244,5 @@ fun formatCsqttLink(
         queryParts.add("token=$token")
     }
     val plain = "connect?" + queryParts.joinToString("&")
-    return "csqtt://" + encryptCsqttPayload(plain)
+    return "wst://" + encryptCsqttPayload(plain)
 }

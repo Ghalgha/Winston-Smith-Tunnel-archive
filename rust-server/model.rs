@@ -85,7 +85,7 @@ pub struct PasswordEntry {
     pub workers: Option<u32>,
 }
 
-pub const DEFAULT_LOCAL_PROXY_PORT: u16 = 45000;
+pub const DEFAULT_LOCAL_PROXY_PORT: u16 = 45100;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LocalProxyProfile {
@@ -462,7 +462,7 @@ impl DatabasePersistence {
         });
         let worker = inner.clone();
         std::thread::Builder::new()
-            .name("csqtt-db-writer".to_owned())
+            .name("wstt-db-writer".to_owned())
             .spawn(move || database_persistence_worker(worker))
             .context("start database persistence worker")?;
         Ok(Self { inner })
@@ -719,14 +719,14 @@ pub fn is_expired(entry: &PasswordEntry) -> bool {
     entry.expires_at != 0 && now() > entry.expires_at
 }
 
-pub const OWNER_TUNNEL_IP: &str = "10.66.67.2";
+pub const OWNER_TUNNEL_IP: &str = "10.67.68.2";
 
 pub fn get_next_ip(db: &Database) -> Option<String> {
     let mut buf = String::with_capacity(16);
     for i in 3..=250u8 {
         buf.clear();
         use std::fmt::Write;
-        let _ = write!(buf, "10.66.67.{i}");
+        let _ = write!(buf, "10.67.68.{i}");
         let is_used = db.passwords.values().any(|d| d.ip == buf);
         if !is_used {
             return Some(buf);
@@ -748,7 +748,7 @@ pub fn resolve_session_ip(db: &Database, session_password: &str) -> Option<Strin
     })
 }
 
-const DATABASE_FILE: &str = "csqtt.db";
+const DATABASE_FILE: &str = "wstt.db";
 const LEGACY_DATABASE_FILE: &str = "passwords.json";
 const LEGACY_DATABASE_IMPORTED_FILE: &str = "passwords.json.imported";
 const LEGACY_DATABASE_FILES: [&str; 2] = [LEGACY_DATABASE_FILE, LEGACY_DATABASE_IMPORTED_FILE];
@@ -1891,7 +1891,7 @@ mod tests {
         legacy.passwords.insert(
             "legacy-client-pw".to_owned(),
             PasswordEntry {
-                ip: "10.66.67.3".to_owned(),
+                ip: "10.67.68.3".to_owned(),
                 up_bytes: 13,
                 down_bytes: 14,
                 ..PasswordEntry::default()
@@ -1904,7 +1904,7 @@ mod tests {
         assert_eq!(restored.main_password, "legacy-main-pass");
         assert_eq!(restored.main_up_bytes, 11);
         assert!(restored.passwords.contains_key("legacy-client-pw"));
-        assert_eq!(restored.passwords["legacy-client-pw"].ip, "10.66.67.3");
+        assert_eq!(restored.passwords["legacy-client-pw"].ip, "10.67.68.3");
         assert!(directory.join(super::DATABASE_FILE).exists());
         assert!(!legacy_path.exists());
         assert!(
@@ -1934,7 +1934,7 @@ mod tests {
         legacy.passwords.insert(
             "client-pass-16-1".to_owned(),
             PasswordEntry {
-                ip: "10.66.67.3".to_owned(),
+                ip: "10.67.68.3".to_owned(),
                 expires_at: 1_900_000_000,
                 name: "first legacy user".to_owned(),
                 vk_hashes: "hash-a\nhash-b".to_owned(),
@@ -1949,7 +1949,7 @@ mod tests {
         legacy.passwords.insert(
             "client-pass-16-2".to_owned(),
             PasswordEntry {
-                ip: "10.66.67.4".to_owned(),
+                ip: "10.67.68.4".to_owned(),
                 is_deactivated: true,
                 name: "disabled legacy user".to_owned(),
                 up_bytes: 33,
@@ -1970,7 +1970,7 @@ mod tests {
         );
 
         let first = restored.passwords.get("client-pass-16-1").unwrap();
-        assert_eq!(first.ip, "10.66.67.3");
+        assert_eq!(first.ip, "10.67.68.3");
         assert_eq!(first.name, "first legacy user");
         assert_eq!(first.vk_hashes, "hash-a\nhash-b");
         assert_eq!(
@@ -1980,7 +1980,7 @@ mod tests {
 
         let second = restored.passwords.get("client-pass-16-2").unwrap();
         assert!(second.is_deactivated);
-        assert_eq!(second.ip, "10.66.67.4");
+        assert_eq!(second.ip, "10.67.68.4");
 
         assert!(directory.join(super::DATABASE_FILE).exists());
         assert!(!legacy_path.exists());
@@ -2014,11 +2014,11 @@ mod tests {
         assert_eq!(restored.main_password, "short");
         assert!(restored.passwords.contains_key("old8pass"));
         let entry = &restored.passwords["old8pass"];
-        assert_eq!(entry.ip, "10.66.67.3");
+        assert_eq!(entry.ip, "10.67.68.3");
 
         let reloaded = load_database(&directory).unwrap();
         assert_eq!(reloaded.main_password, restored.main_password);
-        assert_eq!(reloaded.passwords["old8pass"].ip, "10.66.67.3");
+        assert_eq!(reloaded.passwords["old8pass"].ip, "10.67.68.3");
         let _ = std::fs::remove_dir_all(directory);
     }
 
@@ -2038,7 +2038,7 @@ mod tests {
             "sqlite-client-16".to_owned(),
             PasswordEntry {
                 name: "current".to_owned(),
-                ip: "10.66.67.10".to_owned(),
+                ip: "10.67.68.10".to_owned(),
                 ..PasswordEntry::default()
             },
         );
@@ -2053,7 +2053,7 @@ mod tests {
             "legacy-client-16".to_owned(),
             PasswordEntry {
                 name: "imported".to_owned(),
-                ip: "10.66.67.11".to_owned(),
+                ip: "10.67.68.11".to_owned(),
                 ..PasswordEntry::default()
             },
         );
@@ -2061,7 +2061,7 @@ mod tests {
             "sqlite-client-16".to_owned(),
             PasswordEntry {
                 name: "current".to_owned(),
-                ip: "10.66.67.10".to_owned(),
+                ip: "10.67.68.10".to_owned(),
                 up_bytes: 1,
                 ..PasswordEntry::default()
             },
@@ -2074,7 +2074,7 @@ mod tests {
         assert_eq!(restored.main_up_bytes, 50);
         assert_eq!(restored.passwords.len(), 1);
         assert_eq!(restored.passwords["sqlite-client-16"].name, "current");
-        assert_eq!(restored.passwords["sqlite-client-16"].ip, "10.66.67.10");
+        assert_eq!(restored.passwords["sqlite-client-16"].ip, "10.67.68.10");
         assert!(legacy_path.exists());
         let _ = std::fs::remove_dir_all(directory);
     }
@@ -2090,7 +2090,7 @@ mod tests {
         sqlite.passwords.insert(
             "shared-password-".to_owned(),
             PasswordEntry {
-                ip: "10.66.67.3".to_owned(),
+                ip: "10.67.68.3".to_owned(),
                 ..PasswordEntry::default()
             },
         );
@@ -2100,7 +2100,7 @@ mod tests {
         legacy.passwords.insert(
             "shared-password-".to_owned(),
             PasswordEntry {
-                ip: "10.66.67.4".to_owned(),
+                ip: "10.67.68.4".to_owned(),
                 ..PasswordEntry::default()
             },
         );
@@ -2108,7 +2108,7 @@ mod tests {
         std::fs::write(&legacy_path, serde_json::to_vec(&legacy).unwrap()).unwrap();
 
         let restored = load_database(&directory).unwrap();
-        assert_eq!(restored.passwords["shared-password-"].ip, "10.66.67.3");
+        assert_eq!(restored.passwords["shared-password-"].ip, "10.67.68.3");
         assert!(legacy_path.exists());
         let _ = std::fs::remove_dir_all(directory);
     }
@@ -2203,7 +2203,7 @@ mod tests {
         database.passwords.insert(
             "client-password1".to_owned(),
             PasswordEntry {
-                ip: "10.66.67.3".to_owned(),
+                ip: "10.67.68.3".to_owned(),
                 up_bytes: 3,
                 down_bytes: 4,
                 ..PasswordEntry::default()
@@ -2391,7 +2391,7 @@ mod tests {
         assert!(!main_sub_uuid.is_empty());
 
         let legacy_entry = db.passwords.get("legacy-slot-pw").unwrap();
-        assert_eq!(legacy_entry.ip, "10.66.67.3");
+        assert_eq!(legacy_entry.ip, "10.67.68.3");
         assert!(!legacy_entry.sub_uuid.is_empty());
 
         let (_, slot_entry) = db
@@ -2401,7 +2401,7 @@ mod tests {
                 k.len() == super::PASSWORD_LEN && *k != &db.main_password && *k != "legacy-slot-pw"
             })
             .unwrap();
-        assert_eq!(slot_entry.ip, "10.66.67.4");
+        assert_eq!(slot_entry.ip, "10.67.68.4");
         assert!(!slot_entry.sub_uuid.is_empty());
 
         assert!(db.repair_stale_password_bindings().is_empty());
@@ -2423,7 +2423,7 @@ mod tests {
             "slot123456789012".to_string(),
             super::PasswordEntry {
                 name: "Клиент555".to_string(),
-                ip: "10.66.67.55".to_string(),
+                ip: "10.67.68.55".to_string(),
                 ..super::PasswordEntry::default()
             },
         );
@@ -2436,7 +2436,7 @@ mod tests {
             .passwords
             .get("slot123456789012")
             .expect("slot must exist");
-        assert_eq!(slot.ip, "10.66.67.55");
+        assert_eq!(slot.ip, "10.67.68.55");
         let _ = std::fs::remove_dir_all(directory);
     }
 
@@ -2449,7 +2449,7 @@ mod tests {
         let directory = std::env::temp_dir().join(format!("csqtt-vladilets-test-{unique}"));
         std::fs::create_dir_all(&directory).unwrap();
 
-        let conn = rusqlite::Connection::open(directory.join("csqtt.db")).unwrap();
+        let conn = rusqlite::Connection::open(directory.join("wstt.db")).unwrap();
         conn.execute_batch(
             "CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT);
              CREATE TABLE passwords (
@@ -2490,7 +2490,23 @@ mod tests {
             .passwords
             .get("client1234567890")
             .expect("participant slot exists");
-        assert_eq!(participant.ip, "10.66.67.3");
+        assert_eq!(participant.ip, "10.67.68.3");
         let _ = std::fs::remove_dir_all(directory);
+    }
+}
+
+#[cfg(test)]
+mod coexistence_tests {
+    use super::{DEFAULT_LOCAL_PROXY_PORT, Database, OWNER_TUNNEL_IP, get_next_ip};
+
+    #[test]
+    fn wstt_client_ip_pool_is_disjoint_from_csqtt() {
+        assert_eq!(OWNER_TUNNEL_IP, "10.67.68.2");
+        assert_eq!(DEFAULT_LOCAL_PROXY_PORT, 45100);
+        assert_ne!(DEFAULT_LOCAL_PROXY_PORT, 45000);
+        assert_eq!(
+            get_next_ip(&Database::default()).as_deref(),
+            Some("10.67.68.3")
+        );
     }
 }

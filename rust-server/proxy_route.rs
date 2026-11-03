@@ -10,16 +10,16 @@ use std::time::{Duration, Instant};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
-const LEGACY_POLICY_TABLE: &str = "1066";
-const LEGACY_POLICY_PRIORITY: &str = "1066";
-const NAT_COMMENT: &str = "CSQTT_LOCAL_SOCKS";
-const MARK_COMMENT: &str = "CSQTT_LOCAL_SOCKS_MARK";
-const POLICY_MARK: &str = "0x422";
-const LEGACY_NAT_COMMENT: &str = "CSQTT_SOCKS";
-const LEGACY_QUIC_COMMENT: &str = "CSQTT_CASCADE_NO_QUIC";
-const TPROXY_TABLE: &str = "30001";
-const TPROXY_PRIORITY: &str = "30001";
-const TPROXY_RULE_MARK: &str = "0x7531/0x7531";
+const LEGACY_POLICY_TABLE: &str = "1067";
+const LEGACY_POLICY_PRIORITY: &str = "1067";
+const NAT_COMMENT: &str = "WSTT_LOCAL_SOCKS";
+const MARK_COMMENT: &str = "WSTT_LOCAL_SOCKS_MARK";
+const POLICY_MARK: &str = "0x423";
+const LEGACY_NAT_COMMENT: &str = "WSTT_SOCKS";
+const LEGACY_QUIC_COMMENT: &str = "WSTT_CASCADE_NO_QUIC";
+const TPROXY_TABLE: &str = "30002";
+const TPROXY_PRIORITY: &str = "30002";
+const TPROXY_RULE_MARK: &str = "0x7532/0x7532";
 const TPROXY_START_ATTEMPTS: u64 = 8;
 const COMMAND_TIMEOUT: Duration = Duration::from_secs(2);
 const SOCKS_COMMAND_TIMEOUT: Duration = Duration::from_secs(8);
@@ -233,7 +233,7 @@ async fn wait_for_tproxy_child(child: &mut Child, status_path: &Path) -> Result<
 }
 
 fn tproxy_status_path(runtime_id: u64) -> PathBuf {
-    std::env::temp_dir().join(format!("csqtt-tproxy-{runtime_id}.sock"))
+    std::env::temp_dir().join(format!("wstt-tproxy-{runtime_id}.sock"))
 }
 
 fn remove_tproxy_status_file(path: &Path) {
@@ -500,9 +500,7 @@ async fn activate_tproxy(runtime_id: u64, port: u16) -> Result<()> {
     let _guard = POLICY_LOCK.lock().await;
     cleanup_legacy_proxy_policy().await;
     let _ = command_output("sysctl", &["-w", "net.ipv4.ip_forward=1"]).await;
-    let _ = command_output("sysctl", &["-w", "net.ipv4.conf.all.rp_filter=2"]).await;
-    let _ = command_output("sysctl", &["-w", "net.ipv4.conf.default.rp_filter=2"]).await;
-    let _ = command_output("sysctl", &["-w", "net.ipv4.conf.csqtt1.rp_filter=2"]).await;
+    let _ = command_output("sysctl", &["-w", "net.ipv4.conf.wstt1.rp_filter=2"]).await;
     add_tproxy_shared_rules().await?;
     add_tproxy_rules(port).await?;
     let _ = command_output("ip", &["route", "flush", "cache"]).await;
@@ -558,7 +556,7 @@ async fn add_tproxy_shared_rules() -> Result<()> {
 }
 
 fn tproxy_comment(port: u16) -> String {
-    format!("CSQTT_TPROXY:{port}")
+    format!("WSTT_TPROXY:{port}")
 }
 
 async fn tproxy_interception_present(port: u16) -> bool {
@@ -713,7 +711,7 @@ async fn cleanup_stale_tproxy_rules() -> Result<()> {
         let mut cleared = false;
         for _ in 0..8 {
             let rules = command_output("iptables", &["-t", table, "-S", chain]).await?;
-            let specs = marked_rule_specs(&rules, chain, &["CSQTT_TPROXY"]);
+            let specs = marked_rule_specs(&rules, chain, &["WSTT_TPROXY"]);
             if specs.is_empty() {
                 cleared = true;
                 break;
@@ -984,7 +982,7 @@ async fn verify_proxy_policy_clean() -> Result<()> {
         }
     }
     for marker in [
-        "CSQTT_TPROXY",
+        "WSTT_TPROXY",
         NAT_COMMENT,
         MARK_COMMENT,
         LEGACY_NAT_COMMENT,
@@ -996,11 +994,11 @@ async fn verify_proxy_policy_clean() -> Result<()> {
     }
     let rules = command_output("ip", &["-4", "rule", "show"]).await?;
     for line in rules.lines() {
-        let owned_tproxy = line.trim_start().starts_with("30001:")
-            && line.contains("fwmark 0x7531")
-            && line.contains("lookup 30001");
-        let owned_legacy = line.trim_start().starts_with("1066:")
-            && (line.contains("lookup 1066") || line.contains("fwmark 0x422"));
+        let owned_tproxy = line.trim_start().starts_with("30002:")
+            && line.contains("fwmark 0x7532")
+            && line.contains("lookup 30002");
+        let owned_legacy = line.trim_start().starts_with("1067:")
+            && (line.contains("lookup 1067") || line.contains("fwmark 0x423"));
         if owned_tproxy || owned_legacy {
             bail!("stale policy rule remains: {}", line.trim());
         }
@@ -1041,7 +1039,7 @@ async fn command_required(program: &str, args: &[&str]) -> Result<()> {
 mod tests {
     use super::{
         marked_rule_specs, read_tproxy_child_error, remove_tproxy_status_file, socks_udp_response,
-        tproxy_error_path, tproxy_start_error_is_retryable, validate_config,
+        tproxy_error_path, tproxy_start_error_is_retryable, tproxy_status_path, validate_config,
         write_tproxy_child_error,
     };
     use crate::model::LocalProxyProfile;
@@ -1050,10 +1048,17 @@ mod tests {
         LocalProxyProfile {
             id: "test".to_owned(),
             name: "Test".to_owned(),
-            port: 45000,
+            port: 45100,
             username: String::new(),
             password: String::new(),
         }
+    }
+
+    #[test]
+    fn status_socket_path_is_wstt_specific() {
+        let path = tproxy_status_path(7);
+        assert_eq!(path.file_name().unwrap(), "wstt-tproxy-7.sock");
+        assert!(!path.to_string_lossy().contains("csqtt-tproxy"));
     }
 
     #[test]
@@ -1079,23 +1084,23 @@ mod tests {
     fn locates_quoted_tproxy_rules_by_chain_position() {
         let rules = concat!(
             "-P PREROUTING ACCEPT\n",
-            "-A PREROUTING -i csqtt1 -p udp -m comment --comment \"CSQTT_TPROXY:10669\" -j TPROXY\n",
+            "-A PREROUTING -i wstt1 -p udp -m comment --comment \"WSTT_TPROXY:11669\" -j TPROXY\n",
             "-A PREROUTING -p tcp -j ACCEPT\n",
-            "-A PREROUTING -i csqtt1 -p tcp -m comment --comment \"CSQTT_TPROXY:10669\" -j TPROXY\n",
+            "-A PREROUTING -i wstt1 -p tcp -m comment --comment \"WSTT_TPROXY:11669\" -j TPROXY\n",
         );
-        let specs = marked_rule_specs(rules, "PREROUTING", &["CSQTT_TPROXY"]);
+        let specs = marked_rule_specs(rules, "PREROUTING", &["WSTT_TPROXY"]);
         assert_eq!(specs.len(), 2);
         assert_eq!(
             specs[0],
             [
                 "-i",
-                "csqtt1",
+                "wstt1",
                 "-p",
                 "udp",
                 "-m",
                 "comment",
                 "--comment",
-                "CSQTT_TPROXY:10669",
+                "WSTT_TPROXY:11669",
                 "-j",
                 "TPROXY"
             ]
@@ -1106,11 +1111,11 @@ mod tests {
     #[test]
     fn ignores_other_chains_and_empty_output() {
         let rules = concat!(
-            "-A INPUT -m comment --comment \"CSQTT_TPROXY:10669\" -j ACCEPT\n",
+            "-A INPUT -m comment --comment \"WSTT_TPROXY:11669\" -j ACCEPT\n",
             "-A PREROUTING -p tcp -j ACCEPT\n",
         );
-        assert!(marked_rule_specs(rules, "PREROUTING", &["CSQTT_TPROXY"]).is_empty());
-        assert!(marked_rule_specs("", "PREROUTING", &["CSQTT_TPROXY"]).is_empty());
+        assert!(marked_rule_specs(rules, "PREROUTING", &["WSTT_TPROXY"]).is_empty());
+        assert!(marked_rule_specs("", "PREROUTING", &["WSTT_TPROXY"]).is_empty());
     }
 
     #[test]
@@ -1124,10 +1129,10 @@ mod tests {
 
         write_tproxy_child_error(
             &status_path,
-            "bind TPROXY child 10667\n\nCaused by:\n    transparent UDP socket: Address already in use",
+            "bind TPROXY child 11667\n\nCaused by:\n    transparent UDP socket: Address already in use",
         );
         let error = read_tproxy_child_error(&status_path).unwrap();
-        assert!(error.contains("bind TPROXY child 10667"));
+        assert!(error.contains("bind TPROXY child 11667"));
         assert!(error.contains("transparent UDP socket: Address already in use"));
         assert!(!error.contains("\n"));
 
@@ -1140,10 +1145,38 @@ mod tests {
     #[test]
     fn tproxy_start_retry_is_limited_to_busy_internal_ports() {
         assert!(tproxy_start_error_is_retryable(
-            "bind TPROXY child 10667: Address already in use (os error 98)"
+            "bind TPROXY child 11667: Address already in use (os error 98)"
         ));
         assert!(!tproxy_start_error_is_retryable(
-            "bind TPROXY child 10667: Operation not permitted (os error 1)"
+            "bind TPROXY child 11667: Operation not permitted (os error 1)"
         ));
+    }
+}
+
+#[cfg(test)]
+mod coexistence_tests {
+    use super::{
+        LEGACY_POLICY_PRIORITY, LEGACY_POLICY_TABLE, MARK_COMMENT, NAT_COMMENT, POLICY_MARK,
+        TPROXY_PRIORITY, TPROXY_RULE_MARK, TPROXY_TABLE, marked_rule_specs,
+    };
+
+    #[test]
+    fn wstt_policy_identity_is_disjoint_from_csqtt() {
+        assert_eq!(LEGACY_POLICY_TABLE, "1067");
+        assert_eq!(LEGACY_POLICY_PRIORITY, "1067");
+        assert_ne!(LEGACY_POLICY_TABLE, "1066");
+        assert_ne!(POLICY_MARK, "0x422");
+        assert_eq!(TPROXY_TABLE, "30002");
+        assert_eq!(TPROXY_PRIORITY, "30002");
+        assert_ne!(TPROXY_RULE_MARK, "0x7531/0x7531");
+        assert_eq!(NAT_COMMENT, "WSTT_LOCAL_SOCKS");
+        assert_eq!(MARK_COMMENT, "WSTT_LOCAL_SOCKS_MARK");
+    }
+
+    #[test]
+    fn wstt_cleanup_does_not_claim_original_csqtt_rules() {
+        let rules =
+            r#"-A PREROUTING -i csqtt1 -p udp -m comment --comment "CSQTT_TPROXY:10669" -j TPROXY"#;
+        assert!(marked_rule_specs(rules, "PREROUTING", &["WSTT_TPROXY"]).is_empty());
     }
 }
