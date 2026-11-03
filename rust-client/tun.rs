@@ -115,9 +115,7 @@ impl FdReceiver {
                             MsgFlags::empty(),
                         ) {
                             Ok(message) => {
-                                if message.bytes != 1 || slices[0][0] != 1 {
-                                    break 'conn;
-                                }
+                                let byte_count = message.bytes;
                                 let controls = match message.cmsgs() {
                                     Ok(controls) => controls,
                                     Err(error) => {
@@ -138,6 +136,11 @@ impl FdReceiver {
                                             }
                                         }
                                     }
+                                }
+                                drop(message);
+                                drop(slices);
+                                if byte_count != 1 || data[0] != 1 {
+                                    break 'conn;
                                 }
                                 let mut received = owned.into_iter();
                                 let descriptor = received.next();
