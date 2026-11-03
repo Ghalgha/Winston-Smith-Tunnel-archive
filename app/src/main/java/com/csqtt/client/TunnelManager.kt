@@ -80,6 +80,8 @@ internal fun withoutLogStickers(message: String): String = message
     .trim()
 
 object TunnelManager {
+    const val TUN_UDS_NAME = "wstt_tun_uds"
+
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     @Volatile
