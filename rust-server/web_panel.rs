@@ -357,7 +357,7 @@ pub fn encrypt_csqtt_link(payload: &str) -> String {
         Ok(k) => k,
         Err(_) => {
             let b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(payload.as_bytes());
-            return format!("csqtt://{b64}");
+            return format!("wst://{b64}");
         }
     };
     let key = LessSafeKey::new(unbound);
@@ -376,7 +376,7 @@ pub fn encrypt_csqtt_link(payload: &str) -> String {
         Ok(n) => n,
         Err(_) => {
             let b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(payload.as_bytes());
-            return format!("csqtt://{b64}");
+            return format!("wst://{b64}");
         }
     };
 
@@ -386,7 +386,7 @@ pub fn encrypt_csqtt_link(payload: &str) -> String {
         .is_err()
     {
         let b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(payload.as_bytes());
-        return format!("csqtt://{b64}");
+        return format!("wst://{b64}");
     }
 
     let mut combined = Vec::with_capacity(12 + in_out.len());
@@ -394,7 +394,7 @@ pub fn encrypt_csqtt_link(payload: &str) -> String {
     combined.extend_from_slice(&in_out);
 
     let b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&combined);
-    format!("csqtt://{b64}")
+    format!("wst://{b64}")
 }
 
 #[allow(dead_code)]
@@ -403,7 +403,11 @@ pub fn decrypt_csqtt_link(raw_link: &str) -> Option<String> {
     use base64::Engine;
     use sha2::{Digest, Sha256};
 
-    let payload = raw_link.trim().strip_prefix("csqtt://")?.trim();
+    let raw_link = raw_link.trim();
+    let payload = raw_link
+        .strip_prefix("wst://")
+        .or_else(|| raw_link.strip_prefix("csqtt://"))?
+        .trim();
     let clean = payload.replace(['\n', '\r'], "");
     let bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
         .decode(&clean)
@@ -443,7 +447,7 @@ fn make_client_link(
     let mut payload = format!(
         "connect?v=2&host={}&peer={}",
         url_encode(host),
-        if port == 0 { 46000 } else { port },
+        if port == 0 { 46100 } else { port },
     );
     if !password.is_empty() {
         payload.push_str("&password=");
@@ -535,7 +539,7 @@ fn cookie_tokens(headers: &HeaderMap) -> Vec<String> {
         .filter_map(|v| v.to_str().ok())
         .flat_map(|value| value.split(';'))
         .map(str::trim)
-        .filter_map(|part| part.strip_prefix("csqtt_session=").map(str::to_owned))
+        .filter_map(|part| part.strip_prefix("wstt_session=").map(str::to_owned))
         .collect()
 }
 
@@ -555,7 +559,7 @@ fn authorized(app: &App, headers: &HeaderMap) -> bool {
         .map(str::trim)
         && !key.is_empty()
     {
-        if secret_eq(key, &app.web_pass) || secret_eq(key, &app.startup_main_password) {
+        if secret_eq(key, &app.web_pass) {
             return true;
         }
         if let Ok(db) = app.db.try_read()
@@ -582,7 +586,7 @@ fn authorized(app: &App, headers: &HeaderMap) -> bool {
     {
         let token = token.trim();
         if !token.is_empty() {
-            if secret_eq(token, &app.web_pass) || secret_eq(token, &app.startup_main_password) {
+            if secret_eq(token, &app.web_pass) {
                 return true;
             }
             if let Ok(db) = app.db.try_read()
@@ -638,7 +642,7 @@ async fn auth_middleware(
 }
 
 fn expired_session_cookie() -> &'static str {
-    "csqtt_session=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax; Secure"
+    "wstt_session=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax; Secure"
 }
 
 const STEALTH_ABORT_HEADER: &str = "x-csqtt-stealth-rst";
@@ -878,7 +882,7 @@ async fn login(
             .into_response();
     }
     let cookie =
-        format!("csqtt_session={token}; Path=/; Max-Age=86400; HttpOnly; SameSite=Lax; Secure");
+        format!("wstt_session={token}; Path=/; Max-Age=86400; HttpOnly; SameSite=Lax; Secure");
     let mut response = (StatusCode::OK, [(header::SET_COOKIE, cookie)], "ok").into_response();
     response.headers_mut().insert(
         header::CACHE_CONTROL,
@@ -1579,7 +1583,7 @@ async fn clients_get(
                 vk_hash: entry.vk_hash.clone(),
                 ports: entry.ports.clone(),
                 ip: if entry.ip.is_empty() {
-                    "10.66.67.3".to_string()
+                    "10.67.68.3".to_string()
                 } else {
                     entry.ip.clone()
                 },
@@ -1623,7 +1627,7 @@ async fn clients_get(
             active_sessions: count_active_sessions(&state.app.sessions, &db.main_password),
             vk_hash: String::new(),
             ports: String::new(),
-            ip: "10.66.67.2".to_string(),
+            ip: "10.67.68.2".to_string(),
             name: "Владелец".to_string(),
             vk_hashes: if db.main_vk_hashes.is_empty() {
                 db.vk_hashes.clone()
@@ -1703,7 +1707,7 @@ async fn group_clients_get(
                 vk_hash: entry.vk_hash.clone(),
                 ports: entry.ports.clone(),
                 ip: if entry.ip.is_empty() {
-                    "10.66.67.3".to_string()
+                    "10.67.68.3".to_string()
                 } else {
                     entry.ip.clone()
                 },
@@ -2070,7 +2074,7 @@ async fn client_get(
             active_sessions,
             vk_hash: String::new(),
             ports: String::new(),
-            ip: "10.66.67.2".to_string(),
+            ip: "10.67.68.2".to_string(),
             name: "Главный пароль".to_string(),
             vk_hashes: if db.main_vk_hashes.is_empty() {
                 db.vk_hashes.clone()
@@ -2106,7 +2110,7 @@ async fn client_get(
             vk_hash: entry.vk_hash.clone(),
             ports: entry.ports.clone(),
             ip: if entry.ip.is_empty() {
-                "10.66.67.3".to_string()
+                "10.67.68.3".to_string()
             } else {
                 entry.ip.clone()
             },
@@ -3622,8 +3626,8 @@ async fn group_admin_data_get(
                 "active": !p_entry.is_deactivated && !model::is_expired(p_entry),
                 "is_deactivated": p_entry.is_deactivated,
                 "active_sessions": count_active_sessions(&state.app.sessions, _pass),
-                "ip": if p_entry.ip.is_empty() { "10.66.67.3" } else { &p_entry.ip },
-                "device_ip": if p_entry.ip.is_empty() { "10.66.67.3" } else { &p_entry.ip },
+                "ip": if p_entry.ip.is_empty() { "10.67.68.3" } else { &p_entry.ip },
+                "device_ip": if p_entry.ip.is_empty() { "10.67.68.3" } else { &p_entry.ip },
                 "group_id": p_entry.group_id,
                 "peer_port": p_entry.wg_port,
                 "vk_hashes": p_entry.vk_hashes,
@@ -5305,7 +5309,7 @@ async fn logs_download(State(state): State<WebState>) -> impl IntoResponse {
             ),
             (
                 axum::http::header::CONTENT_DISPOSITION,
-                "attachment; filename=\"csqtt.log\"",
+                "attachment; filename=\"wstt.log\"",
             ),
         ];
         (headers, body).into_response()
@@ -6343,7 +6347,7 @@ const GROUP_SUB_HTML: &str = r##"<!DOCTYPE html>
                     <div class="qr-box" id="qr-box-${idx}"></div>
                     <div class="input-row">
                         <input class="link-input" readonly value="${esc(c.link)}" onclick="this.select()">
-                        <button class="btn btn-copy" onclick="copyCardLink(this, '${esc(c.link)}')" title="Копировать ссылку">
+                        <button class="btn btn-copy" onclick="copyCardLink(this, ${esc(JSON.stringify(c.link))})" title="Копировать ссылку">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                         </button>
                     </div>
@@ -7177,7 +7181,7 @@ const GROUP_ADMIN_HTML: &str = r##"<!DOCTYPE html>
             container.innerHTML = filtered.map(c => {
                 const expiryStr = c.expires ? new Date(c.expires * 1000).toLocaleDateString() : '∞ Бессрочно';
                 return `
-                <div class="client-card" onclick="openEditModal('${esc(c.password)}')">
+                <div class="client-card" onclick="openEditModal(${esc(JSON.stringify(c.password))})">
                     <div class="client-card-header">
                         <div class="client-card-title">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary); flex-shrink: 0;"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
@@ -7203,7 +7207,7 @@ const GROUP_ADMIN_HTML: &str = r##"<!DOCTYPE html>
                             <span class="client-card-value">${c.active_sessions || 0}</span>
                         </div>
                         ${c.sub_uuid ? `
-                        <button class="btn btn-ghost client-sub-btn" onclick="event.stopPropagation(); copyClientSubLink('${c.sub_uuid}', this)" title="Скопировать ссылку подписки">
+                        <button class="btn btn-ghost client-sub-btn" onclick="event.stopPropagation(); copyClientSubLink(${esc(JSON.stringify(c.sub_uuid))}, this)" title="Скопировать ссылку подписки">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                             <span>Скопировать ссылку подписки</span>
                         </button>
@@ -7672,10 +7676,10 @@ const GROUP_ADMIN_HTML: &str = r##"<!DOCTYPE html>
                     </div>
                     <div style="display: flex; gap: 8px; align-items: center;">
                         <input readonly value="${esc(link)}" style="flex: 1; height: 40px; font-size: 12px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; padding: 0 10px; background: var(--surface-hover); color: var(--text-muted); border-radius: 8px;" onclick="this.select()">
-                        <button class="btn btn-ghost" style="height: 40px; width: 44px; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1px solid var(--border); border-radius: 8px;" onclick="copyHubClientLink('${esc(c.password)}', this)" title="Копировать ссылку">
+                        <button class="btn btn-ghost" style="height: 40px; width: 44px; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1px solid var(--border); border-radius: 8px;" onclick="copyHubClientLink(${esc(JSON.stringify(c.password))}, this)" title="Копировать ссылку">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                         </button>
-                        <button class="btn btn-ghost" style="height: 40px; width: 44px; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1px solid var(--border); border-radius: 8px;" onclick="openQrModalForClient('${esc(c.password)}')" title="QR-код">
+                        <button class="btn btn-ghost" style="height: 40px; width: 44px; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1px solid var(--border); border-radius: 8px;" onclick="openQrModalForClient(${esc(JSON.stringify(c.password))})" title="QR-код">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><path d="M7 7h.01M17 7h.01M7 17h.01M17 17h.01"></path></svg>
                         </button>
                     </div>
@@ -9249,7 +9253,7 @@ const PANEL_HTML: &str = r##"
             <section style="display: flex; flex-direction: column; gap: 16px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: nowrap; width: 100%;">
                     <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; overflow: hidden;">
-                        <span style="font-size: 12px; color: var(--text-muted); font-family: ui-monospace, SFMono-Regular, 'Cascadia Code', Consolas, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 1; min-width: 0;" id="logFilePath" title="Путь: /etc/csqtt/csqtt.log">Путь: /etc/csqtt/csqtt.log</span>
+                        <span style="font-size: 12px; color: var(--text-muted); font-family: ui-monospace, SFMono-Regular, 'Cascadia Code', Consolas, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 1; min-width: 0;" id="logFilePath" title="Путь: /etc/wstt/wstt.log">Путь: /etc/wstt/wstt.log</span>
                         <a class="btn btn-primary" id="downloadLogBtn" href="/api/logs/download" style="padding: 4px 10px; font-size: 11px; text-decoration: none; border-radius: 8px; height: 28px; min-height: auto; display: inline-flex; align-items: center; flex-shrink: 0; white-space: nowrap;" download>Скачать</a>
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px; user-select: none; white-space: nowrap; flex-shrink: 0;">
@@ -9386,7 +9390,7 @@ const PANEL_HTML: &str = r##"
     <dialog id="profileDlg">
         <h2 id="profileDlgTitle" style="font-size: 18px; margin-bottom: 18px;">Новый профиль</h2>
         <div class="input-group"><label for="profileDlgName">Имя</label><input id="profileDlgName" maxlength="64" placeholder="3x-ui VLESS"></div>
-        <div class="input-group"><label for="profileDlgPort">Порт SOCKS5</label><input type="number" id="profileDlgPort" min="1" max="65535" value="45000" inputmode="numeric"></div>
+        <div class="input-group"><label for="profileDlgPort">Порт SOCKS5</label><input type="number" id="profileDlgPort" min="1" max="65535" value="45100" inputmode="numeric"></div>
         <div class="input-group"><label for="profileDlgUser">Логин (необязательно)</label><input id="profileDlgUser" maxlength="255" autocomplete="off"></div>
         <div class="input-group" style="margin-bottom: 0;"><label for="profileDlgPass">Пароль (необязательно)</label><input type="password" id="profileDlgPass" maxlength="255" autocomplete="new-password"></div>
         <div class="dlg-actions" style="margin-top: 20px;">
@@ -9869,14 +9873,14 @@ const PANEL_HTML: &str = r##"
                 </div>
                 <div class="api-card-body">
                     <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">
-                        Создает ключ доступа. Если <code>password</code> не указан, сервер сгенерирует надежный криптостойкий пароль. В ответе возвращаются готовая ссылка <code>link</code> (<code>csqtt://...</code>) и срок <code>expires</code>.
+                        Создает ключ доступа. Если <code>password</code> не указан, сервер сгенерирует надежный криптостойкий пароль. В ответе возвращаются готовая ссылка <code>link</code> (<code>wst://...</code>) и срок <code>expires</code>.
                     </p>
                     <div class="api-code-label">Тело запроса (JSON):</div>
                     <pre class="api-code-block"><code>{
   "name": "Пользователь @username",
   "days": 30,                     // 0 = бессрочно, 1..3650 = дней
   "password": "custom_pass",       // опционально (мин. 4 символа)
-  "peer_port": 46000,             // опционально (UDP порт)
+  "peer_port": 46100,             // опционально (UDP порт)
   "group_id": "group_id_here",     // опционально (привязка к группе)
   "vk_token": false,               // опционально (общий VK токен)
   "hash": "hash1,hash2"            // опционально (VK хеши)
@@ -9928,7 +9932,7 @@ const PANEL_HTML: &str = r##"
                     <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">
                         Изменение имени, срока, пароля, UDP-порта, группы или VK параметров:
                     </p>
-                    <pre class="api-code-block"><code>{ "name": "Новое Имя", "days": 60, "peer_port": 46000, "group_id": "" }</code></pre>
+                    <pre class="api-code-block"><code>{ "name": "Новое Имя", "days": 60, "peer_port": 46100, "group_id": "" }</code></pre>
                 </div>
             </div>
 
@@ -10028,11 +10032,11 @@ const PANEL_HTML: &str = r##"
                 <div class="api-card-header">
                     <span class="api-method get">GET</span>
                     <span class="api-path">/api/links</span>
-                    <span class="api-desc">Массив всех готовых ссылок csqtt://</span>
+                    <span class="api-desc">Массив всех готовых ссылок wst://</span>
                 </div>
                 <div class="api-card-body">
                     <p style="font-size: 12px; color: var(--text-muted);">
-                        Возвращает компактный массив объектов всех клиентов и мастер-пароля с готовыми ссылками <code>csqtt://...</code> и <code>sub_link</code> для ботов.
+                        Возвращает компактный массив объектов всех клиентов и мастер-пароля с готовыми ссылками <code>wst://...</code> и <code>sub_link</code> для ботов.
                     </p>
                 </div>
             </div>
@@ -10222,7 +10226,7 @@ const PANEL_HTML: &str = r##"
                 </div>
                 <div class="api-card-body">
                     <p style="font-size: 12px; color: var(--text-muted);">
-                        Публичная веб-страница подписки клиента или Главного пароля (без необходимости авторизации). Содержит живой векторный QR-код, прямую ссылку <code>csqtt://connect?...</code>, кнопку «Подключить в приложении WSTT» (с нативным уведомлением в приложении), контрастную кнопку копирования и инструкции.
+                        Публичная веб-страница подписки клиента или Главного пароля (без необходимости авторизации). Содержит живой векторный QR-код, прямую ссылку <code>wst://connect?...</code>, кнопку «Подключить в приложении WSTT» (с нативным уведомлением в приложении), контрастную кнопку копирования и инструкции.
                     </p>
                 </div>
             </div>
@@ -10241,11 +10245,11 @@ const PANEL_HTML: &str = r##"
   "v": 2,
   "name": "Пользователь",
   "host": "vpn.example.com",
-  "peer": 46000,
+  "peer": 46100,
   "password": "p_abc123...",
   "vk_token": "...",
   "hash": "...",
-  "link": "csqtt://connect?v=2&host=vpn.example.com&peer=46000&password=..."
+  "link": "wst://connect?v=2&host=vpn.example.com&peer=46100&password=..."
 }</code></pre>
                 </div>
             </div>
@@ -10271,7 +10275,7 @@ const PANEL_HTML: &str = r##"
                 </div>
                 <div class="api-card-body">
                     <p style="font-size: 12px; color: var(--text-muted);">
-                        Возвращает JSON-массив с параметрами подключения всех активных клиентов группы (также доступны алиасы <code>/{group_sub_uuid}/sub-group.json</code> и <code>/api/sub-group/{group_sub_uuid}</code>): <code>[{ "name": "...", "link": "csqtt://...", ... }]</code>.
+                        Возвращает JSON-массив с параметрами подключения всех активных клиентов группы (также доступны алиасы <code>/{group_sub_uuid}/sub-group.json</code> и <code>/api/sub-group/{group_sub_uuid}</code>): <code>[{ "name": "...", "link": "wst://...", ... }]</code>.
                     </p>
                 </div>
             </div>
@@ -10889,7 +10893,7 @@ async function copyText(text, btn) {
                         badge = `<span style="font-size:11px;font-weight:600;color:#f59e0b;margin-left:6px;">Подключение...</span>`;
                     }
                 }
-                let meta = p.username ? `${p.port} · ${p.username}` : `${p.port}`;
+                let meta = p.username ? `${p.port} · ${esc(p.username)}` : `${p.port}`;
                 if (isActive) {
                     if (route_active) {
                         meta += ` · ${tcp_sessions} TCP · ${udp_flows} UDP`;
@@ -10899,7 +10903,7 @@ async function copyText(text, btn) {
                 }
                 const toggleBtn = isActive
                     ? `<button title="Деактивировать" onclick="deactivateProxy()">${stopIcon}</button>`
-                    : `<button title="Активировать" onclick="activateProxy('${esc(p.id)}')">${playIcon}</button>`;
+                    : `<button title="Активировать" onclick="activateProxy(${esc(JSON.stringify(p.id))})">${playIcon}</button>`;
                 return `<div class="proxy-profile-card${isActive ? ' is-active' : ''}" data-id="${esc(p.id)}">
                     <div class="proxy-profile-dot"></div>
                     <div class="proxy-profile-body">
@@ -10908,8 +10912,8 @@ async function copyText(text, btn) {
                     </div>
                     <div class="proxy-profile-actions">
                         ${toggleBtn}
-                        <button title="Редактировать" onclick="openProfileDlg('${esc(p.id)}')">${editIcon}</button>
-                        <button class="danger" title="Удалить" onclick="deleteProxy('${esc(p.id)}','${esc(p.name)}')">${trashIcon}</button>
+                        <button title="Редактировать" onclick="openProfileDlg(${esc(JSON.stringify(p.id))})">${editIcon}</button>
+                        <button class="danger" title="Удалить" onclick="deleteProxy(${esc(JSON.stringify(p.id))},${esc(JSON.stringify(p.name))})">${trashIcon}</button>
                     </div>
                 </div>`;
             }).join('');
@@ -10963,7 +10967,7 @@ async function copyText(text, btn) {
                 title.textContent = 'Новый профиль';
                 saveBtn.textContent = 'Создать';
                 document.getElementById('profileDlgName').value = '';
-                document.getElementById('profileDlgPort').value = '45000';
+                document.getElementById('profileDlgPort').value = '45100';
                 document.getElementById('profileDlgUser').value = '';
                 document.getElementById('profileDlgPass').value = '';
             }
@@ -11054,7 +11058,7 @@ async function copyText(text, btn) {
             const isMain = x.name === "Главный пароль";
             const expiryStr = isMain ? "—" : (x.expires ? new Date(x.expires * 1000).toLocaleDateString() : "∞ Бессрочно");
             return `
-            <div class="client-card" onclick="openEditClientDlgByPassword('${esc(x.password)}')">
+            <div class="client-card" onclick="openEditClientDlgByPassword(${esc(JSON.stringify(x.password))})">
                 <div class="client-card-header">
                     <div class="client-card-title">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary); flex-shrink: 0;"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
@@ -11080,7 +11084,7 @@ async function copyText(text, btn) {
                         <span class="client-card-value">${x.active_sessions}</span>
                     </div>
                     ${x.sub_uuid ? `
-                    <button class="btn btn-ghost client-sub-btn" onclick="event.stopPropagation(); copyClientSubLink('${x.sub_uuid}', this)" title="Скопировать ссылку подписки">
+                    <button class="btn btn-ghost client-sub-btn" onclick="event.stopPropagation(); copyClientSubLink(${esc(JSON.stringify(x.sub_uuid))}, this)" title="Скопировать ссылку подписки">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                         <span>Скопировать ссылку подписки</span>
                     </button>
@@ -11093,7 +11097,7 @@ async function copyText(text, btn) {
         function renderGroupCard(g, st) {
             const stats = st || { count: 0, up: 0, down: 0, active_sessions: 0 };
             return `
-            <div class="client-card group-card" onclick="openGroupDlg('${esc(g.id)}')">
+            <div class="client-card group-card" onclick="openGroupDlg(${esc(JSON.stringify(g.id))})">
                 <div class="client-card-header">
                     <div class="client-card-title">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary); flex-shrink: 0;"><circle cx="12" cy="7" r="3.5"></circle><path d="M6 21v-2a4 4 0 0 1 8 0v2"></path><path d="M5.5 10a3 3 0 0 1 0-6"></path><path d="M2 21v-1.5a3.5 3.5 0 0 1 3-3.4"></path><path d="M18.5 4a3 3 0 0 1 0 6"></path><path d="M19 16.1a3.5 3.5 0 0 1 3 3.4V21"></path></svg>
@@ -11119,7 +11123,7 @@ async function copyText(text, btn) {
                         <span class="client-card-value">${stats.active_sessions}</span>
                     </div>
                     ${g.sub_uuid ? `
-                    <button class="btn btn-ghost" style="width: 100%; margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; padding: 7px 10px; border: 1px solid var(--primary); color: var(--primary); border-radius: 8px; font-weight: 500;" onclick="event.stopPropagation(); copyGroupSubLink('${g.sub_uuid}', this)" title="Скопировать ссылку подписки">
+                    <button class="btn btn-ghost" style="width: 100%; margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; padding: 7px 10px; border: 1px solid var(--primary); color: var(--primary); border-radius: 8px; font-weight: 500;" onclick="event.stopPropagation(); copyGroupSubLink(${esc(JSON.stringify(g.sub_uuid))}, this)" title="Скопировать ссылку подписки">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                         <span>Скопировать ссылку подписки</span>
                     </button>
@@ -11621,8 +11625,8 @@ async function copyText(text, btn) {
                             ${modeBadge}
                         </div>
                         <div style="display: flex; gap: 6px;">
-                            <button class="btn btn-ghost" style="padding: 4px 10px; font-size: 12px; height: 30px;" onclick="openEditRoutingRuleDlg('${esc(rule.id)}')">Изменить</button>
-                            <button class="btn btn-ghost" style="padding: 4px 10px; font-size: 12px; height: 30px; color: #ef4444;" onclick="deleteRoutingRule('${esc(rule.id)}')">Удалить</button>
+                            <button class="btn btn-ghost" style="padding: 4px 10px; font-size: 12px; height: 30px;" onclick="openEditRoutingRuleDlg(${esc(JSON.stringify(rule.id))})">Изменить</button>
+                            <button class="btn btn-ghost" style="padding: 4px 10px; font-size: 12px; height: 30px; color: #ef4444;" onclick="deleteRoutingRule(${esc(JSON.stringify(rule.id))})">Удалить</button>
                         </div>
                     </div>
                     <div style="display: flex; flex-wrap: wrap; gap: 6px; font-size: 12px;">
@@ -12319,7 +12323,7 @@ async function copyText(text, btn) {
                         days: +document.getElementById('edit_days').value,
                         hash: activeClient.vk_hashes || activeClient.vk_hash || "",
                         vk_token: Boolean(activeClient.vk_token),
-                        peer_port: activeClient.peer_port || window.serverDefaultPeerPort || 46000,
+                        peer_port: activeClient.peer_port || window.serverDefaultPeerPort || 46100,
                         local_port: activeClient.local_port || 0,
                         workers: parseInt(document.getElementById('edit_workers')?.value || '0', 10) || 0
                     })
@@ -12580,10 +12584,10 @@ async function copyText(text, btn) {
                     </div>
                     <div style="display: flex; gap: 8px; align-items: center;">
                         <input readonly value="${esc(link)}" style="flex: 1; height: 40px; font-size: 12px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; padding: 0 10px; background: var(--surface-hover); color: var(--text-muted); border-radius: 8px;" onclick="this.select()">
-                        <button class="btn btn-ghost" style="height: 40px; width: 44px; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1px solid var(--border); border-radius: 8px;" onclick="copyHubClientLink('${esc(c.password)}', this)" title="Копировать ссылку">
+                        <button class="btn btn-ghost" style="height: 40px; width: 44px; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1px solid var(--border); border-radius: 8px;" onclick="copyHubClientLink(${esc(JSON.stringify(c.password))}, this)" title="Копировать ссылку">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                         </button>
-                        <button class="btn btn-ghost" style="height: 40px; width: 44px; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1px solid var(--border); border-radius: 8px;" onclick="openQrModalForClient('${esc(c.password)}')" title="QR-код">
+                        <button class="btn btn-ghost" style="height: 40px; width: 44px; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1px solid var(--border); border-radius: 8px;" onclick="openQrModalForClient(${esc(JSON.stringify(c.password))})" title="QR-код">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><path d="M7 7h.01M17 7h.01M7 17h.01M17 17h.01"></path></svg>
                         </button>
                     </div>
@@ -12766,7 +12770,7 @@ async function copyText(text, btn) {
                         days: c.expires ? remainingDays : 0,
                         hash: (hashesVal !== null) ? hashesVal : (c.vk_hashes || c.vk_hash || ''),
                         vk_token: (tokenVal !== null) ? tokenVal : Boolean(c.vk_token),
-                        peer_port: c.peer_port || window.serverDefaultPeerPort || 46000,
+                        peer_port: c.peer_port || window.serverDefaultPeerPort || 46100,
                         local_port: c.local_port || 0,
                         workers: (workersVal !== null) ? workersVal : (c.workers || 0)
                     };
@@ -13194,8 +13198,10 @@ mod tests {
         assert!(PANEL_HTML.contains("DNS Адреса"));
         assert!(PANEL_HTML.contains("id=\"dns_provider\""));
         assert!(PANEL_HTML.contains("<option value=\"custom\">Ручной DNS</option>"));
-        assert!(PANEL_HTML.contains("id=\"dns_manual\""));
-        assert!(PANEL_HTML.contains("placeholder=\"ipv4,ipv4\""));
+        assert!(PANEL_HTML.contains("id=\"dns_primary\""));
+        assert!(PANEL_HTML.contains("id=\"dns_secondary\""));
+        assert!(PANEL_HTML.contains("placeholder=\"Основной IPv4 DNS\""));
+        assert!(PANEL_HTML.contains("Дополнительный IPv4 DNS (необязательно)"));
         assert!(PANEL_HTML.contains("Yandex DNS"));
         assert!(PANEL_HTML.contains("Rostelecom DNS"));
         assert!(PANEL_HTML.contains("NextDNS"));
@@ -13340,10 +13346,10 @@ mod tests {
 
     #[test]
     fn csqtt_link_encryption_and_decryption() {
-        let payload = "connect?v=2&host=1.2.3.4&peer=46000&password=testpass";
+        let payload = "connect?v=2&host=1.2.3.4&peer=46100&password=testpass";
         let encrypted1 = encrypt_csqtt_link(payload);
         let encrypted2 = encrypt_csqtt_link(payload);
-        assert!(encrypted1.starts_with("csqtt://"));
+        assert!(encrypted1.starts_with("wst://"));
         assert_eq!(
             encrypted1, encrypted2,
             "link encryption must be deterministic for identical payload"
@@ -13353,9 +13359,17 @@ mod tests {
     }
 
     #[test]
+    fn csqtt_link_legacy_scheme_remains_readable() {
+        let payload = "connect?v=2&host=1.2.3.4&peer=46100&password=legacy";
+        let current = encrypt_csqtt_link(payload);
+        let legacy = current.replacen("wst://", "csqtt://", 1);
+        assert_eq!(decrypt_csqtt_link(&legacy).as_deref(), Some(payload));
+    }
+
+    #[test]
     fn csqtt_link_legacy_plaintext_rejected() {
         use base64::Engine;
-        let payload = "connect?v=2&host=1.2.3.4&peer=46000&password=legacy";
+        let payload = "connect?v=2&host=1.2.3.4&peer=46100&password=legacy";
         let legacy_b64 =
             base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(payload.as_bytes());
         let legacy_link = format!("csqtt://{legacy_b64}");
@@ -13364,8 +13378,8 @@ mod tests {
 
     #[test]
     fn make_client_link_contains_password_and_aes_roundtrip() {
-        let link = make_client_link("1.2.3.4", 46000, "abc1234567890123", "", false, "");
-        assert!(link.starts_with("csqtt://"));
+        let link = make_client_link("1.2.3.4", 46100, "abc1234567890123", "", false, "");
+        assert!(link.starts_with("wst://"));
         let decrypted = decrypt_csqtt_link(&link).expect("must decrypt");
         assert!(decrypted.contains("password=abc1234567890123"));
         assert!(!decrypted.contains("client="));
@@ -13374,7 +13388,7 @@ mod tests {
 
     #[test]
     fn owner_link_contains_owner_password_without_workers() {
-        let link = make_client_link("1.2.3.4", 46000, "ownerpass1234567", "", false, "");
+        let link = make_client_link("1.2.3.4", 46100, "ownerpass1234567", "", false, "");
         let decrypted = decrypt_csqtt_link(&link).expect("must decrypt");
         assert!(decrypted.contains("password=ownerpass1234567"));
         assert!(!decrypted.contains("client="));

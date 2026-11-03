@@ -197,7 +197,7 @@ pub fn extract_dst_ipv4(packet: &[u8]) -> Option<[u8; 4]> {
 }
 
 pub const TUN_SUBNET_V6_PREFIX: [u8; 15] =
-    [0xfd, 0x66, 0x00, 0x67, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    [0xfd, 0x67, 0x00, 0x68, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 
 #[inline(always)]
 pub fn extract_dst_ipv6_slot(packet: &[u8]) -> Option<usize> {
@@ -334,5 +334,16 @@ mod tests {
 
         pkt[0] = 0x45;
         assert_eq!(extract_dst_ipv6_slot(&pkt), None);
+    }
+}
+
+#[cfg(test)]
+mod coexistence_tests {
+    use super::TUN_SUBNET_V6_PREFIX;
+
+    #[test]
+    fn wstt_ipv6_prefix_is_disjoint_from_csqtt() {
+        assert_eq!(&TUN_SUBNET_V6_PREFIX[..4], &[0xfd, 0x67, 0x00, 0x68]);
+        assert_ne!(&TUN_SUBNET_V6_PREFIX[..4], &[0xfd, 0x66, 0x00, 0x67]);
     }
 }

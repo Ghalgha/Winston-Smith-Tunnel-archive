@@ -22,7 +22,7 @@ use tokio_util::sync::CancellationToken;
 pub const UDP_FLOW_IDLE: Duration = Duration::from_secs(60);
 #[cfg(target_os = "linux")]
 const SOCKS_HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(5);
-const TPROXY_BASE_PORT: u16 = 10666;
+const TPROXY_BASE_PORT: u16 = 11666;
 const GLOBAL_TCP_SESSION_LIMIT: usize = 384;
 const GLOBAL_UDP_FLOW_LIMIT: usize = 784;
 const EXPANDED_TCP_SESSION_LIMIT: usize = 1_512;
@@ -1437,9 +1437,6 @@ mod linux {
     }
 
     fn allowed_client(client: SocketAddrV4) -> bool {
-        if client.ip().is_private() {
-            return true;
-        }
         static SUBNET: std::sync::OnceLock<Option<(u32, u32)>> = std::sync::OnceLock::new();
         let prefix = SUBNET.get_or_init(|| {
             crate::tun_device::TUN_SUBNET
@@ -1454,7 +1451,7 @@ mod linux {
                 })
         });
         let Some((base, bits)) = prefix else {
-            return true;
+            return false;
         };
         let mask = if *bits == 32 {
             u32::MAX
@@ -1462,6 +1459,32 @@ mod linux {
             u32::MAX << (32 - *bits)
         };
         u32::from(*client.ip()) & mask == base & mask
+    }
+
+    #[cfg(test)]
+    mod allowed_client_tests {
+        use super::allowed_client;
+        use std::net::{Ipv4Addr, SocketAddrV4};
+
+        #[test]
+        fn only_wstt_tun_subnet_can_reach_transparent_proxy() {
+            assert!(allowed_client(SocketAddrV4::new(
+                Ipv4Addr::new(10, 67, 68, 2),
+                12345,
+            )));
+            assert!(!allowed_client(SocketAddrV4::new(
+                Ipv4Addr::new(10, 66, 67, 2),
+                12345,
+            )));
+            assert!(!allowed_client(SocketAddrV4::new(
+                Ipv4Addr::new(192, 168, 1, 2),
+                12345,
+            )));
+            assert!(!allowed_client(SocketAddrV4::new(
+                Ipv4Addr::new(8, 8, 8, 8),
+                12345,
+            )));
+        }
     }
 
     pub(super) fn parse_orig_dst(mut control: &[u8]) -> Option<SocketAddrV4> {
@@ -2365,7 +2388,7 @@ mod tests {
         let first = tproxy_port(1);
         let second = tproxy_port(2);
         assert_ne!(first, second);
-        assert!(first >= 10666);
+        assert!(first >= 11666);
         assert_eq!(tproxy_port(1), first);
     }
 

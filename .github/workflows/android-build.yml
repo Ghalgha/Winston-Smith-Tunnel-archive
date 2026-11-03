@@ -20,6 +20,87 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+
+      # Run the complete Linux/Rust validation before provisioning the Android SDK/NDK.
+      # A Rust test or cross-build failure therefore exits before the expensive Android steps.
+      - name: Verify PowerShell for provenance checks
+        run: pwsh --version
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.15.2
+      - name: Run Rust checks and build Linux server binaries
+        run: |
+          cargo install cargo-zigbuild --locked
+          chmod +x rust-server/build_linux.sh
+          bash -n app/src/main/assets/deploy.sh
+          if grep -Eq '(/etc/csqtt|/usr/local/bin/csqtt|/usr/local/lib/csqtt|csqtt\.service|CSQTT_MANAGED|CSQTT_TPROXY|CSQTT_LOCAL_SOCKS|CSQTT_SOCKS|CSQTT_CASCADE_NO_QUIC|csqtp\*)' app/src/main/assets/deploy.sh; then
+            echo 'WSTT installer contains an original CSQTT-owned resource' >&2
+            exit 1
+          fi
+          if grep -REq 'mitigations=off|net\.ipv4\.conf\.(all|default)\.rp_filter|/proc/sys/net/ipv4/conf/(all|default)/rp_filter|sysctl --system' app/src/main/assets/deploy.sh rust-server --include='*.rs'; then
+            echo 'WSTT installer changes host-wide security or routing policy' >&2
+            exit 1
+          fi
+          grep -Fq 'delete_marked_rules "$table" "$chain" "$marker" ip6tables' app/src/main/assets/deploy.sh
+          if grep -R -q 'CSQTT_MANAGED' rust-server --include='*.rs'; then
+            echo 'WSTT Rust code must not reuse CSQTT firewall ownership markers' >&2
+            exit 1
+          fi
+          if grep -Eq 'net\.core\.default_qdisc|net\.ipv4\.tcp_congestion_control|net\.ipv4\.tcp_(sack|dsack|reordering|window_scaling|fastopen|slow_start_after_idle)' rust-server/tokio_io.rs; then
+            echo 'WSTT runtime must not rewrite host-wide TCP tuning' >&2
+            exit 1
+          fi
+          grep -Fq 'WSTT_MANAGED' rust-server/tokio_io.rs
+          if grep -Fq 'client.ip().is_private()' rust-server/tproxy.rs; then
+            echo 'WSTT transparent proxy must accept only its own tunnel subnet' >&2
+            exit 1
+          fi
+          if grep -Eq 'net\.ipv6\.conf\.(default\.(disable_ipv6|forwarding|accept_ra)|all\.(disable_ipv6|accept_ra))' app/src/main/assets/deploy.sh rust-server/*.rs; then
+            echo 'WSTT must not change host-wide IPv6 defaults or router-advertisement policy' >&2
+            exit 1
+          fi
+          if grep -Fq 'install -d -m 0755 /run/lock' app/src/main/assets/deploy.sh; then
+            echo 'WSTT must preserve the host /run/lock directory permissions' >&2
+            exit 1
+          fi
+          if grep -Eq 'chmod[[:space:]]+666[[:space:]]+/dev/net/tun' app/src/main/assets/deploy.sh; then
+            echo 'WSTT installer must not make the host TUN device world-writable' >&2
+            exit 1
+          fi
+          if grep -Eq 'secret_eq\((key|token), &app\.startup_main_password\)' rust-server/web_panel.rs; then
+            echo 'WSTT must not accept a retired startup password for web-panel authentication' >&2
+            exit 1
+          fi
+          if grep -q 'csqtt_session' rust-server/web_panel.rs; then
+            echo 'WSTT web panel must not reuse the CSQTT browser session cookie' >&2
+            exit 1
+          fi
+          if grep -q 'android:scheme="csqtt"' app/src/main/AndroidManifest.xml; then
+            echo 'WSTT must not claim the CSQTT Android URI scheme' >&2
+            exit 1
+          fi
+          grep -Fq 'android:scheme="wst"' app/src/main/AndroidManifest.xml
+          python3 - <<'PY'
+          import pathlib, re, sys
+          source = pathlib.Path("rust-server/web_panel.rs").read_text()
+          handlers = re.findall(r'on(?:click|change|input|error)="([^"]*)"', source)
+          if any("${" in value and "esc(JSON.stringify(" not in value for value in handlers):
+              print("Unsafe dynamic value in an HTML event attribute", file=sys.stderr)
+              sys.exit(1)
+          if "· ${p.username}" in source:
+              print("Unescaped proxy username in rendered HTML", file=sys.stderr)
+              sys.exit(1)
+          PY
+          if grep -q 'force_release_peer_port' app/src/main/assets/deploy.sh; then
+            echo 'WSTT installer must not forcibly terminate unknown UDP port listeners' >&2
+            exit 1
+          fi
+          rust-server/build_linux.sh --tests
+          for asset in csqtt-linux-amd64 csqtt-linux-arm64 csqtt-linux-armv7; do
+            test -s "app/src/main/assets/$asset"
+          done
+
+      # Android tooling is only provisioned after Rust tests and Linux cross-build pass.
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -35,29 +116,16 @@ jobs:
             ln -s android-37.0 "$SDK_ROOT/platforms/android-37"
           fi
           test -d "$SDK_ROOT/platforms/android-37"
-      - name: Verify PowerShell for provenance checks
-        run: pwsh --version
-      - name: Install Rust and build native Android libraries
+      - name: Build native Android libraries
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential cmake ninja-build
           chmod +x scripts/build_android_native.sh
           scripts/build_android_native.sh
-      - uses: mlugg/setup-zig@v2
-        with:
-          version: 0.15.2
-      - name: Build Linux server binaries and embedded web panel
-        run: |
-          cargo install cargo-zigbuild --locked
-          chmod +x rust-server/build_linux.sh
-          rust-server/build_linux.sh --no-tests
-          for asset in csqtt-linux-amd64 csqtt-linux-arm64 csqtt-linux-armv7; do
-            test -s "app/src/main/assets/$asset"
-          done
       - name: Build debug APK for CI verification only
         run: |
           chmod +x ./gradlew
-          ./gradlew --no-daemon :app:assembleDebug
+          ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleDebug
           for abi in arm64-v8a armeabi-v7a x86_64; do
             found=false
             for apk in app/build/outputs/apk/debug/*.apk; do

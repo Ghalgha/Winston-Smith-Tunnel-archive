@@ -42,13 +42,13 @@ internal fun WebPanelInfoDialog(onDismiss: () -> Unit) {
             ) {
                 Text("Веб-панель управления", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text(
-                    text = "У CSQTT есть собственная веб-панель управления сервером. По умолчанию она расположена на порту 46002; если включить режим ручных портов, порт можно изменить на свой.",
+                    text = "У WSTT есть собственная веб-панель управления сервером. По умолчанию она расположена на порту 46102; если включить режим ручных портов, порт можно изменить на свой.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 16.sp,
                 )
                 Text(
-                    text = "Кнопка «Панель» открывает панель в браузере по адресу вашего сервера. Чтобы панель заработала, укажите IP сервера, придумайте логин и пароль в окне «Авторизация» и установите CSQTT на сервер.",
+                    text = "Кнопка «Панель» открывает панель в браузере по адресу вашего сервера. Чтобы панель заработала, укажите IP сервера, придумайте логин и пароль в окне «Авторизация» и установите WSTT на сервер.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 16.sp,

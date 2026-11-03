@@ -291,7 +291,7 @@ pub async fn run_dpi_server() -> Result<()> {
     if !cfg!(feature = "diagnostics") {
         return Ok(());
     }
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:46003").await?;
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:46103").await?;
     let clients = Arc::new(Semaphore::new(DIAGNOSTIC_CLIENT_LIMIT));
     loop {
         let Ok((socket, _)) = listener.accept().await else {
@@ -530,7 +530,7 @@ fn record_crypto_op(enabled: bool) {
 }
 
 pub async fn run_syscalls_server(app: Arc<App>) -> Result<()> {
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:46004").await?;
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:46104").await?;
     let clients = Arc::new(Semaphore::new(DIAGNOSTIC_CLIENT_LIMIT));
     loop {
         let Ok((socket, _)) = listener.accept().await else {
@@ -5399,10 +5399,10 @@ mod tests {
     fn hot_tunnel_configuration_preserves_client_ip_and_replaces_dns() {
         let payload = format!(
             "TUNCONF:{}:{}:0:stream-v1",
-            Ipv4Addr::from([10, 66, 67, 42]),
+            Ipv4Addr::from([10, 67, 68, 42]),
             "8.8.8.8,8.8.4.4"
         );
-        assert_eq!(payload, "TUNCONF:10.66.67.42:8.8.8.8,8.8.4.4:0:stream-v1");
+        assert_eq!(payload, "TUNCONF:10.67.68.42:8.8.8.8,8.8.4.4:0:stream-v1");
     }
 
     #[test]
@@ -5414,14 +5414,14 @@ mod tests {
         db.passwords.insert(
             "SlotSecretPass01".to_owned(),
             PasswordEntry {
-                ip: "10.66.67.3".to_owned(),
+                ip: "10.67.68.3".to_owned(),
                 ..PasswordEntry::default()
             },
         );
         db.passwords.insert(
             "SlotSecretPass02".to_owned(),
             PasswordEntry {
-                ip: "10.66.67.4".to_owned(),
+                ip: "10.67.68.4".to_owned(),
                 is_deactivated: true,
                 ..PasswordEntry::default()
             },
@@ -5641,7 +5641,7 @@ mod tests {
 
     #[test]
     fn tunconf_padding_is_sized_for_audio_frames() {
-        let base = "TUNCONF:10.66.67.2:1.1.1.1:9000:stream-v1";
+        let base = "TUNCONF:10.67.68.2:1.1.1.1:9000:stream-v1";
         let padded = pad_tunconf(base);
         assert_eq!(padded, base);
     }
@@ -6234,7 +6234,7 @@ mod tests {
     #[test]
     fn test_stream_descriptor_tracking_and_no_leak_on_reconnect_and_teardown() {
         use crate::tun_device::RouteTable;
-        let ip = [10, 66, 67, 10];
+        let ip = [10, 67, 68, 10];
         let mut table = RouteTable::new();
 
         assert!(table.register(ip, 101, 1, 1, 0));

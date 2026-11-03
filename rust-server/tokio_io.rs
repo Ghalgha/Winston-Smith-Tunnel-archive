@@ -1081,21 +1081,13 @@ impl TokioIo {
     }
 }
 
-const MANAGED_RULE_COMMENT: &str = "CSQTT_MANAGED";
+const MANAGED_RULE_COMMENT: &str = "WSTT_MANAGED";
 const FIREWALL_REMOVE_PASSES: usize = 4;
+// Only the two forwarding switches are host-wide requirements shared by VPN instances.
+// Keep TCP tuning and reverse-path filtering scoped to WSTT's own interface.
 const KERNEL_PARAMETERS: &[(&str, &str)] = &[
     ("/proc/sys/net/ipv4/ip_forward", "1"),
     ("/proc/sys/net/ipv6/conf/all/forwarding", "1"),
-    ("/proc/sys/net/ipv4/conf/all/rp_filter", "2"),
-    ("/proc/sys/net/ipv4/conf/default/rp_filter", "2"),
-    ("/proc/sys/net/core/default_qdisc", "fq"),
-    ("/proc/sys/net/ipv4/tcp_congestion_control", "bbr"),
-    ("/proc/sys/net/ipv4/tcp_sack", "1"),
-    ("/proc/sys/net/ipv4/tcp_dsack", "1"),
-    ("/proc/sys/net/ipv4/tcp_reordering", "15"),
-    ("/proc/sys/net/ipv4/tcp_window_scaling", "1"),
-    ("/proc/sys/net/ipv4/tcp_fastopen", "3"),
-    ("/proc/sys/net/ipv4/tcp_slow_start_after_idle", "0"),
 ];
 
 fn set_kernel_parameter(path: &str, value: &str) {
@@ -1291,12 +1283,17 @@ struct KernelNetworking {
 
 impl KernelNetworking {
     fn install(tun_iface: &str) -> Self {
-        let _ = std::process::Command::new("modprobe")
-            .arg("tcp_bbr")
-            .output();
         for (path, value) in KERNEL_PARAMETERS {
             set_kernel_parameter(path, value);
         }
+        set_kernel_parameter(
+            &format!("/proc/sys/net/ipv6/conf/{tun_iface}/disable_ipv6"),
+            "0",
+        );
+        set_kernel_parameter(
+            &format!("/proc/sys/net/ipv6/conf/{tun_iface}/forwarding"),
+            "1",
+        );
         set_kernel_parameter(
             &format!("/proc/sys/net/ipv4/conf/{tun_iface}/rp_filter"),
             "2",

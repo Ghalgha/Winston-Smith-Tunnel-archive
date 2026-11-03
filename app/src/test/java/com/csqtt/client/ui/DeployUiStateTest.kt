@@ -66,8 +66,8 @@ class DeployUiStateTest {
         )
 
         assertTrue(ports.ssh == 22)
-        assertTrue(ports.peer == 46000)
-        assertTrue(ports.web == 46002)
+        assertTrue(ports.peer == 46100)
+        assertTrue(ports.web == 46102)
     }
 
     @Test

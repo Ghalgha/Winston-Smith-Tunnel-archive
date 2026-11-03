@@ -197,16 +197,16 @@ class MainActivity : ComponentActivity() {
         val raw = intent.dataString ?: return
         val link = parseCsqttLink(raw)
         if (link == null) {
-            showRaisedToast("Неверная ссылка CSQTT", Toast.LENGTH_SHORT)
+            showRaisedToast("Неверная ссылка WSTT", Toast.LENGTH_SHORT)
             return
         }
         android.app.AlertDialog.Builder(this)
-            .setTitle("Импорт конфигурации CSQTT")
+            .setTitle("Импорт конфигурации WSTT")
             .setMessage("Хост: ${link.host}\nPeer: ${link.port}\n\nЗаменить текущую конфигурацию?")
             .setPositiveButton("Импортировать") { _, _ ->
                 lifecycleScope.launch {
                     appSettingsStore.saveCsqttParticipantLink(raw)
-                    showRaisedToast("Конфигурация CSQTT успешно подключена", Toast.LENGTH_SHORT)
+                    showRaisedToast("Конфигурация WSTT успешно подключена", Toast.LENGTH_SHORT)
                 }
             }
             .setNegativeButton("Отмена", null)

@@ -2,9 +2,9 @@ use crate::packet::extract_dst_ipv4;
 use std::collections::HashMap;
 use std::net::Ipv4Addr;
 
-pub const TUN_IFACE: &str = "csqtt1";
-pub const TUN_SUBNET: &str = "10.66.67.0/24";
-const SUBNET_PREFIX: [u8; 3] = [10, 66, 67];
+pub const TUN_IFACE: &str = "wstt1";
+pub const TUN_SUBNET: &str = "10.67.68.0/24";
+const SUBNET_PREFIX: [u8; 3] = [10, 67, 68];
 
 pub type SessionId = u64;
 pub type RegistrationId = u64;
@@ -37,6 +37,7 @@ enum FlowKey {
         src: [u8; 4],
         dst: [u8; 4],
         proto: u8,
+        fragment_id: Option<u16>,
         sport: u16,
         dport: u16,
     },
@@ -82,18 +83,24 @@ fn flow_key(packet: &[u8]) -> Option<FlowKey> {
             let proto = packet[9];
             let src = [packet[12], packet[13], packet[14], packet[15]];
             let dst = [packet[16], packet[17], packet[18], packet[19]];
-            // Non-initial fragments carry no transport header; key them without
-            // ports so they still follow the same flow.
-            let fragment_offset = u16::from_be_bytes([packet[6], packet[7]]) & 0x1fff;
-            let (sport, dport) = if fragment_offset == 0 {
-                transport_ports(packet, ihl, proto)
-            } else {
+            // All fragments of one IPv4 datagram must share a key. The first
+            // fragment has transport ports while later fragments do not, so
+            // key every fragmented datagram by its IP identification instead.
+            let fragment_field = u16::from_be_bytes([packet[6], packet[7]]);
+            let fragment_offset = fragment_field & 0x1fff;
+            let more_fragments = fragment_field & 0x2000 != 0;
+            let fragmented = fragment_offset != 0 || more_fragments;
+            let fragment_id = fragmented.then(|| u16::from_be_bytes([packet[4], packet[5]]));
+            let (sport, dport) = if fragmented {
                 (0, 0)
+            } else {
+                transport_ports(packet, ihl, proto)
             };
             Some(FlowKey::V4 {
                 src,
                 dst,
                 proto,
+                fragment_id,
                 sport,
                 dport,
             })
@@ -209,7 +216,9 @@ impl ClientRoute {
 
     fn evict_flows(&mut self, now: std::time::Instant) {
         self.flow_evict_counter = self.flow_evict_counter.wrapping_add(1);
-        if self.flow_evict_counter % FLOW_EVICT_EVERY != 0 && self.flows.len() < FLOW_TABLE_MAX {
+        if !self.flow_evict_counter.is_multiple_of(FLOW_EVICT_EVERY)
+            && self.flows.len() < FLOW_TABLE_MAX
+        {
             return;
         }
         self.flows
@@ -472,7 +481,7 @@ mod tests {
     use super::*;
 
     fn ip(last: u8) -> [u8; 4] {
-        [10, 66, 67, last]
+        [10, 67, 68, last]
     }
 
     #[test]
@@ -547,7 +556,7 @@ mod tests {
         pkt[2..4].copy_from_slice(&(len as u16).to_be_bytes());
         pkt[9] = 6;
         pkt[12..16].copy_from_slice(&[140, 82, 121, 4]);
-        pkt[16..20].copy_from_slice(&[10, 66, 67, 2]);
+        pkt[16..20].copy_from_slice(&[10, 67, 68, 2]);
         pkt[20..22].copy_from_slice(&80u16.to_be_bytes());
         pkt[22..24].copy_from_slice(&sport.to_be_bytes());
         pkt
@@ -559,10 +568,31 @@ mod tests {
         pkt[2..4].copy_from_slice(&(len as u16).to_be_bytes());
         pkt[9] = 17;
         pkt[12..16].copy_from_slice(&[155, 133, 240, 10]);
-        pkt[16..20].copy_from_slice(&[10, 66, 67, 2]);
+        pkt[16..20].copy_from_slice(&[10, 67, 68, 2]);
         pkt[20..22].copy_from_slice(&27015u16.to_be_bytes());
         pkt[22..24].copy_from_slice(&sport.to_be_bytes());
         pkt
+    }
+
+    #[test]
+    fn ipv4_fragments_of_one_datagram_share_a_flow_key() {
+        let mut first = tcp_packet(1200, 49152);
+        first[4..6].copy_from_slice(&0x4a31u16.to_be_bytes());
+        first[6..8].copy_from_slice(&0x2000u16.to_be_bytes()); // MF, offset 0
+
+        let mut later = vec![0u8; 800];
+        later[0] = 0x45;
+        let later_len = later.len() as u16;
+        later[2..4].copy_from_slice(&later_len.to_be_bytes());
+        later[4..6].copy_from_slice(&0x4a31u16.to_be_bytes());
+        later[6..8].copy_from_slice(&0x0001u16.to_be_bytes()); // offset > 0
+        later[9] = 6;
+        later[12..16].copy_from_slice(&[140, 82, 121, 4]);
+        later[16..20].copy_from_slice(&[10, 67, 68, 2]);
+
+        assert_eq!(flow_key(&first), flow_key(&later));
+        later[4..6].copy_from_slice(&0x4a32u16.to_be_bytes());
+        assert_ne!(flow_key(&first), flow_key(&later));
     }
 
     #[test]
@@ -633,7 +663,7 @@ mod tests {
         let mut pkt4 = [0u8; 20];
         pkt4[0] = 0x45;
         pkt4[2..4].copy_from_slice(&20u16.to_be_bytes());
-        pkt4[16..20].copy_from_slice(&[10, 66, 67, 5]);
+        pkt4[16..20].copy_from_slice(&[10, 67, 68, 5]);
         assert_eq!(RouteTable::packet_key(&pkt4), Some(5));
 
         let mut pkt6 = [0u8; 40];
@@ -709,7 +739,7 @@ mod tests {
                         pkt[0] = 0x45;
                         pkt[9] = 6;
                         pkt[12..16].copy_from_slice(&[185, 220, 100, 50]);
-                        pkt[16..20].copy_from_slice(&[10, 66, 67, 2]);
+                        pkt[16..20].copy_from_slice(&[10, 67, 68, 2]);
                         pkt[20..22].copy_from_slice(&443u16.to_be_bytes());
                         pkt[22..24].copy_from_slice(&54321u16.to_be_bytes());
                         pkt[24..28].copy_from_slice(&cs64_seq.to_be_bytes());
@@ -731,7 +761,7 @@ mod tests {
                         pkt[0] = 0x45;
                         pkt[9] = 17;
                         pkt[12..16].copy_from_slice(&[155, 133, 240, 10]);
-                        pkt[16..20].copy_from_slice(&[10, 66, 67, 2]);
+                        pkt[16..20].copy_from_slice(&[10, 67, 68, 2]);
                         pkt[20..22].copy_from_slice(&27015u16.to_be_bytes());
                         pkt[22..24].copy_from_slice(&27015u16.to_be_bytes());
                         pkt[28..32].copy_from_slice(&cs128_seq.to_be_bytes());
@@ -751,7 +781,7 @@ mod tests {
                     bulk_pkt[0] = 0x45;
                     bulk_pkt[9] = 6;
                     bulk_pkt[12..16].copy_from_slice(&[140, 82, 121, 4]);
-                    bulk_pkt[16..20].copy_from_slice(&[10, 66, 67, 2]);
+                    bulk_pkt[16..20].copy_from_slice(&[10, 67, 68, 2]);
                     bulk_pkt[20..22].copy_from_slice(&80u16.to_be_bytes());
                     bulk_pkt[22..24].copy_from_slice(&49152u16.to_be_bytes());
                     bulk_pkt[24..28].copy_from_slice(&bulk_seq.to_be_bytes());
@@ -808,5 +838,19 @@ mod tests {
                 assert!(throughput_mbps > 0.0);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod coexistence_tests {
+    use super::{SUBNET_PREFIX, TUN_IFACE, TUN_SUBNET};
+
+    #[test]
+    fn wstt_tun_identity_is_disjoint_from_csqtt() {
+        assert_eq!(TUN_IFACE, "wstt1");
+        assert_eq!(TUN_SUBNET, "10.67.68.0/24");
+        assert_eq!(SUBNET_PREFIX, [10, 67, 68]);
+        assert_ne!(TUN_IFACE, "csqtt1");
+        assert_ne!(TUN_SUBNET, "10.66.67.0/24");
     }
 }
