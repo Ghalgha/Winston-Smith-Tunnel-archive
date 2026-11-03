@@ -115,7 +115,7 @@ impl FdReceiver {
                             MsgFlags::empty(),
                         ) {
                             Ok(message) => {
-                                if message.bytes != 1 || data[0] != 1 {
+                                if message.bytes != 1 || slices[0][0] != 1 {
                                     break 'conn;
                                 }
                                 let controls = match message.cmsgs() {
