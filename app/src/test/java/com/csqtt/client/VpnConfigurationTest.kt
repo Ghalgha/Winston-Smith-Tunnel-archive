@@ -15,6 +15,16 @@ class VpnConfigurationTest {
     @Test
     fun wsttUsesItsOwnTunSocketNamespace() {
         assertEquals("wstt_tun_uds", TunnelManager.TUN_UDS_NAME)
+        assertTrue(
+            File("src/main/java/com/csqtt/client/TunnelManager.kt")
+                .readText()
+                .contains("\"-tun-uds\", TUN_UDS_NAME")
+        )
+        assertTrue(
+            File("src/main/java/com/csqtt/client/TunVpnService.kt")
+                .readText()
+                .contains("LocalSocketAddress(TunnelManager.TUN_UDS_NAME")
+        )
     }
 
     @Test
