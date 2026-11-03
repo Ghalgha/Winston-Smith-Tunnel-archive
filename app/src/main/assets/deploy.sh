@@ -1189,22 +1189,38 @@ release_owned_peer_port() {
         peer_port_is_busy || return 0
         pids="\$(peer_port_pids)"
         if [ -z "\$pids" ]; then
-            echo "[WSTT] UDP/\$PEER_PORT is occupied by a runtime without visible PID" >&2
+            echo "[WSTT] UDP/\$PEER_PORT is occupied but its owner PID is unavailable; refusing recovery" >&2
             ss -H -lunp "sport = :\$PEER_PORT" >&2 || true
             return 24
         fi
+
+        # Validate every listener before signalling any process. Never touch CSQTT
+        # or another service if it shares the configured UDP port.
         for pid in \$pids; do
-            if [ "\$attempt" -le 2 ]; then
-                echo "[WSTT] UDP/\$PEER_PORT runtime PID \$pid; terminating" >&2
-                kill -TERM "\$pid" 2>/dev/null || true
-            else
-                echo "[WSTT] UDP/\$PEER_PORT runtime PID \$pid; killing" >&2
-                kill -KILL "\$pid" 2>/dev/null || true
+            case "\$pid" in ''|*[!0-9]*)
+                echo "[WSTT] Invalid listener PID on UDP/\$PEER_PORT; refusing recovery" >&2
+                return 24
+                ;;
+            esac
+            if ! wstt_process_is_owned "\$pid"; then
+                echo "[WSTT] UDP/\$PEER_PORT belongs to foreign PID \$pid; refusing to stop it" >&2
+                ss -H -lunp "sport = :\$PEER_PORT" >&2 || true
+                return 24
             fi
+        done
+
+        for pid in \$pids; do
+            # Recheck ownership immediately before signalling to reduce PID-reuse risk.
+            if ! wstt_process_is_owned "\$pid"; then
+                echo "[WSTT] PID \$pid changed owner; refusing to signal it" >&2
+                return 24
+            fi
+            echo "[WSTT] Stopping owned WSTT runtime PID \$pid (attempt \$attempt)" >&2
+            kill -TERM "\$pid" 2>/dev/null || true
         done
         sleep 0.2
     done
-    echo "[WSTT] UDP/\$PEER_PORT did not release" >&2
+    echo "[WSTT] UDP/\$PEER_PORT did not release after graceful WSTT shutdown" >&2
     ss -H -lunp "sport = :\$PEER_PORT" >&2 || true
     return 24
 }
