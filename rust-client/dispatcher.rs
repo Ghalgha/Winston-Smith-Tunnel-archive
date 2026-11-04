@@ -153,7 +153,6 @@ fn flow_key(packet: &[u8]) -> Option<FlowKey> {
             let dst: [u8; 16] = packet[24..40].try_into().ok()?;
             let mut next_header = packet[6];
             let mut offset = 40usize;
-            let mut fragment_id = None;
 
             // Walk the bounded IPv6 extension-header chain. A non-initial
             // fragment cannot expose the transport header, so all fragments
@@ -209,7 +208,6 @@ fn flow_key(packet: &[u8]) -> Option<FlowKey> {
                                 dport: 0,
                             });
                         }
-                        fragment_id = Some(id);
                         next_header = following;
                         offset += 8;
                     }
@@ -220,7 +218,7 @@ fn flow_key(packet: &[u8]) -> Option<FlowKey> {
                             src,
                             dst,
                             proto: next_header,
-                            fragment_id,
+                            fragment_id: None,
                             sport,
                             dport,
                         });
