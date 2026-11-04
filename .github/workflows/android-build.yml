@@ -97,6 +97,9 @@ jobs:
             test -s "app/src/main/assets/$asset"
           done
 
+      - name: Run Rust client unit tests
+        run: cargo +1.97.1 test --locked --manifest-path rust-client/Cargo.toml --all-targets
+
       # Android tooling is only provisioned after Rust tests and Linux cross-build pass.
       - uses: actions/setup-java@v4
         with:
