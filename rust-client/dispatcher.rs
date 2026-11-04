@@ -1912,9 +1912,71 @@ mod tests {
     }
 
     #[test]
+    fn ipv4_fragments_share_one_flow_key() {
+        let mut first = ipv4_packet(17, 12000, 443, 28);
+        first[4..6].copy_from_slice(&0x1234u16.to_be_bytes());
+        first[6..8].copy_from_slice(&0x2000u16.to_be_bytes()); // MF, offset 0
+
+        let mut later = ipv4_packet(17, 0, 0, 28);
+        later[4..6].copy_from_slice(&0x1234u16.to_be_bytes());
+        later[6..8].copy_from_slice(&1u16.to_be_bytes()); // offset 1
+
+        assert_eq!(flow_key(&first), flow_key(&later));
+        assert!(matches!(
+            flow_key(&first),
+            Some(FlowKey::V4 { fragment_id: Some(0x1234), sport: 0, dport: 0, .. })
+        ));
+    }
+
+    #[test]
+    fn ipv6_hop_by_hop_extension_is_walked_before_transport() {
+        let mut packet = vec![0u8; 56];
+        packet[0] = 0x60;
+        packet[4..6].copy_from_slice(&16u16.to_be_bytes());
+        packet[6] = 0; // Hop-by-Hop Options
+        packet[8..24].copy_from_slice(&[0x20, 1, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
+        packet[24..40].copy_from_slice(&[0x20, 1, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2]);
+        packet[40] = 17; // UDP follows
+        packet[41] = 0; // 8-byte extension header
+        packet[48..50].copy_from_slice(&27015u16.to_be_bytes());
+        packet[50..52].copy_from_slice(&443u16.to_be_bytes());
+
+        assert!(matches!(
+            flow_key(&packet),
+            Some(FlowKey::V6 { proto: 17, sport: 27015, dport: 443, fragment_id: None, .. })
+        ));
+    }
+
+    #[test]
+    fn ipv6_fragments_share_one_flow_key() {
+        let mut first = vec![0u8; 56];
+        first[0] = 0x60;
+        first[4..6].copy_from_slice(&16u16.to_be_bytes());
+        first[6] = 44;
+        first[8..24].copy_from_slice(&[0x20, 1, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
+        first[24..40].copy_from_slice(&[0x20, 1, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2]);
+        first[40] = 17;
+        first[42..44].copy_from_slice(&1u16.to_be_bytes()); // first fragment, M=1
+        first[44..48].copy_from_slice(&0x12345678u32.to_be_bytes());
+        first[48..50].copy_from_slice(&27015u16.to_be_bytes());
+        first[50..52].copy_from_slice(&443u16.to_be_bytes());
+
+        let mut later = first.clone();
+        later[42..44].copy_from_slice(&8u16.to_be_bytes()); // offset 1, M=0
+        later[48..56].fill(0);
+
+        assert_eq!(flow_key(&first), flow_key(&later));
+        assert!(matches!(
+            flow_key(&first),
+            Some(FlowKey::V6 { proto: 17, fragment_id: Some(0x12345678), sport: 0, dport: 0, .. })
+        ));
+    }
+
+    #[test]
     fn flow_key_parses_ipv6_transport_ports() {
         let mut packet = vec![0u8; 60];
         packet[0] = 0x60;
+        packet[4..6].copy_from_slice(&20u16.to_be_bytes());
         packet[6] = 17;
         packet[8..24]
             .copy_from_slice(&[0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
