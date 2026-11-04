@@ -413,7 +413,7 @@ async fn run(arguments: Arguments) -> Result<i32> {
         pool,
         stats,
         events: events.clone(),
-        paused,
+        paused: paused.clone(),
         config_tx,
         start_pacer: Arc::new(WorkerStartPacer::new(WORKER_START_INTERVAL)),
         credential_pacer: Arc::new(tokio::sync::Mutex::new(())),
