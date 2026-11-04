@@ -1,6 +1,7 @@
 package com.csqtt.client
 
 import android.annotation.SuppressLint
+import android.net.Uri
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
@@ -14,6 +15,9 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.webkit.WebMessageCompat
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -69,14 +73,14 @@ object CaptchaWebViewManager {
                     try {
                         const data = await clone.json();
                         if (data.response && data.response.success_token) {
-                            window.CsqttCaptcha.onSuccess(data.response.success_token);
+                            window.CsqttCaptcha.postMessage(JSON.stringify({type: 'success', token: data.response.success_token}));
                         } else if (
                             data.response &&
                             data.response.show_captcha_type === 'slider'
                         ) {
-                            window.CsqttCaptcha.onSliderDetected('check_response');
+                            window.CsqttCaptcha.postMessage(JSON.stringify({type: 'slider'}));
                         } else if (data.error) {
-                            window.CsqttCaptcha.onError(JSON.stringify(data.error));
+                            window.CsqttCaptcha.postMessage(JSON.stringify({type: 'error'}));
                         }
                     } catch(e) {}
                     return response;
@@ -97,14 +101,14 @@ object CaptchaWebViewManager {
                         try {
                             const data = JSON.parse(xhr.responseText);
                             if (data.response && data.response.success_token) {
-                                window.CsqttCaptcha.onSuccess(data.response.success_token);
+                                window.CsqttCaptcha.postMessage(JSON.stringify({type: 'success', token: data.response.success_token}));
                             } else if (
                                 data.response &&
                                 data.response.show_captcha_type === 'slider'
                             ) {
-                                window.CsqttCaptcha.onSliderDetected('check_response');
+                                window.CsqttCaptcha.postMessage(JSON.stringify({type: 'slider'}));
                             } else if (data.error) {
-                                window.CsqttCaptcha.onError(JSON.stringify(data.error));
+                                window.CsqttCaptcha.postMessage(JSON.stringify({type: 'error'}));
                             }
                         } catch(e) {}
                     });
@@ -199,7 +203,45 @@ object CaptchaWebViewManager {
 
                     Log.d(TAG, "WebView UA: ${settings.userAgentString}")
 
-                    addJavascriptInterface(CaptchaJSBridge(), "CsqttCaptcha")
+                    check(WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
+                        "Secure CAPTCHA messaging is not supported by this WebView"
+                    }
+                    WebViewCompat.addWebMessageListener(
+                        this,
+                        "CsqttCaptcha",
+                        setOf(
+                            "https://vk.com", "https://*.vk.com",
+                            "https://vk.ru", "https://*.vk.ru",
+                            "https://ok.ru", "https://*.ok.ru",
+                            "https://okcdn.ru", "https://*.okcdn.ru",
+                        ),
+                        object : WebViewCompat.WebMessageListener {
+                            override fun onPostMessage(
+                                view: WebView,
+                                message: WebMessageCompat,
+                                sourceOrigin: Uri,
+                                isMainFrame: Boolean,
+                                replyProxy: androidx.webkit.JavaScriptReplyProxy,
+                            ) {
+                                if (!isMainFrame || !CaptchaUriPolicy.isAllowed(sourceOrigin.toString())) return
+                                val payload = runCatching { org.json.JSONObject(message.data ?: return) }.getOrNull() ?: return
+                                when (payload.optString("type")) {
+                                    "success" -> {
+                                        val token = payload.optString("token")
+                                        if (token.isNotBlank() && token.length <= 8192) {
+                                            notifyResult(Result.success(token))
+                                        }
+                                    }
+                                    "slider" -> notifyResult(
+                                        Result.failure(IllegalStateException(ERROR_SLIDER_DETECTED))
+                                    )
+                                    "error" -> notifyResult(
+                                        Result.failure(Exception("VK captcha error"))
+                                    )
+                                }
+                            }
+                        },
+                    )
 
                     webViewClient = object : WebViewClient() {
                         override fun onPageStarted(
@@ -301,7 +343,7 @@ object CaptchaWebViewManager {
             try {
                 wv.stopLoading()
                 wv.loadUrl("about:blank")
-                try { wv.removeJavascriptInterface("CsqttCaptcha") } catch (_: Exception) {}
+                try { WebViewCompat.removeWebMessageListener(wv, "CsqttCaptcha") } catch (_: Exception) {}
                 wv.webViewClient = WebViewClient()
                 wv.webChromeClient = null
                 wv.onPause()
@@ -492,26 +534,6 @@ object CaptchaWebViewManager {
                 upEvent.recycle()
             }
         }, holdTime)
-    }
-
-    private class CaptchaJSBridge {
-        @JavascriptInterface
-        fun onSuccess(token: String) {
-            Log.d(TAG, "JS: success_token получен (${token.length} символов)")
-            notifyResult(Result.success(token))
-        }
-
-        @JavascriptInterface
-        fun onSliderDetected(source: String) {
-            Log.i(TAG, "JS: обнаружен slider после auto-step ($source)")
-            notifyResult(Result.failure(IllegalStateException(ERROR_SLIDER_DETECTED)))
-        }
-
-        @JavascriptInterface
-        fun onError(error: String) {
-            Log.e(TAG, "JS: ошибка — $error")
-            notifyResult(Result.failure(Exception("VK: $error")))
-        }
     }
 
     private fun notifyResult(result: Result<String>) {

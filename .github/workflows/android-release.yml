@@ -84,13 +84,16 @@ jobs:
         run: |
           cargo install cargo-zigbuild --locked
           chmod +x rust-server/build_linux.sh
-          rust-server/build_linux.sh --no-tests
+          rust-server/build_linux.sh --tests
           for asset in csqtt-linux-amd64 csqtt-linux-arm64 csqtt-linux-armv7; do
             test -s "app/src/main/assets/$asset"
           done
-      - name: Build signed release APKs
+      - name: Run Android unit tests
         run: |
           chmod +x ./gradlew
+          ./gradlew --no-daemon :app:testDebugUnitTest
+      - name: Build signed release APKs
+        run: |
           ./gradlew --no-daemon :app:assembleRelease
           for abi in arm64-v8a armeabi-v7a x86_64; do
             test -s "app/src/main/jniLibs/$abi/libclient.so"
