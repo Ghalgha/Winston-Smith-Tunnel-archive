@@ -1912,6 +1912,44 @@ mod tests {
     }
 
     #[test]
+    fn full_flow_table_evicts_one_old_entry_not_all_active_flows() {
+        let mut state = UplinkState::new();
+        let now = std::time::Instant::now();
+        for i in 0..FLOW_TABLE_MAX {
+            let key = FlowKey::V4 {
+                src: [10, 0, (i >> 8) as u8, i as u8],
+                dst: [10, 66, 67, 2],
+                proto: 17,
+                fragment_id: None,
+                sport: i as u16,
+                dport: 443,
+            };
+            state.flows.insert(
+                key,
+                FlowState {
+                    idx: 0,
+                    worker_id: 1,
+                    incarnation_id: 1,
+                    last_seen: now + Duration::from_millis(i as u64),
+                },
+            );
+        }
+
+        let newest = FlowKey::V4 {
+            src: [10, 0, 3, 255],
+            dst: [10, 66, 67, 2],
+            proto: 17,
+            fragment_id: None,
+            sport: (FLOW_TABLE_MAX - 1) as u16,
+            dport: 443,
+        };
+        state.evict_flows(now + Duration::from_secs(1));
+
+        assert_eq!(state.flows.len(), FLOW_TABLE_MAX - 1);
+        assert!(state.flows.contains_key(&newest));
+    }
+
+    #[test]
     fn ipv4_fragments_share_one_flow_key() {
         let mut first = ipv4_packet(17, 12000, 443, 28);
         first[4..6].copy_from_slice(&0x1234u16.to_be_bytes());
