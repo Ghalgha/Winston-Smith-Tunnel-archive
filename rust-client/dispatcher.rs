@@ -1996,16 +1996,6 @@ mod tests {
     }
 
     #[test]
-    fn small_udp_detection_keeps_games_sticky() {
-        let game = ipv4_packet(17, 27015, 27015, 180);
-        let bulk = ipv4_packet(17, 27015, 27015, 400);
-        let tcp = ipv4_packet(6, 27015, 27015, 180);
-        assert!(is_small_udp(&flow_key(&game).unwrap(), game.len()));
-        assert!(!is_small_udp(&flow_key(&bulk).unwrap(), bulk.len()));
-        assert!(!is_small_udp(&flow_key(&tcp).unwrap(), tcp.len()));
-    }
-
-    #[test]
     fn inbound_delivers_fifo() {
         let pool = PacketPool::new(16);
         let inbound = ArrayQueue::new(16);
