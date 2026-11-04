@@ -277,6 +277,30 @@ impl RateController {
     }
 }
 
+fn choose_best_sendable<F>(
+    tokens: &[f64],
+    cursor: usize,
+    mut is_sendable: F,
+) -> Option<usize>
+where
+    F: FnMut(usize) -> bool,
+{
+    if tokens.is_empty() {
+        return None;
+    }
+    let start = cursor.min(tokens.len() - 1);
+    let mut best_idx = None;
+    let mut best_tokens = f64::NEG_INFINITY;
+    for offset in 0..tokens.len() {
+        let idx = (start + offset) % tokens.len();
+        if is_sendable(idx) && tokens[idx] > best_tokens {
+            best_tokens = tokens[idx];
+            best_idx = Some(idx);
+        }
+    }
+    best_idx
+}
+
 #[derive(Default)]
 pub struct UplinkState {
     pub last_update: Option<std::time::Instant>,
@@ -370,33 +394,22 @@ impl UplinkState {
     /// Выбираем здоровый поток с наибольшим запасом токенов, обходя список
     /// начиная с `cursor`. Токены здесь не списываются.
     fn choose_stream(&mut self, workers: &[WorkerEntry]) -> Option<usize> {
-        let count = workers.len();
-        if count == 0 {
-            return None;
-        }
-        let start = self.cursor.min(count - 1);
-        let mut best_idx = None;
-        let mut best_tokens = f64::NEG_INFINITY;
-        for offset in 0..count {
-            let idx = (start + offset) % count;
+        let rates = &mut self.rates;
+        let idx = choose_best_sendable(&self.tokens, self.cursor, |idx| {
             let allocation = &workers[idx].channels.allocation;
-            if !allocation.is_sendable() {
-                if allocation.is_alive()
-                    && let Some(controller) = self.rates.get_mut(idx)
-                {
-                    controller.mark_congested();
-                }
-                continue;
+            let sendable = allocation.is_sendable();
+            if !sendable
+                && allocation.is_alive()
+                && let Some(controller) = rates.get_mut(idx)
+            {
+                controller.mark_congested();
             }
-            if self.tokens[idx] > best_tokens {
-                best_tokens = self.tokens[idx];
-                best_idx = Some(idx);
-            }
+            sendable
+        });
+        if let Some(idx) = idx {
+            self.cursor = (idx + 1) % workers.len();
         }
-        if let Some(idx) = best_idx {
-            self.cursor = (idx + 1) % count;
-        }
-        best_idx
+        idx
     }
 
     /// Распределение по здоровым worker'ам с постоянной привязкой каждого
@@ -1909,6 +1922,25 @@ mod tests {
                 ..
             }
         ));
+    }
+
+    #[test]
+    fn scheduler_returns_none_when_no_worker_is_sendable() {
+        let tokens = [100.0, 200.0, 300.0];
+        assert_eq!(choose_best_sendable(&tokens, 1, |_| false), None);
+    }
+
+    #[test]
+    fn scheduler_chooses_best_sendable_worker_from_cursor() {
+        let tokens = [100.0, 300.0, 200.0];
+        assert_eq!(
+            choose_best_sendable(&tokens, 2, |idx| idx != 1),
+            Some(2)
+        );
+        assert_eq!(
+            choose_best_sendable(&tokens, 1, |_| true),
+            Some(1)
+        );
     }
 
     #[test]
