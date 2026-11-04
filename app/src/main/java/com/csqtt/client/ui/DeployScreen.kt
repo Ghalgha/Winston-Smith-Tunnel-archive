@@ -1,4 +1,4 @@
-package com.csqtt.client.ui
+package com.wstt.client.ui
 
 import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
@@ -41,15 +41,15 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.csqtt.client.CSQTTTheme
-import com.csqtt.client.CsqttConstants
-import com.csqtt.client.R
-import com.csqtt.client.ui.components.CsqttScreen
-import com.csqtt.client.ui.components.CsqttSettingRow
-import com.csqtt.client.ui.design.CsqttShapes
-import com.csqtt.client.ui.design.CsqttSizes
-import com.csqtt.client.ui.design.CsqttSpacing
-import com.csqtt.client.ui.design.CsqttTheme
+import com.wstt.client.WSTTTheme
+import com.wstt.client.WsttConstants
+import com.wstt.client.R
+import com.wstt.client.ui.components.WsttScreen
+import com.wstt.client.ui.components.WsttSettingRow
+import com.wstt.client.ui.design.WsttShapes
+import com.wstt.client.ui.design.WsttSizes
+import com.wstt.client.ui.design.WsttSpacing
+import com.wstt.client.ui.design.WsttTheme
 
 @Composable
 internal fun DeployScreen(
@@ -62,7 +62,7 @@ internal fun DeployScreen(
     var showRegenConfirmDialog by rememberSaveable { mutableStateOf(false) }
     val scrollState = rememberScrollState()
 
-    CsqttScreen(
+    WsttScreen(
         modifier = modifier,
     ) {
         Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
@@ -70,7 +70,7 @@ internal fun DeployScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(scrollState),
-                verticalArrangement = Arrangement.spacedBy(CsqttSpacing.Md),
+                verticalArrangement = Arrangement.spacedBy(WsttSpacing.Md),
             ) {
                 AppSectionCard {
                     Text("Деплой и SSH", style = MaterialTheme.typography.titleMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
@@ -109,7 +109,7 @@ internal fun DeployScreen(
                             onClick = { onAction(DeployAction.EditSshKeys) },
                             enabled = !state.isDeploying,
                             modifier = Modifier.fillMaxWidth().height(52.dp),
-                            shape = CsqttShapes.Pill,
+                            shape = WsttShapes.Pill,
                             colors = ButtonDefaults.outlinedButtonColors(
                                 containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                                 contentColor = MaterialTheme.colorScheme.onSurface,
@@ -174,19 +174,19 @@ internal fun DeployScreen(
                         )
                     }
                     Column {
-                        CsqttSettingRow(
+                        WsttSettingRow(
                             title = "Ключи SSH",
                             checked = state.sshKeysMode,
                             enabled = !state.isDeploying,
                             onCheckedChange = { onAction(DeployAction.SshKeysModeChanged(it)) },
                         )
-                        CsqttSettingRow(
+                        WsttSettingRow(
                             title = "Ручные порты",
                             checked = state.manualPorts,
                             enabled = !state.isDeploying,
                             onCheckedChange = { onAction(DeployAction.ManualPortsChanged(it)) },
                         )
-                        CsqttSettingRow(
+                        WsttSettingRow(
                             title = "Установить в Docker",
                             checked = state.dockerInstall,
                             enabled = !state.isDeploying,
@@ -296,7 +296,7 @@ private fun ManualPortFields(
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(CsqttSpacing.Sm),
+        horizontalArrangement = Arrangement.spacedBy(WsttSpacing.Sm),
     ) {
         DeployTextField(
             value = state.sshPort,
@@ -342,10 +342,10 @@ private fun DeployProgressCard(
         label = "deploy_progress",
     )
 
-    AppSectionCard(verticalArrangement = Arrangement.spacedBy(CsqttSpacing.Xs)) {
+    AppSectionCard(verticalArrangement = Arrangement.spacedBy(WsttSpacing.Xs)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(CsqttSpacing.Md),
+            horizontalArrangement = Arrangement.spacedBy(WsttSpacing.Md),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
@@ -372,7 +372,7 @@ private fun DeployProgressCard(
 @Preview(name = "Deploy dark", widthDp = 720, heightDp = 900, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun DeployScreenPreview() {
-    com.csqtt.client.CSQTTTheme(themeMode = CsqttConstants.Theme.MODE_DARK) {
+    com.wstt.client.WSTTTheme(themeMode = WsttConstants.Theme.MODE_DARK) {
         DeployScreen(
             state = DeployUiState(
                 host = "vpn.example.com",

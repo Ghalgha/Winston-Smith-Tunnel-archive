@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -24,9 +24,9 @@ class MainNavigationSwipeTest {
 
     @Test
     fun participantModeFiltersDeployAndLogsByDefault() {
-        assertEquals(listOf(0, 1, 2, 3, 4), resolveActiveNavIds(csqttLinkMode = false, participantShowLogs = false))
-        assertEquals(listOf(0, 1, 2, 3, 4), resolveActiveNavIds(csqttLinkMode = false, participantShowLogs = true))
-        assertEquals(listOf(0, 1, 4), resolveActiveNavIds(csqttLinkMode = true, participantShowLogs = false))
-        assertEquals(listOf(0, 1, 3, 4), resolveActiveNavIds(csqttLinkMode = true, participantShowLogs = true))
+        assertEquals(listOf(0, 1, 2, 3, 4), resolveActiveNavIds(wsttLinkMode = false, participantShowLogs = false))
+        assertEquals(listOf(0, 1, 2, 3, 4), resolveActiveNavIds(wsttLinkMode = false, participantShowLogs = true))
+        assertEquals(listOf(0, 1, 4), resolveActiveNavIds(wsttLinkMode = true, participantShowLogs = false))
+        assertEquals(listOf(0, 1, 3, 4), resolveActiveNavIds(wsttLinkMode = true, participantShowLogs = true))
     }
 }

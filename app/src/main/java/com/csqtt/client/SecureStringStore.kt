@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
@@ -14,11 +14,11 @@ class SecureStringStore(context: Context) {
     private val appContext = context.applicationContext
 
     companion object {
-        private const val KEY_ALIAS = CsqttConstants.SecureStore.KEY_ALIAS
-        private const val ANDROID_KEYSTORE = CsqttConstants.SecureStore.ANDROID_KEYSTORE
-        private const val TRANSFORMATION = CsqttConstants.SecureStore.TRANSFORMATION
-        private const val GCM_TAG_BITS = CsqttConstants.SecureStore.GCM_TAG_BITS
-        private const val VERSION_PREFIX = CsqttConstants.SecureStore.VERSION_PREFIX
+        private const val KEY_ALIAS = WsttConstants.SecureStore.KEY_ALIAS
+        private const val ANDROID_KEYSTORE = WsttConstants.SecureStore.ANDROID_KEYSTORE
+        private const val TRANSFORMATION = WsttConstants.SecureStore.TRANSFORMATION
+        private const val GCM_TAG_BITS = WsttConstants.SecureStore.GCM_TAG_BITS
+        private const val VERSION_PREFIX = WsttConstants.SecureStore.VERSION_PREFIX
     }
 
     private val keyStore: KeyStore by lazy {

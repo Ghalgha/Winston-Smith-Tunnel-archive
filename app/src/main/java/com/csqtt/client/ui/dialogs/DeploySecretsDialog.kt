@@ -1,4 +1,4 @@
-package com.csqtt.client.ui.dialogs
+package com.wstt.client.ui.dialogs
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -43,12 +43,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.csqtt.client.SettingsStore
-import com.csqtt.client.ui.appSectionCardBorderColor
-import com.csqtt.client.ui.appSectionCardColor
-import com.csqtt.client.ui.design.CsqttShapes
-import com.csqtt.client.ui.design.CsqttSizes
-import com.csqtt.client.ui.utils.generate16CharPassword
+import com.wstt.client.SettingsStore
+import com.wstt.client.ui.appSectionCardBorderColor
+import com.wstt.client.ui.appSectionCardColor
+import com.wstt.client.ui.design.WsttShapes
+import com.wstt.client.ui.design.WsttSizes
+import com.wstt.client.ui.utils.generate16CharPassword
 import kotlinx.coroutines.launch
 
 @Composable
@@ -75,7 +75,7 @@ fun DeploySecretsDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         Surface(
-            shape = CsqttShapes.Dialog,
+            shape = WsttShapes.Dialog,
             color = appSectionCardColor(),
             contentColor = MaterialTheme.colorScheme.onSurface,
             border = BorderStroke(1.dp, appSectionCardBorderColor()),
@@ -154,7 +154,7 @@ fun DeploySecretsDialog(
                     placeholder = { Text("16 символов", maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = CsqttShapes.Control,
+                    shape = WsttShapes.Control,
                     isError = !isMainPassValid,
                     supportingText = if (mainPassInput.isNotEmpty() && !isMainPassValid) {
                         { Text("Требуется ровно 16 символов [0-9A-Za-z]", color = MaterialTheme.colorScheme.error) }
@@ -186,7 +186,7 @@ fun DeploySecretsDialog(
                     placeholder = { Text("придумайте логин", maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = CsqttShapes.Control,
+                    shape = WsttShapes.Control,
                     isError = !isWebLoginValid,
                     supportingText = if (webLoginInput.isNotEmpty() && !isWebLoginValid) invalidHint else null,
                 )
@@ -200,7 +200,7 @@ fun DeploySecretsDialog(
                     placeholder = { Text("придумайте пароль", maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = CsqttShapes.Control,
+                    shape = WsttShapes.Control,
                     isError = !isWebPassValid,
                     supportingText = if (webPassInput.isNotEmpty() && !isWebPassValid) invalidHint else null,
                     visualTransformation = if (passwordsVisible) VisualTransformation.None else PasswordVisualTransformation(),
@@ -216,8 +216,8 @@ fun DeploySecretsDialog(
                             onDismiss()
                         }
                     },
-                    modifier = Modifier.fillMaxWidth().height(CsqttSizes.ControlHeight),
-                    shape = CsqttShapes.Pill,
+                    modifier = Modifier.fillMaxWidth().height(WsttSizes.ControlHeight),
+                    shape = WsttShapes.Pill,
                     enabled = isWebLoginValid && isWebPassValid && isMainPassValid,
                     colors = ButtonDefaults.buttonColors(contentColor = MaterialTheme.colorScheme.onPrimary),
                 ) {

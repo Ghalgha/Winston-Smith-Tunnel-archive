@@ -1,4 +1,4 @@
-package com.csqtt.client.ui
+package com.wstt.client.ui
 
 import java.io.File
 import org.junit.Assert.assertFalse
@@ -16,8 +16,8 @@ class DeployScriptPreflightTest {
 
     private fun deployOperations(): String {
         val candidates = listOf(
-            File("app/src/main/java/com/csqtt/client/ui/DeployOperations.kt"),
-            File("src/main/java/com/csqtt/client/ui/DeployOperations.kt"),
+            File("app/src/main/java/com/wstt/client/ui/DeployOperations.kt"),
+            File("src/main/java/com/wstt/client/ui/DeployOperations.kt"),
         )
         return candidates.first(File::isFile).readText()
     }
@@ -29,9 +29,9 @@ class DeployScriptPreflightTest {
         assertTrue(deploy.contains("readonly WSTT_IFACE=\"wstt1\""))
         assertTrue(deploy.contains("/usr/local/bin/wstt"))
         assertTrue(deploy.contains("wstt.service"))
-        assertFalse(deploy.contains("/etc/csqtt"))
-        assertFalse(deploy.contains("/usr/local/bin/csqtt"))
-        assertFalse(deploy.contains("csqtt.service"))
+        assertFalse(deploy.contains("/etc/wstt"))
+        assertFalse(deploy.contains("/usr/local/bin/wstt"))
+        assertFalse(deploy.contains("wstt.service"))
     }
 
     @Test
@@ -40,13 +40,13 @@ class DeployScriptPreflightTest {
         assertTrue(deploy.contains("10.67.68.0/24"))
         assertTrue(deploy.contains("WSTT_MANAGED"))
         assertTrue(deploy.contains("WSTT_TPROXY"))
-        assertFalse(deploy.contains("CSQTT_MANAGED"))
-        assertFalse(deploy.contains("CSQTT_TPROXY"))
-        assertFalse(deploy.contains("CSQTT_LOCAL_SOCKS"))
+        assertFalse(deploy.contains("WSTT_MANAGED"))
+        assertFalse(deploy.contains("WSTT_TPROXY"))
+        assertFalse(deploy.contains("WSTT_LOCAL_SOCKS"))
         assertTrue(deploy.contains("WSTT_PEER_PORT"))
         assertTrue(deploy.contains("WSTT_WEB_PORT"))
-        assertFalse(deploy.contains("CSQTT_PEER_PORT"))
-        assertFalse(deploy.contains("CSQTT_WEB_PORT"))
+        assertFalse(deploy.contains("WSTT_PEER_PORT"))
+        assertFalse(deploy.contains("WSTT_WEB_PORT"))
     }
 
     @Test
@@ -57,7 +57,7 @@ class DeployScriptPreflightTest {
         assertTrue(deploy.contains("WSTT_DOCKER_IMAGE=\"wstt:"))
         assertTrue(deploy.contains("--label com.wstt.managed=true"))
         assertFalse(deploy.contains("--security-opt seccomp=unconfined"))
-        assertFalse(deploy.contains("--label com.csqtt.managed=true"))
+        assertFalse(deploy.contains("--label com.wstt.managed=true"))
     }
 
     @Test
@@ -150,7 +150,7 @@ class DeployScriptPreflightTest {
     }
 
     @Test
-    fun `Android app identity differs from CSQTT`() {
+    fun `Android app identity differs from WSTT`() {
         val candidates = listOf(File("app/build.gradle.kts"), File("build.gradle.kts"))
         val gradle = candidates.first(File::isFile).readText()
         assertTrue(gradle.contains("applicationId = \"com.wstunnel.client\""))

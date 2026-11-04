@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 import android.annotation.SuppressLint
 import android.app.PendingIntent
@@ -61,7 +61,7 @@ class QuickToggleTileService : TileService() {
     private fun updateTile(running: Boolean) {
         runCatching {
             qsTile?.apply {
-                label = CsqttConstants.General.APP_NAME
+                label = WsttConstants.General.APP_NAME
                 icon = Icon.createWithResource(this@QuickToggleTileService, R.drawable.ic_c_logo)
                 state = if (running) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
                 if (Build.VERSION.SDK_INT >= 29) {

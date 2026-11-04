@@ -1,4 +1,4 @@
-package com.csqtt.client.ui.design
+package com.wstt.client.ui.design
 
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -8,7 +8,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Immutable
 
 @Immutable
-object CsqttMotion {
+object WsttMotion {
     const val Instant = 90
     const val Fast = 140
     const val Normal = 220

@@ -1,4 +1,4 @@
-package com.csqtt.client.ui
+package com.wstt.client.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -21,11 +21,11 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.csqtt.client.LogEntry
-import com.csqtt.client.LogLevel
-import com.csqtt.client.ui.design.CsqttShapes
-import com.csqtt.client.ui.design.CsqttSpacing
-import com.csqtt.client.ui.design.CsqttTheme
+import com.wstt.client.LogEntry
+import com.wstt.client.LogLevel
+import com.wstt.client.ui.design.WsttShapes
+import com.wstt.client.ui.design.WsttSpacing
+import com.wstt.client.ui.design.WsttTheme
 
 private data class TagColors(
     val background: Color,
@@ -133,7 +133,7 @@ internal fun LogLine(
     entry: LogEntry,
     modifier: Modifier = Modifier,
 ) {
-    val terminalColors = CsqttTheme.extendedColors
+    val terminalColors = WsttTheme.extendedColors
     val level = entry.level ?: when {
         entry.isError -> LogLevel.ERR
         entry.priority <= 2 -> LogLevel.OK
@@ -168,11 +168,11 @@ internal fun LogLine(
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 2.dp),
-        horizontalArrangement = Arrangement.spacedBy(CsqttSpacing.Sm),
+        horizontalArrangement = Arrangement.spacedBy(WsttSpacing.Sm),
         verticalAlignment = Alignment.Top,
     ) {
         Surface(
-            shape = CsqttShapes.Pill,
+            shape = WsttShapes.Pill,
             color = tagColors.background,
             contentColor = tagColors.text,
             border = BorderStroke(1.dp, tagColors.border),
@@ -209,7 +209,7 @@ internal fun LogLine(
 
         if (entry.count > 1) {
             Surface(
-                shape = CsqttShapes.Pill,
+                shape = WsttShapes.Pill,
                 color = Color(0xFF142438),
                 contentColor = Color(0xFF3DBFFD),
                 border = BorderStroke(1.dp, Color(0xFF1E4976)),

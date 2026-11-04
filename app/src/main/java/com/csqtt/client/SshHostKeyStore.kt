@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 import android.content.Context
 import net.schmizz.sshj.common.Buffer

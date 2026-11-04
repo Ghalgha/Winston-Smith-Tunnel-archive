@@ -1,9 +1,9 @@
-package com.csqtt.client
+package com.wstt.client
 
 import org.json.JSONObject
 
 object TunnelEventParser {
-    private const val PREFIX = CsqttConstants.General.CSQTT_EVENT_PREFIX
+    private const val PREFIX = WsttConstants.General.WSTT_EVENT_PREFIX
     const val CALL_NOT_FOUND_CODE = 951
     const val MIN_SERVER_WORKERS = 3
 
@@ -67,11 +67,11 @@ object TunnelEventParser {
                 .takeIf { it > 0 }
                 ?.let { Event.Process(it) }
             "READY" -> Event.Ready(
-                worker = payload.optInt("worker", 0).coerceIn(0, CsqttConstants.Tunnel.MAX_WORKERS),
+                worker = payload.optInt("worker", 0).coerceIn(0, WsttConstants.Tunnel.MAX_WORKERS),
                 message = payload.optString("message", ""),
             )
             "DTLS" -> Event.Dtls(
-                worker = payload.optInt("worker", 0).coerceIn(0, CsqttConstants.Tunnel.MAX_WORKERS),
+                worker = payload.optInt("worker", 0).coerceIn(0, WsttConstants.Tunnel.MAX_WORKERS),
                 message = payload.optString("message", ""),
             )
             "ACTIVE_ZERO" -> Event.ActiveZero(payload.optString("message", ""))
@@ -92,7 +92,7 @@ object TunnelEventParser {
             "ROUTING" -> Event.Routing(payload.optString("routing", ""))
             "TUN_LOST" -> Event.TunLost
             "WORKERS" -> payload.optInt("workers", -1)
-                .takeIf { it == 0 || it in MIN_SERVER_WORKERS..CsqttConstants.Tunnel.MAX_WORKERS }
+                .takeIf { it == 0 || it in MIN_SERVER_WORKERS..WsttConstants.Tunnel.MAX_WORKERS }
                 ?.let { Event.Workers(it) }
             "STATS" -> Event.Stats(
                 active = payload.optInt("active", 0).coerceAtLeast(0),

@@ -1,4 +1,4 @@
-package com.csqtt.client.ui.components
+package com.wstt.client.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -19,18 +19,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import com.csqtt.client.ui.design.CsqttShapes
-import com.csqtt.client.ui.design.CsqttSpacing
+import com.wstt.client.ui.design.WsttShapes
+import com.wstt.client.ui.design.WsttSpacing
 
 @Composable
-fun CsqttLoadingState(
+fun WsttLoadingState(
     label: String,
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier.fillMaxWidth().padding(CsqttSpacing.Xl),
+        modifier = modifier.fillMaxWidth().padding(WsttSpacing.Xl),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(CsqttSpacing.Md),
+        verticalArrangement = Arrangement.spacedBy(WsttSpacing.Md),
     ) {
         CircularProgressIndicator()
         Text(text = label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -38,7 +38,7 @@ fun CsqttLoadingState(
 }
 
 @Composable
-fun CsqttEmptyState(
+fun WsttEmptyState(
     title: String,
     modifier: Modifier = Modifier,
     description: String? = null,
@@ -47,9 +47,9 @@ fun CsqttEmptyState(
     secondaryContentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
 ) {
     Column(
-        modifier = modifier.fillMaxWidth().padding(CsqttSpacing.Xl),
+        modifier = modifier.fillMaxWidth().padding(WsttSpacing.Xl),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(CsqttSpacing.Xs),
+        verticalArrangement = Arrangement.spacedBy(WsttSpacing.Xs),
     ) {
         Icon(imageVector = icon, contentDescription = null, tint = secondaryContentColor)
         Text(text = title, style = MaterialTheme.typography.titleMedium, color = contentColor)
@@ -60,7 +60,7 @@ fun CsqttEmptyState(
 }
 
 @Composable
-fun CsqttBanner(
+fun WsttBanner(
     text: String,
     containerColor: Color,
     contentColor: Color,
@@ -69,13 +69,13 @@ fun CsqttBanner(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = CsqttShapes.Control,
+        shape = WsttShapes.Control,
         color = containerColor,
         contentColor = contentColor,
     ) {
         Row(
-            modifier = Modifier.padding(CsqttSpacing.Md),
-            horizontalArrangement = Arrangement.spacedBy(CsqttSpacing.Sm),
+            modifier = Modifier.padding(WsttSpacing.Md),
+            horizontalArrangement = Arrangement.spacedBy(WsttSpacing.Sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(20.dp))

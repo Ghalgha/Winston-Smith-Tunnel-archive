@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 object TunnelLogPolicy {
     fun isAllowedWhenInactiveLogging(key: String, isError: Boolean, level: LogLevel?): Boolean {

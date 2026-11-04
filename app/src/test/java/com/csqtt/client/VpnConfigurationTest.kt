@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -9,7 +9,7 @@ import org.junit.Test
 class VpnConfigurationTest {
     @Test
     fun defaultMtuIs1500() {
-        assertEquals(1500, CsqttConstants.Vpn.DEFAULT_MTU)
+        assertEquals(1500, WsttConstants.Vpn.DEFAULT_MTU)
     }
 
     @Test

@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -37,9 +37,9 @@ class ManlCaptchaActivity : ComponentActivity() {
                     try {
                         const data = await clone.json();
                         if (data.response && data.response.success_token) {
-                            window.CsqttCaptcha.onSuccess(data.response.success_token);
+                            window.WsttCaptcha.onSuccess(data.response.success_token);
                         } else if (data.error) {
-                            window.CsqttCaptcha.onError(JSON.stringify(data.error));
+                            window.WsttCaptcha.onError(JSON.stringify(data.error));
                         }
                     } catch(e) {}
                     return response;
@@ -60,9 +60,9 @@ class ManlCaptchaActivity : ComponentActivity() {
                         try {
                             const data = JSON.parse(xhr.responseText);
                             if (data.response && data.response.success_token) {
-                                window.CsqttCaptcha.onSuccess(data.response.success_token);
+                                window.WsttCaptcha.onSuccess(data.response.success_token);
                             } else if (data.error) {
-                                window.CsqttCaptcha.onError(JSON.stringify(data.error));
+                                window.WsttCaptcha.onError(JSON.stringify(data.error));
                             }
                         } catch(e) {}
                     });
@@ -76,7 +76,7 @@ class ManlCaptchaActivity : ComponentActivity() {
         (function() {
             document.addEventListener('click', function(e) {
                 if (e.target.closest('.vkc__ModalCardBase-module__dismiss')) {
-                    window.CsqttCaptcha.onCancelAndStop();
+                    window.WsttCaptcha.onCancelAndStop();
                 }
             });
 
@@ -195,7 +195,7 @@ class ManlCaptchaActivity : ComponentActivity() {
                                                     ManlCaptchaWebViewManager.notifyResult(Result.failure(Exception("Cancelled and stopped by user")))
                                                     finish()
                                                 }
-                                            }, "CsqttCaptcha")
+                                            }, "WsttCaptcha")
 
                                              webViewClient = object : WebViewClient() {
                                                 override fun shouldOverrideUrlLoading(
@@ -238,7 +238,7 @@ class ManlCaptchaActivity : ComponentActivity() {
         captchaWebView?.let { webView ->
             runCatching {
                 webView.stopLoading()
-                webView.removeJavascriptInterface("CsqttCaptcha")
+                webView.removeJavascriptInterface("WsttCaptcha")
                 webView.webViewClient = WebViewClient()
                 webView.webChromeClient = null
                 webView.loadUrl("about:blank")

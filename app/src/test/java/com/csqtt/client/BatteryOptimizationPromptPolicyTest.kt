@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

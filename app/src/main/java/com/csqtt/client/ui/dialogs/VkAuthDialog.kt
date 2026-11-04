@@ -1,4 +1,4 @@
-package com.csqtt.client.ui.dialogs
+package com.wstt.client.ui.dialogs
 
 import android.graphics.Outline
 import android.view.View
@@ -8,8 +8,8 @@ import android.widget.FrameLayout
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
-import com.csqtt.client.ui.appSectionCardBorderColor
-import com.csqtt.client.ui.appSectionCardColor
+import com.wstt.client.ui.appSectionCardBorderColor
+import com.wstt.client.ui.appSectionCardColor
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -49,11 +49,11 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.csqtt.client.VkAuthPayload
-import com.csqtt.client.VkAuthPhase
-import com.csqtt.client.VkAuthSession
-import com.csqtt.client.VkAuthWebViewManager
-import com.csqtt.client.ui.design.CsqttShapes
+import com.wstt.client.VkAuthPayload
+import com.wstt.client.VkAuthPhase
+import com.wstt.client.VkAuthSession
+import com.wstt.client.VkAuthWebViewManager
+import com.wstt.client.ui.design.WsttShapes
 
 @Composable
 internal fun VkAuthDialog(
@@ -108,7 +108,7 @@ internal fun VkAuthDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         Surface(
-            shape = CsqttShapes.Dialog,
+            shape = WsttShapes.Dialog,
             color = appSectionCardColor(),
             contentColor = MaterialTheme.colorScheme.onSurface,
             border = BorderStroke(1.dp, appSectionCardBorderColor()),
@@ -208,7 +208,7 @@ internal fun VkAuthDialog(
                             )
                             Button(
                                 onClick = onDismiss,
-                                shape = CsqttShapes.Pill,
+                                shape = WsttShapes.Pill,
                                 colors = ButtonDefaults.buttonColors(
                                     contentColor = MaterialTheme.colorScheme.onPrimary,
                                 ),

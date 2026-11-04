@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 import android.annotation.SuppressLint
 import android.app.Notification
@@ -42,8 +42,8 @@ import kotlinx.coroutines.sync.withLock
 import java.net.HttpURLConnection
 import java.net.URL
 
-private const val TUNNEL_NOTIFICATION_CHANNEL_ID = CsqttConstants.Notifications.TUNNEL_CHANNEL_ID
-private const val TUNNEL_NOTIFICATION_ID = CsqttConstants.Notifications.TUNNEL_NOTIFICATION_ID
+private const val TUNNEL_NOTIFICATION_CHANNEL_ID = WsttConstants.Notifications.TUNNEL_CHANNEL_ID
+private const val TUNNEL_NOTIFICATION_ID = WsttConstants.Notifications.TUNNEL_NOTIFICATION_ID
 private const val NOTIFICATION_MIN_REBUILD_INTERVAL_MS = 5_000L
 private const val NETWORK_SWAP_SETTLE_MS = 4_000L
 private const val NETWORK_LOSS_GRACE_MS = 2_000L
@@ -61,7 +61,7 @@ private val VK_PROBE_URLS = listOf(
 private data class ResolvedVkHashes(
     val value: String,
     val allowWorkerRedistribution: Boolean,
-    val mode: String = CsqttConstants.VkAutoHash.MODE_MANUAL,
+    val mode: String = WsttConstants.VkAutoHash.MODE_MANUAL,
     val accessToken: String = "",
 )
 
@@ -170,25 +170,25 @@ class TunnelService : Service() {
                             .takeIf { intent.getBooleanExtra("vk_token_from_link", false) && it.isNotBlank() }
                         val configuredHashMode = store.vkHashMode.first()
                         val vkAuthMode = when {
-                            hashesFromLink && requestedVkAuthMode == CsqttConstants.VkAuth.MODE_AUTO_JS -> CsqttConstants.VkAuth.MODE_CALLS
+                            hashesFromLink && requestedVkAuthMode == WsttConstants.VkAuth.MODE_AUTO_JS -> WsttConstants.VkAuth.MODE_CALLS
                             linkAccessToken != null -> {
-                                if (configuredHashMode == CsqttConstants.VkAutoHash.MODE_AUTO_JS) {
-                                    CsqttConstants.VkAuth.MODE_AUTO_JS
+                                if (configuredHashMode == WsttConstants.VkAutoHash.MODE_AUTO_JS) {
+                                    WsttConstants.VkAuth.MODE_AUTO_JS
                                 } else {
-                                    if (requestedVkAuthMode == CsqttConstants.VkAuth.MODE_AUTO_JS) CsqttConstants.VkAuth.MODE_CALLS else requestedVkAuthMode
+                                    if (requestedVkAuthMode == WsttConstants.VkAuth.MODE_AUTO_JS) WsttConstants.VkAuth.MODE_CALLS else requestedVkAuthMode
                                 }
                             }
                             else -> requestedVkAuthMode
                         }
-                        val accountAutoJs = vkAuthMode == CsqttConstants.VkAuth.MODE_AUTO_JS
-                        val maxWorkers = CsqttConstants.Tunnel.MAX_WORKERS
+                        val accountAutoJs = vkAuthMode == WsttConstants.VkAuth.MODE_AUTO_JS
+                        val maxWorkers = WsttConstants.Tunnel.MAX_WORKERS
                         val workersPerHash = WorkerCountPolicy.normalize(requestedWorkers, maximum = maxWorkers)
                         val maxWorkersPerHash = WorkerCountPolicy.normalize(requestedMaxWorkers, maximum = maxWorkers)
                         TunnelManager.isLoggingEnabled = store.loggingEnabled.first()
                         if (accountAutoJs) {
-                            store.saveVkAuthMode(CsqttConstants.VkAuth.MODE_AUTO_JS)
-                        } else if (hashesFromLink && requestedVkAuthMode == CsqttConstants.VkAuth.MODE_AUTO_JS) {
-                            store.saveVkAuthMode(CsqttConstants.VkAuth.MODE_CALLS)
+                            store.saveVkAuthMode(WsttConstants.VkAuth.MODE_AUTO_JS)
+                        } else if (hashesFromLink && requestedVkAuthMode == WsttConstants.VkAuth.MODE_AUTO_JS) {
+                            store.saveVkAuthMode(WsttConstants.VkAuth.MODE_CALLS)
                         }
                         if (!awaitVkNetwork()) {
                             TunnelManager.starting.value = false
@@ -203,8 +203,8 @@ class TunnelService : Service() {
                                 intentHashes,
                                 maxWorkersPerHash,
                                 when {
-                                    accountAutoJs -> CsqttConstants.VkAutoHash.MODE_AUTO_JS
-                                    linkAccessToken != null -> CsqttConstants.VkAutoHash.MODE_AUTO_API
+                                    accountAutoJs -> WsttConstants.VkAutoHash.MODE_AUTO_JS
+                                    linkAccessToken != null -> WsttConstants.VkAutoHash.MODE_AUTO_API
                                     else -> null
                                 },
                                 linkAccessToken,
@@ -246,13 +246,13 @@ class TunnelService : Service() {
                             captchaMode = sanitizeCaptchaMode(intent.getStringExtra("captcha_mode")),
                             captchaSolveMethod = intent.getStringExtra("captcha_solve_method") ?: "auto",
                             fingerprint = intent.getStringExtra("fingerprint") ?: "firefox",
-                            clientIds = intent.getStringExtra("client_ids") ?: CsqttConstants.Tunnel.DEFAULT_CLIENT_IDS,
+                            clientIds = intent.getStringExtra("client_ids") ?: WsttConstants.Tunnel.DEFAULT_CLIENT_IDS,
                             obfsMode = intent.getStringExtra("obfs_mode")
                                 ?.takeIf { it == "unified" }
-                                ?: CsqttConstants.Tunnel.DEFAULT_OBFS_MODE,
+                                ?: WsttConstants.Tunnel.DEFAULT_OBFS_MODE,
                             turnTransport = intent.getStringExtra("turn_transport")
-                                ?.takeIf { it == CsqttConstants.Tunnel.TURN_TRANSPORT_TCP_TLS }
-                                ?: CsqttConstants.Tunnel.DEFAULT_TURN_TRANSPORT,
+                                ?.takeIf { it == WsttConstants.Tunnel.TURN_TRANSPORT_TCP_TLS }
+                                ?: WsttConstants.Tunnel.DEFAULT_TURN_TRANSPORT,
                             srtpMode = sanitizeSrtpMode(intent.getStringExtra("srtp_mode")),
                             customTurnIps = intent.getStringExtra("custom_turn_ips") ?: "",
                             generationId = genId,
@@ -296,11 +296,11 @@ class TunnelService : Service() {
                 startGeneration++
                 stopTunnel(finishVkCalls = true)
             }
-            CsqttConstants.General.ACTION_RESTART_WHEN_VK_REACHABLE -> verifyVkAndRestart()
-            CsqttConstants.General.ACTION_VERIFY_VK_REACHABILITY -> verifyVkAndSuspend()
-            CsqttConstants.General.ACTION_RECOVER_VK_CALL -> {
+            WsttConstants.General.ACTION_RESTART_WHEN_VK_REACHABLE -> verifyVkAndRestart()
+            WsttConstants.General.ACTION_VERIFY_VK_REACHABILITY -> verifyVkAndSuspend()
+            WsttConstants.General.ACTION_RECOVER_VK_CALL -> {
                 recoverUnavailableVkCall(
-                    intent.getStringExtra(CsqttConstants.General.EXTRA_UNAVAILABLE_VK_HASH).orEmpty(),
+                    intent.getStringExtra(WsttConstants.General.EXTRA_UNAVAILABLE_VK_HASH).orEmpty(),
                 )
             }
             "DEPLOY_START" -> {
@@ -328,8 +328,8 @@ class TunnelService : Service() {
                 }
             }
             "DEPLOY_CANCEL" -> {
-                com.csqtt.client.DeployManager.writeError("✗ Установка отменена пользователем")
-                com.csqtt.client.DeployManager.stopDeploy("error: Отменена пользователем")
+                com.wstt.client.DeployManager.writeError("✗ Установка отменена пользователем")
+                com.wstt.client.DeployManager.stopDeploy("error: Отменена пользователем")
                 if (TunnelManager.running.value) {
                     lastNotificationText = null
                     lastNotificationPostElapsedMs = 0L
@@ -399,7 +399,7 @@ class TunnelService : Service() {
                     return@launch
                 }
                 if (
-                    !store.csqttLinkMode.first() &&
+                    !store.wsttLinkMode.first() &&
                     store.connectionPasswordState.first().state == StoredSecretState.Unreadable
                 ) {
                     TunnelManager.updateLog(
@@ -421,17 +421,17 @@ class TunnelService : Service() {
                 TunnelManager.isLoggingEnabled = store.loggingEnabled.first()
                 val configuredHashMode = store.vkHashMode.first()
                 val vkAuthMode = when {
-                    source.hashesFromLink && requestedVkAuthMode == CsqttConstants.VkAuth.MODE_AUTO_JS -> CsqttConstants.VkAuth.MODE_CALLS
+                    source.hashesFromLink && requestedVkAuthMode == WsttConstants.VkAuth.MODE_AUTO_JS -> WsttConstants.VkAuth.MODE_CALLS
                     source.tokenFromLink -> {
-                        if (configuredHashMode == CsqttConstants.VkAutoHash.MODE_AUTO_JS) {
-                            CsqttConstants.VkAuth.MODE_AUTO_JS
+                        if (configuredHashMode == WsttConstants.VkAutoHash.MODE_AUTO_JS) {
+                            WsttConstants.VkAuth.MODE_AUTO_JS
                         } else {
-                            if (requestedVkAuthMode == CsqttConstants.VkAuth.MODE_AUTO_JS) CsqttConstants.VkAuth.MODE_CALLS else requestedVkAuthMode
+                            if (requestedVkAuthMode == WsttConstants.VkAuth.MODE_AUTO_JS) WsttConstants.VkAuth.MODE_CALLS else requestedVkAuthMode
                         }
                     }
                     else -> requestedVkAuthMode
                 }
-                val accountAutoJs = vkAuthMode == CsqttConstants.VkAuth.MODE_AUTO_JS
+                val accountAutoJs = vkAuthMode == WsttConstants.VkAuth.MODE_AUTO_JS
                 if (!awaitVkNetwork()) {
                     TunnelManager.starting.value = false
                     return@launch
@@ -444,8 +444,8 @@ class TunnelService : Service() {
                         source.hashes,
                         maxWorkersPerHash,
                         when {
-                            accountAutoJs -> CsqttConstants.VkAutoHash.MODE_AUTO_JS
-                            source.tokenFromLink -> CsqttConstants.VkAutoHash.MODE_AUTO_API
+                            accountAutoJs -> WsttConstants.VkAutoHash.MODE_AUTO_JS
+                            source.tokenFromLink -> WsttConstants.VkAutoHash.MODE_AUTO_API
                             else -> null
                         },
                         source.vkAccessToken.takeIf { source.tokenFromLink },
@@ -479,7 +479,7 @@ class TunnelService : Service() {
                     generationId = genId,
                     sessionSalt = salt,
                     allowHashRedistribution = restoredHashes?.allowWorkerRedistribution == true,
-                    vkHashMode = restoredHashes?.mode ?: CsqttConstants.VkAutoHash.MODE_MANUAL,
+                    vkHashMode = restoredHashes?.mode ?: WsttConstants.VkAutoHash.MODE_MANUAL,
                     vkAccessToken = restoredHashes?.accessToken.orEmpty(),
                     domainRoutingEnabled = store.domainRoutingEnabled.first() ||
                         (!domainWhite && store.templateDomainsEnabled.first()) ||
@@ -497,7 +497,7 @@ class TunnelService : Service() {
                     params.peer.isNotEmpty() &&
                     (
                         params.vkHashes.isNotEmpty() ||
-                            params.vkHashMode == CsqttConstants.VkAutoHash.MODE_AUTO_JS
+                            params.vkHashMode == WsttConstants.VkAutoHash.MODE_AUTO_JS
                     )
                 ) {
                     launch(Dispatchers.Main) {
@@ -541,7 +541,7 @@ class TunnelService : Service() {
         tokenFromLink: Boolean = false,
     ): ResolvedVkHashes? {
         return when (val mode = forcedMode ?: store.vkHashMode.first()) {
-            CsqttConstants.VkAutoHash.MODE_AUTO_API -> {
+            WsttConstants.VkAutoHash.MODE_AUTO_API -> {
                 val token = accessTokenOverride ?: store.vkAccessToken.first()
                 val result = VkAutoCallsManager.startAutoCalls(
                     applicationContext,
@@ -557,7 +557,7 @@ class TunnelService : Service() {
                 )
             }
 
-            CsqttConstants.VkAutoHash.MODE_AUTO_JS -> {
+            WsttConstants.VkAutoHash.MODE_AUTO_JS -> {
                 val token = accessTokenOverride ?: store.vkAccessToken.first()
                 if (token.isBlank()) return null
                 ResolvedVkHashes(
@@ -584,35 +584,35 @@ class TunnelService : Service() {
                 val store = SettingsStore(applicationContext)
                 val vkHashMode = store.vkHashMode.first()
                 val source = resolveConnectionSource(store) ?: return@launch
-                if (vkHashMode == CsqttConstants.VkAutoHash.MODE_MANUAL && !source.tokenFromLink) {
+                if (vkHashMode == WsttConstants.VkAutoHash.MODE_MANUAL && !source.tokenFromLink) {
                     return@launch
                 }
-                val accountAutoJs = previous.vkAuthMode == CsqttConstants.VkAuth.MODE_AUTO_JS ||
-                    (source.tokenFromLink && vkHashMode == CsqttConstants.VkAutoHash.MODE_AUTO_JS)
+                val accountAutoJs = previous.vkAuthMode == WsttConstants.VkAuth.MODE_AUTO_JS ||
+                    (source.tokenFromLink && vkHashMode == WsttConstants.VkAutoHash.MODE_AUTO_JS)
                 val workers = WorkerCountPolicy.normalize(
                     store.workersPerHash.first(),
-                    maximum = CsqttConstants.Tunnel.MAX_WORKERS,
+                    maximum = WsttConstants.Tunnel.MAX_WORKERS,
                 )
                 val resolved = when {
                     accountAutoJs -> resolveAutoHashes(
                         store,
                         fallbackHashes = "",
                         workersPerHash = workers,
-                        forcedMode = CsqttConstants.VkAutoHash.MODE_AUTO_JS,
+                        forcedMode = WsttConstants.VkAutoHash.MODE_AUTO_JS,
                         accessTokenOverride = source.vkAccessToken.takeIf { source.tokenFromLink },
                         tokenFromLink = source.tokenFromLink,
                     )
-                    vkHashMode == CsqttConstants.VkAutoHash.MODE_AUTO_API || source.tokenFromLink -> resolveAutoHashes(
+                    vkHashMode == WsttConstants.VkAutoHash.MODE_AUTO_API || source.tokenFromLink -> resolveAutoHashes(
                         store,
                         fallbackHashes = source.hashes,
                         workersPerHash = workers,
-                        forcedMode = if (source.tokenFromLink) CsqttConstants.VkAutoHash.MODE_AUTO_API else null,
+                        forcedMode = if (source.tokenFromLink) WsttConstants.VkAutoHash.MODE_AUTO_API else null,
                         accessTokenOverride = source.vkAccessToken.takeIf { source.tokenFromLink },
                         tokenFromLink = source.tokenFromLink,
                     )
                     else -> ResolvedVkHashes(source.hashes, false)
                 } ?: return@launch
-                if (resolved.value.isBlank() && resolved.mode != CsqttConstants.VkAutoHash.MODE_AUTO_JS) {
+                if (resolved.value.isBlank() && resolved.mode != WsttConstants.VkAutoHash.MODE_AUTO_JS) {
                     launch(Dispatchers.Main) { TunnelManager.stop() }
                     return@launch
                 }
@@ -628,7 +628,7 @@ class TunnelService : Service() {
                     vkHashes = resolved.value,
                     workersPerHash = workers,
                     connectionPassword = source.password,
-                    vkAuthMode = if (accountAutoJs) CsqttConstants.VkAuth.MODE_AUTO_JS else previous.vkAuthMode,
+                    vkAuthMode = if (accountAutoJs) WsttConstants.VkAuth.MODE_AUTO_JS else previous.vkAuthMode,
                     generationId = nextGeneration,
                     sessionSalt = newTunnelSessionId(),
                     allowHashRedistribution = resolved.allowWorkerRedistribution,
@@ -1203,17 +1203,17 @@ class TunnelService : Service() {
 
     private fun sanitizeVkAuthMode(mode: String?): String {
         return when (mode?.lowercase()) {
-            CsqttConstants.VkAuth.MODE_CAPTCHA -> CsqttConstants.VkAuth.MODE_CAPTCHA
-            CsqttConstants.VkAuth.MODE_AUTO_JS -> CsqttConstants.VkAuth.MODE_AUTO_JS
-            else -> CsqttConstants.VkAuth.MODE_CALLS
+            WsttConstants.VkAuth.MODE_CAPTCHA -> WsttConstants.VkAuth.MODE_CAPTCHA
+            WsttConstants.VkAuth.MODE_AUTO_JS -> WsttConstants.VkAuth.MODE_AUTO_JS
+            else -> WsttConstants.VkAuth.MODE_CALLS
         }
     }
 
     private fun sanitizeSrtpMode(mode: String?): String {
         return when (mode?.lowercase()) {
-            CsqttConstants.SrtpMode.WRAP -> CsqttConstants.SrtpMode.WRAP
-            CsqttConstants.SrtpMode.DTLS -> CsqttConstants.SrtpMode.DTLS
-            else -> CsqttConstants.SrtpMode.AUTO
+            WsttConstants.SrtpMode.WRAP -> WsttConstants.SrtpMode.WRAP
+            WsttConstants.SrtpMode.DTLS -> WsttConstants.SrtpMode.DTLS
+            else -> WsttConstants.SrtpMode.AUTO
         }
     }
 
@@ -1303,7 +1303,7 @@ class TunnelService : Service() {
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
             TUNNEL_NOTIFICATION_CHANNEL_ID,
-            "CSQTT Туннель",
+            "WSTT Туннель",
             NotificationManager.IMPORTANCE_LOW
         ).apply {
             description = "Уведомление о работе туннеля"
@@ -1336,7 +1336,7 @@ class TunnelService : Service() {
         )
 
         return NotificationCompat.Builder(this, TUNNEL_NOTIFICATION_CHANNEL_ID)
-            .setContentTitle("CSQTT")
+            .setContentTitle("WSTT")
             .setContentText(text)
             .setSmallIcon(R.drawable.ic_stat_c)
             .setOngoing(true)

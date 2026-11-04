@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 internal fun shouldConfirmTcpTransport(
     currentTransport: String,
@@ -6,5 +6,5 @@ internal fun shouldConfirmTcpTransport(
     warningAcknowledged: Boolean,
 ): Boolean =
     !warningAcknowledged &&
-        currentTransport != CsqttConstants.Tunnel.TURN_TRANSPORT_TCP_TLS &&
-        requestedTransport == CsqttConstants.Tunnel.TURN_TRANSPORT_TCP_TLS
+        currentTransport != WsttConstants.Tunnel.TURN_TRANSPORT_TCP_TLS &&
+        requestedTransport == WsttConstants.Tunnel.TURN_TRANSPORT_TCP_TLS

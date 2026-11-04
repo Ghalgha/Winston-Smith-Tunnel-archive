@@ -1,4 +1,4 @@
-package com.csqtt.client.ui
+package com.wstt.client.ui
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.FilterChip
@@ -10,7 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.csqtt.client.ui.design.CsqttShapes
+import com.wstt.client.ui.design.WsttShapes
 
 @Composable
 internal fun ProtocolChip(
@@ -35,7 +35,7 @@ internal fun ProtocolChip(
                 modifier = if (centerText) Modifier.fillMaxWidth() else Modifier,
             )
         },
-        shape = CsqttShapes.Pill,
+        shape = WsttShapes.Pill,
         colors = FilterChipDefaults.filterChipColors(
             selectedContainerColor = MaterialTheme.colorScheme.primary,
             selectedLabelColor = MaterialTheme.colorScheme.onPrimary,

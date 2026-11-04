@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 import android.app.Application
 import android.content.Context
@@ -7,7 +7,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-class CsqttApplication : Application() {
+class WsttApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         DeployManager.init(this)
@@ -15,10 +15,10 @@ class CsqttApplication : Application() {
         CoroutineScope(SupervisorJob() + Dispatchers.Main).launch {
             try {
                 TunnelManager.running.collect {
-                    VpnWidgetProvider.updateAllWidgets(this@CsqttApplication)
+                    VpnWidgetProvider.updateAllWidgets(this@WsttApplication)
                 }
             } catch (e: Exception) {
-                Log.e("CsqttApp", "Не удалось обновить виджеты: ${e.message}")
+                Log.e("WsttApp", "Не удалось обновить виджеты: ${e.message}")
             }
         }
 
@@ -29,7 +29,7 @@ class CsqttApplication : Application() {
                     TunnelManager.isLoggingEnabled = enabled
                 }
             } catch (e: Exception) {
-                Log.e("CsqttApp", "Не удалось отслеживать флаг логирования: ${e.message}")
+                Log.e("WsttApp", "Не удалось отслеживать флаг логирования: ${e.message}")
             }
         }
     }

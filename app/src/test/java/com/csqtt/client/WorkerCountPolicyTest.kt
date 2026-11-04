@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -8,14 +8,14 @@ class WorkerCountPolicyTest {
 
     @Test
     fun everySupportedTotalRemainsAnExactMultipleOfFive() {
-        val supported = (1..CsqttConstants.Tunnel.MAX_WORKERS / CsqttConstants.Tunnel.WORKERS_PER_GROUP)
-            .map { it * CsqttConstants.Tunnel.WORKERS_PER_GROUP }
+        val supported = (1..WsttConstants.Tunnel.MAX_WORKERS / WsttConstants.Tunnel.WORKERS_PER_GROUP)
+            .map { it * WsttConstants.Tunnel.WORKERS_PER_GROUP }
         for ((groups, workers) in supported.withIndex()) {
             assertEquals(workers, WorkerCountPolicy.normalize(workers))
-            assertEquals(groups + 1, workers / CsqttConstants.Tunnel.WORKERS_PER_GROUP)
+            assertEquals(groups + 1, workers / WsttConstants.Tunnel.WORKERS_PER_GROUP)
         }
         assertEquals(100, supported.last())
-        assertEquals(100, WorkerCountPolicy.normalize(CsqttConstants.Tunnel.MAX_WORKERS))
+        assertEquals(100, WorkerCountPolicy.normalize(WsttConstants.Tunnel.MAX_WORKERS))
     }
 
     @Test
@@ -64,7 +64,7 @@ class WorkerCountPolicyTest {
     fun invalidPersistedCountsAreBoundedAndNeverCreatePartialCredentialGroup() {
         for (requested in -1_000..1_000) {
             val normalized = WorkerCountPolicy.normalize(requested)
-            assertTrue(normalized in 5..CsqttConstants.Tunnel.MAX_WORKERS)
+            assertTrue(normalized in 5..WsttConstants.Tunnel.MAX_WORKERS)
             assertEquals(0, normalized % 5)
             assertTrue(normalized <= requested.coerceAtLeast(5) || normalized == 100)
         }
@@ -85,7 +85,7 @@ class WorkerCountPolicyTest {
     fun automaticHashModeAllowsTheFullWorkerRange() {
         for (requested in -100..300) {
             val admitted = WorkerCountPolicy.normalize(requested)
-            assertTrue(admitted in 5..CsqttConstants.Tunnel.MAX_WORKERS)
+            assertTrue(admitted in 5..WsttConstants.Tunnel.MAX_WORKERS)
             assertEquals(0, admitted % 5)
         }
         assertEquals(100, WorkerCountPolicy.normalize(Int.MAX_VALUE))
@@ -94,10 +94,10 @@ class WorkerCountPolicyTest {
     @Test
     fun craftedIntentCountsCannotBypassHashAwareRuntimeAdmission() {
         for (requested in listOf(Int.MIN_VALUE, -1, 0, 4, 28, 109, Int.MAX_VALUE)) {
-            for (hashCount in 1..CsqttConstants.Tunnel.MAX_VK_HASHES) {
+            for (hashCount in 1..WsttConstants.Tunnel.MAX_VK_HASHES) {
                 val admitted = WorkerCountPolicy.normalizeForHashes(requested, hashCount)
                 assertTrue(admitted in 5..WorkerCountPolicy.maximumForHashes(hashCount))
-                assertTrue(admitted == 5 || admitted % CsqttConstants.Tunnel.WORKERS_PER_GROUP == 0)
+                assertTrue(admitted == 5 || admitted % WsttConstants.Tunnel.WORKERS_PER_GROUP == 0)
             }
         }
         assertEquals(
@@ -124,10 +124,10 @@ class WorkerCountPolicyTest {
         assertEquals(5, VkAutoCallsManager.callCountForWorkers(45))
         assertEquals(6, VkAutoCallsManager.callCountForWorkers(60))
         assertEquals(7, VkAutoCallsManager.callCountForWorkers(100))
-        assertEquals(CsqttConstants.VkAutoHash.AUTO_CALL_SMALL_DELAY_MS, VkAutoCallsManager.requestDelayForCallCount(1))
-        assertEquals(CsqttConstants.VkAutoHash.AUTO_CALL_SMALL_DELAY_MS, VkAutoCallsManager.requestDelayForCallCount(4))
-        assertEquals(CsqttConstants.VkAutoHash.AUTO_CALL_LARGE_DELAY_MS, VkAutoCallsManager.requestDelayForCallCount(5))
-        assertEquals(CsqttConstants.VkAutoHash.AUTO_CALL_LARGE_DELAY_MS, VkAutoCallsManager.requestDelayForCallCount(6))
+        assertEquals(WsttConstants.VkAutoHash.AUTO_CALL_SMALL_DELAY_MS, VkAutoCallsManager.requestDelayForCallCount(1))
+        assertEquals(WsttConstants.VkAutoHash.AUTO_CALL_SMALL_DELAY_MS, VkAutoCallsManager.requestDelayForCallCount(4))
+        assertEquals(WsttConstants.VkAutoHash.AUTO_CALL_LARGE_DELAY_MS, VkAutoCallsManager.requestDelayForCallCount(5))
+        assertEquals(WsttConstants.VkAutoHash.AUTO_CALL_LARGE_DELAY_MS, VkAutoCallsManager.requestDelayForCallCount(6))
     }
 
     @Test

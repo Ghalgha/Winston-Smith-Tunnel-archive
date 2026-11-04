@@ -1,4 +1,4 @@
-package com.csqtt.client.ui.dialogs
+package com.wstt.client.ui.dialogs
 
 import android.view.ScaleGestureDetector
 import android.view.ViewGroup

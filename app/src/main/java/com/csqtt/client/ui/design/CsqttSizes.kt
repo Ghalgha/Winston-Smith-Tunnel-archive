@@ -1,10 +1,10 @@
-package com.csqtt.client.ui.design
+package com.wstt.client.ui.design
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.unit.dp
 
 @Immutable
-object CsqttSizes {
+object WsttSizes {
     val ScreenHorizontalPadding = 20.dp
     val ScreenTopPadding = 12.dp
     val ScreenBottomPadding = 32.dp

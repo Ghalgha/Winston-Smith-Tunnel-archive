@@ -1,4 +1,4 @@
-package com.csqtt.client.ui.components
+package com.wstt.client.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -21,12 +21,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.csqtt.client.ui.design.CsqttShapes
-import com.csqtt.client.ui.design.CsqttSizes
-import com.csqtt.client.ui.design.CsqttSpacing
+import com.wstt.client.ui.design.WsttShapes
+import com.wstt.client.ui.design.WsttSizes
+import com.wstt.client.ui.design.WsttSpacing
 
 @Composable
-fun <T> CsqttSegmentedControl(
+fun <T> WsttSegmentedControl(
     options: List<Pair<T, String>>,
     selected: T,
     onSelected: (T) -> Unit,
@@ -37,17 +37,17 @@ fun <T> CsqttSegmentedControl(
         modifier = modifier
             .fillMaxWidth()
             .selectableGroup(),
-        horizontalArrangement = Arrangement.spacedBy(CsqttSpacing.Xs),
+        horizontalArrangement = Arrangement.spacedBy(WsttSpacing.Xs),
     ) {
         options.forEach { (value, label) ->
             val isSelected = value == selected
             Surface(
-                shape = CsqttShapes.Control,
+                shape = WsttShapes.Control,
                 color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                 contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
                     .weight(1f)
-                    .defaultMinSize(minHeight = CsqttSizes.MinimumTouchTarget)
+                    .defaultMinSize(minHeight = WsttSizes.MinimumTouchTarget)
                     .selectable(
                         selected = isSelected,
                         enabled = enabled,
@@ -56,7 +56,7 @@ fun <T> CsqttSegmentedControl(
                     ),
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = CsqttSpacing.Xs, vertical = 13.dp),
+                    modifier = Modifier.padding(horizontal = WsttSpacing.Xs, vertical = 13.dp),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -64,9 +64,9 @@ fun <T> CsqttSegmentedControl(
                         Icon(
                             imageVector = Icons.Rounded.Check,
                             contentDescription = null,
-                            modifier = Modifier.size(CsqttSizes.IconSmall),
+                            modifier = Modifier.size(WsttSizes.IconSmall),
                         )
-                        androidx.compose.foundation.layout.Spacer(Modifier.width(CsqttSpacing.Xxs))
+                        androidx.compose.foundation.layout.Spacer(Modifier.width(WsttSpacing.Xxs))
                     }
                     Text(
                         text = label,

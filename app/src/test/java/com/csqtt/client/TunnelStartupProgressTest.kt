@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors

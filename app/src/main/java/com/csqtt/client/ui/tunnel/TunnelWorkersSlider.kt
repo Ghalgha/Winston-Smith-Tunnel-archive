@@ -1,4 +1,4 @@
-package com.csqtt.client.ui
+package com.wstt.client.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.focusable
@@ -38,7 +38,7 @@ import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.csqtt.client.CsqttConstants
+import com.wstt.client.WsttConstants
 import kotlin.math.roundToInt
 
 import androidx.compose.runtime.rememberUpdatedState
@@ -101,7 +101,7 @@ internal fun TunnelWorkersControl(
                     currentOnValueChange(finalValue)
                 },
                 valueRange = minimum..normalizedMaximum,
-                stepSize = CsqttConstants.Tunnel.WORKERS_PER_GROUP.toFloat(),
+                stepSize = WsttConstants.Tunnel.WORKERS_PER_GROUP.toFloat(),
                 enabled = enabled,
                 modifier = Modifier.fillMaxWidth(),
             )

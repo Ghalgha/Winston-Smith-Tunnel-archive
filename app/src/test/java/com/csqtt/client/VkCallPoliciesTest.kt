@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals

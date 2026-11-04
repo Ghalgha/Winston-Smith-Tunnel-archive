@@ -1,4 +1,4 @@
-package com.csqtt.client.ui
+package com.wstt.client.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -32,7 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.csqtt.client.ui.design.CsqttShapes
+import com.wstt.client.ui.design.WsttShapes
 
 import androidx.compose.material.icons.filled.Download
 
@@ -55,7 +55,7 @@ internal fun ServerActionBar(
                 onClick = { onAction(DeployAction.Uninstall) },
                 enabled = !state.isDeploying && state.canUninstall,
                 modifier = Modifier.weight(1f).height(52.dp),
-                shape = CsqttShapes.Pill,
+                shape = WsttShapes.Pill,
                 contentPadding = PaddingValues(horizontal = 8.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.error,
@@ -72,7 +72,7 @@ internal fun ServerActionBar(
                 onClick = { onAction(DeployAction.Install) },
                 enabled = !state.isDeploying,
                 modifier = Modifier.weight(1f).height(52.dp),
-                shape = CsqttShapes.Pill,
+                shape = WsttShapes.Pill,
                 contentPadding = PaddingValues(horizontal = 8.dp),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 0.dp)
             ) {
@@ -98,7 +98,7 @@ internal fun ServerActionBar(
         OutlinedButton(
             onClick = { onAction(DeployAction.EditAuthorization) },
             modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = CsqttShapes.Pill,
+            shape = WsttShapes.Pill,
             colors = ButtonDefaults.outlinedButtonColors(
                 containerColor = Color.Transparent,
                 contentColor = MaterialTheme.colorScheme.onSurface,

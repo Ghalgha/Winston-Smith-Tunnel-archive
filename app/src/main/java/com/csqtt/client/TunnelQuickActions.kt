@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 import android.content.Context
 import android.content.Intent
@@ -44,13 +44,13 @@ internal suspend fun toggleTunnelFromQuickAction(context: Context, running: Bool
         return
     }
     if (VpnService.prepare(context) != null) {
-        context.showRaisedToast("Откройте CSQTT и выдайте VPN-разрешение", Toast.LENGTH_LONG)
+        context.showRaisedToast("Откройте WSTT и выдайте VPN-разрешение", Toast.LENGTH_LONG)
         openMain()
         return
     }
     val startIntent = buildQuickStartIntent(context)
     if (startIntent == null) {
-        context.showRaisedToast("Заполните настройки подключения в CSQTT", Toast.LENGTH_LONG)
+        context.showRaisedToast("Заполните настройки подключения в WSTT", Toast.LENGTH_LONG)
         openMain()
         return
     }

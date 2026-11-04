@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger

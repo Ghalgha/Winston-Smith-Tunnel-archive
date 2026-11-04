@@ -1,7 +1,7 @@
-package com.csqtt.client
+package com.wstt.client
 
-import com.csqtt.client.ui.utils.parseCsqttLink
-import com.csqtt.client.ui.utils.peerAddress
+import com.wstt.client.ui.utils.parseWsttLink
+import com.wstt.client.ui.utils.peerAddress
 import kotlinx.coroutines.flow.first
 
 data class ConnectionSource(
@@ -21,8 +21,8 @@ suspend fun resolveConnectionSource(store: SettingsStore): ConnectionSource? {
         return (if (filtered.isNotEmpty()) filtered else rawList).joinToString(",")
     }
 
-    if (store.csqttLinkMode.first()) {
-        val link = parseCsqttLink(store.csqttLink.first()) ?: return null
+    if (store.wsttLinkMode.first()) {
+        val link = parseWsttLink(store.wsttLink.first()) ?: return null
         val linkHashes = activeHashes(link.hashes.joinToString(","))
         val tokenFromLink = link.vkAccessToken.isNotEmpty()
         return ConnectionSource(
@@ -42,7 +42,7 @@ suspend fun resolveConnectionSource(store: SettingsStore): ConnectionSource? {
     val serverPeerPort = if (store.manualPortsEnabled.first()) {
         store.serverPeerPort.first()
     } else {
-        CsqttConstants.Network.DEFAULT_SERVER_PEER_PORT
+        WsttConstants.Network.DEFAULT_SERVER_PEER_PORT
     }
     val peer = if (basePeer.contains(':')) basePeer else "$basePeer:$serverPeerPort"
     return ConnectionSource(

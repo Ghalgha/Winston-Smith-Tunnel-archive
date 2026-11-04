@@ -1,4 +1,4 @@
-package com.csqtt.client.ui
+package com.wstt.client.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -19,25 +19,25 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.csqtt.client.CsqttConstants
-import com.csqtt.client.ui.design.CsqttShapes
-import com.csqtt.client.ui.design.CsqttSizes
+import com.wstt.client.WsttConstants
+import com.wstt.client.ui.design.WsttShapes
+import com.wstt.client.ui.design.WsttSizes
 
 @Composable
 internal fun HashModeInfoDialog(mode: String? = null, onDismiss: () -> Unit) {
     val (title, text) = when (mode) {
-        CsqttConstants.VkAutoHash.MODE_MANUAL -> "Режим «Ручной»" to """
+        WsttConstants.VkAutoHash.MODE_MANUAL -> "Режим «Ручной»" to """
             • Вы сами создаёте звонки или группы с вечными звонками в VK, копируете ссылку и вставляете её в окно «VK Хеши».
             • Можно использовать до 6 разных хешей для распределения нагрузки.
             • Полный ручной контроль над источниками пула звонков без необходимости входа в VK ID.
         """.trimIndent()
-        CsqttConstants.VkAutoHash.MODE_AUTO_API -> "Режим «Авто API»" to """
+        WsttConstants.VkAutoHash.MODE_AUTO_API -> "Режим «Авто API»" to """
             • Приложение создаёт необходимые звонки через официальный метод VK API calls.start.
             • Количество хешей выбирается автоматически — от 1 до 6 по числу потоков.
             • При остановке туннеля звонки корректно завершаются через calls.forceFinish.
             • VK access token хранится в защищённом Android Keystore.
         """.trimIndent()
-        CsqttConstants.VkAutoHash.MODE_AUTO_JS -> "Режим «Авто ВК»" to """
+        WsttConstants.VkAutoHash.MODE_AUTO_JS -> "Режим «Авто ВК»" to """
             • Rust повторяет браузерную цепочку VK Calls: получает call-token через messages.getCallToken, открывает сессию OK Calls и создаёт один звонок через vchat.startConversation.
             • session_key и идентификаторы звонков остаются внутри Rust-процесса и не выводятся в журнал.
             • Источник TURN-кредов задаётся отдельно режимом работы: «Капча», «Авто» или account-сессии «Авто ВК».
@@ -47,9 +47,9 @@ internal fun HashModeInfoDialog(mode: String? = null, onDismiss: () -> Unit) {
         else -> "Режимы ВК Хешей" to """
             • Ручной — несмотря на жёлтый индикатор, является стабильным и проверенно рабочим, но с последними событиями создавать вечные хеши получается сложным или невозможным.
 
-            • Авто API — использует вечный VK токен для создания звонков через официальный API calls.start (пока вечно живущих, что будет потом — не ясно), работает стабильно и хорошо. Создаёт звонки и использует их; после того как вы отключаетесь от CSQTT, звонки завершаются, ничего не утекает, поведение выглядит штатным.
+            • Авто API — использует вечный VK токен для создания звонков через официальный API calls.start (пока вечно живущих, что будет потом — не ясно), работает стабильно и хорошо. Создаёт звонки и использует их; после того как вы отключаетесь от WSTT, звонки завершаются, ничего не утекает, поведение выглядит штатным.
 
-            • Авто ВК — использует браузерную цепочку API (другие, но официальные API методы calls.getConversationParams), также требует ваш VK токен. Стабильный метод на случай возникновения проблем с первыми двумя. Временное ограничение данного режима — создание только 1 звонка. Когда вы отключаетесь от CSQTT, звонок завершается. Поведение выглядит штатным.
+            • Авто ВК — использует браузерную цепочку API (другие, но официальные API методы calls.getConversationParams), также требует ваш VK токен. Стабильный метод на случай возникновения проблем с первыми двумя. Временное ограничение данного режима — создание только 1 звонка. Когда вы отключаетесь от WSTT, звонок завершается. Поведение выглядит штатным.
         """.trimIndent()
     }
 
@@ -58,7 +58,7 @@ internal fun HashModeInfoDialog(mode: String? = null, onDismiss: () -> Unit) {
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         Surface(
-            shape = CsqttShapes.Dialog,
+            shape = WsttShapes.Dialog,
             color = appSectionCardColor(),
             contentColor = MaterialTheme.colorScheme.onSurface,
             border = BorderStroke(1.dp, appSectionCardBorderColor()),
@@ -78,8 +78,8 @@ internal fun HashModeInfoDialog(mode: String? = null, onDismiss: () -> Unit) {
                 )
                 Button(
                     onClick = onDismiss,
-                    modifier = Modifier.fillMaxWidth().height(CsqttSizes.ControlHeight),
-                    shape = CsqttShapes.Pill,
+                    modifier = Modifier.fillMaxWidth().height(WsttSizes.ControlHeight),
+                    shape = WsttShapes.Pill,
                     colors = ButtonDefaults.buttonColors(contentColor = MaterialTheme.colorScheme.onPrimary),
                 ) {
                     Text("Понятно", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)

@@ -1,4 +1,4 @@
-package com.csqtt.client.ui
+package com.wstt.client.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -26,8 +26,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.csqtt.client.ui.design.CsqttShapes
-import com.csqtt.client.ui.design.CsqttSpacing
+import com.wstt.client.ui.design.WsttShapes
+import com.wstt.client.ui.design.WsttSpacing
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.graphics.luminance
 
@@ -70,24 +70,24 @@ internal fun AppRow(
                 role = Role.Checkbox,
                 onValueChange = { onClick() },
             ),
-        shape = CsqttShapes.Card,
+        shape = WsttShapes.Card,
         color = surfaceColor,
         contentColor = if (isSelected) colors.onPrimaryContainer else colors.onSurface,
         border = BorderStroke(1.dp, borderColor),
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = CsqttSpacing.Md, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(CsqttSpacing.Md),
+            modifier = Modifier.padding(horizontal = WsttSpacing.Md, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(WsttSpacing.Md),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (app.icon != null) {
                 Image(
                     bitmap = app.icon,
                     contentDescription = null,
-                    modifier = Modifier.size(42.dp).clip(CsqttShapes.Small),
+                    modifier = Modifier.size(42.dp).clip(WsttShapes.Small),
                 )
             } else {
-                Box(modifier = Modifier.size(42.dp).background(colors.surfaceVariant, CsqttShapes.Small))
+                Box(modifier = Modifier.size(42.dp).background(colors.surfaceVariant, WsttShapes.Small))
             }
 
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {

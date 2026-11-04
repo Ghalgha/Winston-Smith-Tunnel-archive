@@ -1,4 +1,4 @@
-package com.csqtt.client.ui
+package com.wstt.client.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -19,8 +19,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.csqtt.client.ui.design.CsqttShapes
-import com.csqtt.client.ui.design.CsqttSizes
+import com.wstt.client.ui.design.WsttShapes
+import com.wstt.client.ui.design.WsttSizes
 
 @Composable
 internal fun WifiAutoPauseInfoDialog(onDismiss: () -> Unit) {
@@ -29,7 +29,7 @@ internal fun WifiAutoPauseInfoDialog(onDismiss: () -> Unit) {
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         Surface(
-            shape = CsqttShapes.Dialog,
+            shape = WsttShapes.Dialog,
             color = appSectionCardColor(),
             contentColor = MaterialTheme.colorScheme.onSurface,
             border = BorderStroke(1.dp, appSectionCardBorderColor()),
@@ -46,15 +46,15 @@ internal fun WifiAutoPauseInfoDialog(onDismiss: () -> Unit) {
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    "Когда функция включена и устройство подключается к Wi-Fi, CSQTT переходит в ожидание и отключает свой VPN-сервис. После отключения Wi-Fi CSQTT автоматически возвращается к обычному подключению, если до паузы он был включён.\n\nПо умолчанию функция выключена.",
+                    "Когда функция включена и устройство подключается к Wi-Fi, WSTT переходит в ожидание и отключает свой VPN-сервис. После отключения Wi-Fi WSTT автоматически возвращается к обычному подключению, если до паузы он был включён.\n\nПо умолчанию функция выключена.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 16.sp,
                 )
                 Button(
                     onClick = onDismiss,
-                    modifier = Modifier.fillMaxWidth().height(CsqttSizes.ControlHeight),
-                    shape = CsqttShapes.Pill,
+                    modifier = Modifier.fillMaxWidth().height(WsttSizes.ControlHeight),
+                    shape = WsttShapes.Pill,
                     colors = ButtonDefaults.buttonColors(contentColor = MaterialTheme.colorScheme.onPrimary),
                 ) {
                     Text("Понятно", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)

@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 import android.content.Context
 import android.os.SystemClock
@@ -37,16 +37,16 @@ object VkAutoCallsManager {
     fun hasActiveCalls(): Boolean = activeCalls.isNotEmpty()
 
     fun callCountForWorkers(workers: Int): Int {
-        return (1..CsqttConstants.Tunnel.MAX_VK_HASHES).firstOrNull {
+        return (1..WsttConstants.Tunnel.MAX_VK_HASHES).firstOrNull {
             workers <= WorkerCountPolicy.maximumForHashes(it)
-        } ?: CsqttConstants.Tunnel.MAX_VK_HASHES
+        } ?: WsttConstants.Tunnel.MAX_VK_HASHES
     }
 
     internal fun requestDelayForCallCount(callCount: Int): Long =
         if (callCount <= 4) {
-            CsqttConstants.VkAutoHash.AUTO_CALL_SMALL_DELAY_MS
+            WsttConstants.VkAutoHash.AUTO_CALL_SMALL_DELAY_MS
         } else {
-            CsqttConstants.VkAutoHash.AUTO_CALL_LARGE_DELAY_MS
+            WsttConstants.VkAutoHash.AUTO_CALL_LARGE_DELAY_MS
         }
 
     suspend fun startAutoCalls(
@@ -168,7 +168,7 @@ object VkAutoCallsManager {
         if (token.isNullOrBlank()) return
 
         TunnelManager.scope.launch(Dispatchers.IO + NonCancellable) {
-            withTimeoutOrNull(CsqttConstants.VkAutoHash.FINISH_CALLS_TIMEOUT_MS) {
+            withTimeoutOrNull(WsttConstants.VkAutoHash.FINISH_CALLS_TIMEOUT_MS) {
                 finishCalls(calls, token, logResults = true)
             }
         }

@@ -1,4 +1,4 @@
-package com.csqtt.client.ui.design
+package com.wstt.client.ui.design
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -7,7 +7,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
 @Immutable
-data class CsqttExtendedColors(
+data class WsttExtendedColors(
     val success: Color,
     val onSuccess: Color,
     val successContainer: Color,
@@ -27,7 +27,7 @@ data class CsqttExtendedColors(
     val terminalSuccess: Color,
 )
 
-internal val CsqttLightExtendedColors = CsqttExtendedColors(
+internal val WsttLightExtendedColors = WsttExtendedColors(
     success = Color(0xFF356A4C),
     onSuccess = Color.White,
     successContainer = Color(0xFFB8F2CE),
@@ -47,7 +47,7 @@ internal val CsqttLightExtendedColors = CsqttExtendedColors(
     terminalSuccess = Color(0xFF9BD4AF),
 )
 
-internal val CsqttDarkExtendedColors = CsqttExtendedColors(
+internal val WsttDarkExtendedColors = WsttExtendedColors(
     success = Color(0xFF9BD4AF),
     onSuccess = Color(0xFF06391E),
     successContainer = Color(0xFF1D5134),
@@ -67,11 +67,11 @@ internal val CsqttDarkExtendedColors = CsqttExtendedColors(
     terminalSuccess = Color(0xFF9BD4AF),
 )
 
-internal val LocalCsqttExtendedColors = staticCompositionLocalOf { CsqttDarkExtendedColors }
+internal val LocalWsttExtendedColors = staticCompositionLocalOf { WsttDarkExtendedColors }
 
-object CsqttTheme {
-    val extendedColors: CsqttExtendedColors
+object WsttTheme {
+    val extendedColors: WsttExtendedColors
         @Composable
         @ReadOnlyComposable
-        get() = LocalCsqttExtendedColors.current
+        get() = LocalWsttExtendedColors.current
 }

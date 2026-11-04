@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -527,7 +527,7 @@ object TunnelManager {
 
     private fun handleServerAssignedWorkers(assignedWorkers: Int, identity: ProcessIdentity) {
         if (!isCurrent(identity)) return
-        serverAssignedWorkers.value = if (assignedWorkers in TunnelEventParser.MIN_SERVER_WORKERS..CsqttConstants.Tunnel.MAX_WORKERS) assignedWorkers else null
+        serverAssignedWorkers.value = if (assignedWorkers in TunnelEventParser.MIN_SERVER_WORKERS..WsttConstants.Tunnel.MAX_WORKERS) assignedWorkers else null
     }
 
     private fun verifyVkReachability(identity: ProcessIdentity) {
@@ -536,7 +536,7 @@ object TunnelManager {
         runCatching {
             context.applicationContext.startService(
                 Intent(context.applicationContext, TunnelService::class.java).apply {
-                    action = CsqttConstants.General.ACTION_VERIFY_VK_REACHABILITY
+                    action = WsttConstants.General.ACTION_VERIFY_VK_REACHABILITY
                 },
             )
         }
@@ -551,8 +551,8 @@ object TunnelManager {
         runCatching {
             context.applicationContext.startService(
                 Intent(context.applicationContext, TunnelService::class.java).apply {
-                    action = CsqttConstants.General.ACTION_RECOVER_VK_CALL
-                    putExtra(CsqttConstants.General.EXTRA_UNAVAILABLE_VK_HASH, hash)
+                    action = WsttConstants.General.ACTION_RECOVER_VK_CALL
+                    putExtra(WsttConstants.General.EXTRA_UNAVAILABLE_VK_HASH, hash)
                 },
             )
         }.onFailure {
@@ -659,7 +659,7 @@ object TunnelManager {
                 putExtra("dns", dns)
                 putExtra("force_rebuild", forceRebuild)
                 putExtra("reason", reason)
-                putExtra("mtu", CsqttConstants.Vpn.DEFAULT_MTU)
+                putExtra("mtu", WsttConstants.Vpn.DEFAULT_MTU)
             }
             try {
                 startTunVpnService(ctx, vpnIntent)
@@ -726,7 +726,7 @@ object TunnelManager {
             runCatching {
                 context.startService(
                     Intent(context, TunnelService::class.java).apply {
-                        action = CsqttConstants.General.ACTION_RESTART_WHEN_VK_REACHABLE
+                        action = WsttConstants.General.ACTION_RESTART_WHEN_VK_REACHABLE
                     },
                 )
             }.onFailure {
@@ -1054,12 +1054,12 @@ object TunnelManager {
             .split(Regex("[,\\s\\n]+"))
             .map { it.trim() }
             .filter { it.isNotEmpty() }
-            .take(CsqttConstants.Tunnel.MAX_VK_HASHES)
+            .take(WsttConstants.Tunnel.MAX_VK_HASHES)
 
-        val jsHashMode = params.vkHashMode == CsqttConstants.VkAutoHash.MODE_AUTO_JS
-        val jsAuthMode = params.vkAuthMode == CsqttConstants.VkAuth.MODE_AUTO_JS
+        val jsHashMode = params.vkHashMode == WsttConstants.VkAutoHash.MODE_AUTO_JS
+        val jsAuthMode = params.vkAuthMode == WsttConstants.VkAuth.MODE_AUTO_JS
         val effectiveAuthMode = if (jsAuthMode && !jsHashMode) {
-            CsqttConstants.VkAuth.MODE_CALLS
+            WsttConstants.VkAuth.MODE_CALLS
         } else {
             params.vkAuthMode
         }
@@ -1072,7 +1072,7 @@ object TunnelManager {
             return
         }
 
-        val binaryPath = context.applicationInfo.nativeLibraryDir + "/${CsqttConstants.Tunnel.BINARY_NAME}"
+        val binaryPath = context.applicationInfo.nativeLibraryDir + "/${WsttConstants.Tunnel.BINARY_NAME}"
         if (!File(binaryPath).exists()) {
             failStartLocked("binary_error", "Ошибка: Бинарный файл не найден")
             return
@@ -1093,7 +1093,7 @@ object TunnelManager {
             "-peer", params.peer,
             "-n", totalWorkers.toString(),
             "--max-workers", maxWorkers.toString(),
-            "-listen", "${CsqttConstants.Network.LOCAL_LISTEN_HOST}:${params.port}",
+            "-listen", "${WsttConstants.Network.LOCAL_LISTEN_HOST}:${params.port}",
             "-tun-uds", TUN_UDS_NAME,
         )
         if (hashList.isNotEmpty()) {
@@ -1183,7 +1183,7 @@ object TunnelManager {
         pb.directory(context.filesDir)
         pb.redirectErrorStream(true)
         pb.environment()["LD_LIBRARY_PATH"] = context.applicationInfo.nativeLibraryDir
-        pb.environment()[CsqttConstants.Tunnel.PROCESS_ENV_EVENTS] = "1"
+        pb.environment()[WsttConstants.Tunnel.PROCESS_ENV_EVENTS] = "1"
         pb.environment()["RAYON_NUM_THREADS"] = "2"
         if (params.connectionPassword.isNotEmpty()) {
             pb.environment()["CSQTT_PASSWORD"] = params.connectionPassword
@@ -1294,7 +1294,7 @@ object TunnelManager {
                             line
                         }
                     var lineTrim = stripped.trim()
-                    val eventPrefix = CsqttConstants.General.CSQTT_EVENT_PREFIX
+                    val eventPrefix = WsttConstants.General.WSTT_EVENT_PREFIX
                     val eventIdx = lineTrim.indexOf(eventPrefix)
                     if (eventIdx >= 0) {
                         val eventPart = lineTrim.substring(eventIdx)
@@ -2104,16 +2104,16 @@ object TunnelManager {
             .split(Regex("[,\\\\s\\\\n]+"))
             .map(String::trim)
             .filter(String::isNotEmpty)
-            .take(CsqttConstants.Tunnel.MAX_VK_HASHES)
+            .take(WsttConstants.Tunnel.MAX_VK_HASHES)
         val targetWorkers = WorkerCountPolicy.normalizeForHashValues(
             workersPerHash,
             hashes,
-            params.allowHashRedistribution || params.vkHashMode == CsqttConstants.VkAutoHash.MODE_AUTO_JS,
+            params.allowHashRedistribution || params.vkHashMode == WsttConstants.VkAutoHash.MODE_AUTO_JS,
         )
         val currentWorkers = WorkerCountPolicy.normalizeForHashValues(
             params.workersPerHash,
             hashes,
-            params.allowHashRedistribution || params.vkHashMode == CsqttConstants.VkAutoHash.MODE_AUTO_JS,
+            params.allowHashRedistribution || params.vkHashMode == WsttConstants.VkAutoHash.MODE_AUTO_JS,
         )
         if (writeProcessCommand(identity, "SET_WORKERS|$targetWorkers", "workers_update_error")) {
             currentParams = params.copy(workersPerHash = targetWorkers)
@@ -2189,14 +2189,14 @@ data class TunnelParams(
     val captchaMode: String = "auto",
     val captchaSolveMethod: String = "auto",
     val fingerprint: String = "firefox",
-    val clientIds: String = CsqttConstants.Tunnel.DEFAULT_CLIENT_IDS,
-    val obfsMode: String = CsqttConstants.Tunnel.DEFAULT_OBFS_MODE,
-    val turnTransport: String = CsqttConstants.Tunnel.DEFAULT_TURN_TRANSPORT,
-    val srtpMode: String = CsqttConstants.SrtpMode.DEFAULT,
+    val clientIds: String = WsttConstants.Tunnel.DEFAULT_CLIENT_IDS,
+    val obfsMode: String = WsttConstants.Tunnel.DEFAULT_OBFS_MODE,
+    val turnTransport: String = WsttConstants.Tunnel.DEFAULT_TURN_TRANSPORT,
+    val srtpMode: String = WsttConstants.SrtpMode.DEFAULT,
     val generationId: Long = 0,
     val sessionSalt: String = "",
     val allowHashRedistribution: Boolean = false,
-    val vkHashMode: String = CsqttConstants.VkAutoHash.MODE_MANUAL,
+    val vkHashMode: String = WsttConstants.VkAutoHash.MODE_MANUAL,
     val vkAccessToken: String = "",
     val customTurnIps: String = "",
     val domainRoutingEnabled: Boolean = false,

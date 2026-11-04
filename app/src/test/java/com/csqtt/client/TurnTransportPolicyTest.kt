@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -9,24 +9,24 @@ class TurnTransportPolicyTest {
         assertEquals(
             true,
             shouldConfirmTcpTransport(
-                currentTransport = CsqttConstants.Tunnel.DEFAULT_TURN_TRANSPORT,
-                requestedTransport = CsqttConstants.Tunnel.TURN_TRANSPORT_TCP_TLS,
+                currentTransport = WsttConstants.Tunnel.DEFAULT_TURN_TRANSPORT,
+                requestedTransport = WsttConstants.Tunnel.TURN_TRANSPORT_TCP_TLS,
                 warningAcknowledged = false,
             ),
         )
         assertEquals(
             false,
             shouldConfirmTcpTransport(
-                currentTransport = CsqttConstants.Tunnel.TURN_TRANSPORT_TCP_TLS,
-                requestedTransport = CsqttConstants.Tunnel.TURN_TRANSPORT_TCP_TLS,
+                currentTransport = WsttConstants.Tunnel.TURN_TRANSPORT_TCP_TLS,
+                requestedTransport = WsttConstants.Tunnel.TURN_TRANSPORT_TCP_TLS,
                 warningAcknowledged = false,
             ),
         )
         assertEquals(
             false,
             shouldConfirmTcpTransport(
-                currentTransport = CsqttConstants.Tunnel.DEFAULT_TURN_TRANSPORT,
-                requestedTransport = CsqttConstants.Tunnel.TURN_TRANSPORT_TCP_TLS,
+                currentTransport = WsttConstants.Tunnel.DEFAULT_TURN_TRANSPORT,
+                requestedTransport = WsttConstants.Tunnel.TURN_TRANSPORT_TCP_TLS,
                 warningAcknowledged = true,
             ),
         )
