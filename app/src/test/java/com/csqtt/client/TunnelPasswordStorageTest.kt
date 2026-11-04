@@ -5,9 +5,9 @@ import org.junit.Test
 
 class TunnelPasswordStorageTest {
     @Test
-    fun `persistent tunnel password takes priority over retired formats`() {
+    fun `encrypted tunnel password takes priority over plaintext migration fallbacks`() {
         assertEquals(
-            StoredSecret("local", StoredSecretState.Readable),
+            StoredSecret("encrypted", StoredSecretState.Readable),
             resolveTunnelPasswordStorage("local", "legacy", "v1:encrypted") { "encrypted" },
         )
     }
@@ -21,7 +21,7 @@ class TunnelPasswordStorageTest {
     }
 
     @Test
-    fun `old keystore value can be copied into local storage`() {
+    fun `encrypted value remains readable while migration fallbacks exist`() {
         assertEquals(
             StoredSecret("encrypted", StoredSecretState.Readable),
             resolveTunnelPasswordStorage(null, null, "v1:encrypted") { "encrypted" },
