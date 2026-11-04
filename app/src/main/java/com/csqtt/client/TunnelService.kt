@@ -201,7 +201,7 @@ class TunnelService : Service() {
                             resolveAutoHashes(
                                 store,
                                 intentHashes,
-                                workersPerHash,
+                                maxWorkersPerHash,
                                 when {
                                     accountAutoJs -> CsqttConstants.VkAutoHash.MODE_AUTO_JS
                                     linkAccessToken != null -> CsqttConstants.VkAutoHash.MODE_AUTO_API
@@ -442,7 +442,7 @@ class TunnelService : Service() {
                     else -> resolveAutoHashes(
                         store,
                         source.hashes,
-                        workersPerHash,
+                        maxWorkersPerHash,
                         when {
                             accountAutoJs -> CsqttConstants.VkAutoHash.MODE_AUTO_JS
                             source.tokenFromLink -> CsqttConstants.VkAutoHash.MODE_AUTO_API
