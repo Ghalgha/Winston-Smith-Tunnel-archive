@@ -116,6 +116,7 @@ class TunnelService : Service() {
         registerAirplaneModeReceiver()
         registerPhysicalNetworkCallback()
         observeAutoPauseOnWifi()
+        observePowerSaverSettings()
         observeDomainRoutingSettings()
     }
 
@@ -1010,6 +1011,17 @@ class TunnelService : Service() {
             SettingsStore(applicationContext).autoPauseOnWifi.collect { enabled ->
                 autoPauseOnWifiEnabled = enabled
                 reconcileWifiAutoPause()
+            }
+        }
+    }
+
+    private fun observePowerSaverSettings() {
+        serviceScope.launch {
+            val store = SettingsStore(applicationContext)
+            combine(store.workersPerHash, TunnelManager.vpnReady) { workers, vpnReady ->
+                workers.takeIf { vpnReady }
+            }.distinctUntilChanged().collect { workers ->
+                workers?.let(TunnelManager::updateWorkerCount)
             }
         }
     }
