@@ -59,6 +59,7 @@ enum FlowKey {
         src: [u8; 4],
         dst: [u8; 4],
         proto: u8,
+        fragment_id: Option<u16>,
         sport: u16,
         dport: u16,
     },
@@ -66,6 +67,7 @@ enum FlowKey {
         src: [u8; 16],
         dst: [u8; 16],
         proto: u8,
+        fragment_id: Option<u32>,
         sport: u16,
         dport: u16,
     },
@@ -74,6 +76,8 @@ enum FlowKey {
 #[derive(Clone, Copy, Debug)]
 struct FlowState {
     idx: usize,
+    worker_id: usize,
+    incarnation_id: u64,
     last_seen: std::time::Instant,
     burst_left: usize,
     sticky_until: Option<std::time::Instant>,
@@ -101,19 +105,29 @@ fn flow_key(packet: &[u8]) -> Option<FlowKey> {
             if ihl < 20 || packet.len() < ihl {
                 return None;
             }
+            let total_len = u16::from_be_bytes([packet[2], packet[3]]) as usize;
+            if total_len < ihl || total_len > packet.len() {
+                return None;
+            }
             let proto = packet[9];
             let src = [packet[12], packet[13], packet[14], packet[15]];
             let dst = [packet[16], packet[17], packet[18], packet[19]];
-            let fragment_offset = u16::from_be_bytes([packet[6], packet[7]]) & 0x1fff;
-            let (sport, dport) = if fragment_offset == 0 {
-                transport_ports(packet, ihl, proto)
-            } else {
+            let fragment = u16::from_be_bytes([packet[6], packet[7]]);
+            let fragment_offset = fragment & 0x1fff;
+            let more_fragments = fragment & 0x2000 != 0;
+            let is_fragmented = fragment_offset != 0 || more_fragments;
+            let fragment_id = is_fragmented
+                .then(|| u16::from_be_bytes([packet[4], packet[5]]));
+            let (sport, dport) = if is_fragmented {
                 (0, 0)
+            } else {
+                transport_ports(&packet[..total_len], ihl, proto)
             };
             Some(FlowKey::V4 {
                 src,
                 dst,
                 proto,
+                fragment_id,
                 sport,
                 dport,
             })
@@ -122,22 +136,94 @@ fn flow_key(packet: &[u8]) -> Option<FlowKey> {
             if packet.len() < 40 {
                 return None;
             }
-            let proto = packet[6];
+            let payload_len = u16::from_be_bytes([packet[4], packet[5]]) as usize;
+            let packet_end = 40usize.checked_add(payload_len)?;
+            if packet_end > packet.len() {
+                return None;
+            }
             let src: [u8; 16] = packet[8..24].try_into().ok()?;
             let dst: [u8; 16] = packet[24..40].try_into().ok()?;
-            let (sport, dport) = transport_ports(packet, 40, proto);
-            Some(FlowKey::V6 {
-                src,
-                dst,
-                proto,
-                sport,
-                dport,
-            })
+            let mut next_header = packet[6];
+            let mut offset = 40usize;
+            let mut fragment_id = None;
+
+            // Walk the bounded IPv6 extension-header chain. A non-initial
+            // fragment cannot expose the transport header, so all fragments
+            // are keyed by the Fragment header's identification and next-header.
+            for _ in 0..8 {
+                match next_header {
+                    0 | 43 | 60 | 135 | 139 | 140 => {
+                        if offset + 2 > packet_end {
+                            return None;
+                        }
+                        let following = packet[offset];
+                        let header_len = (usize::from(packet[offset + 1]) + 1).checked_mul(8)?;
+                        if offset + header_len > packet_end {
+                            return None;
+                        }
+                        next_header = following;
+                        offset += header_len;
+                    }
+                    51 => {
+                        if offset + 2 > packet_end {
+                            return None;
+                        }
+                        let following = packet[offset];
+                        let header_len = (usize::from(packet[offset + 1]) + 2).checked_mul(4)?;
+                        if offset + header_len > packet_end {
+                            return None;
+                        }
+                        next_header = following;
+                        offset += header_len;
+                    }
+                    44 => {
+                        if offset + 8 > packet_end {
+                            return None;
+                        }
+                        let following = packet[offset];
+                        let fragment_field =
+                            u16::from_be_bytes([packet[offset + 2], packet[offset + 3]]);
+                        let fragment_offset = (fragment_field & 0xfff8) >> 3;
+                        let more_fragments = fragment_field & 1 != 0;
+                        let id = u32::from_be_bytes([
+                            packet[offset + 4],
+                            packet[offset + 5],
+                            packet[offset + 6],
+                            packet[offset + 7],
+                        ]);
+                        if fragment_offset != 0 || more_fragments {
+                            return Some(FlowKey::V6 {
+                                src,
+                                dst,
+                                proto: following,
+                                fragment_id: Some(id),
+                                sport: 0,
+                                dport: 0,
+                            });
+                        }
+                        fragment_id = Some(id);
+                        next_header = following;
+                        offset += 8;
+                    }
+                    _ => {
+                        let (sport, dport) =
+                            transport_ports(&packet[..packet_end], offset, next_header);
+                        return Some(FlowKey::V6 {
+                            src,
+                            dst,
+                            proto: next_header,
+                            fragment_id,
+                            sport,
+                            dport,
+                        });
+                    }
+                }
+            }
+            None
         }
         _ => None,
     }
 }
-
 fn is_small_udp(key: &FlowKey, packet_len: usize) -> bool {
     packet_len <= SMALL_UDP_MAX_LEN
         && matches!(
@@ -332,20 +418,25 @@ impl UplinkState {
         packet_len: usize,
         flow: Option<FlowKey>,
         now: std::time::Instant,
-    ) -> usize {
+    ) -> Option<usize> {
         let count = workers.len();
-        if count <= 1 {
-            return 0;
+        if count == 0 {
+            return None;
+        }
+        if count == 1 {
+            return workers[0]
+                .channels
+                .allocation
+                .is_sendable()
+                .then_some(0);
         }
         self.update_tokens(count, now);
         let len_f = total_len as f64;
 
         let Some(key) = flow else {
-            let Some(idx) = self.choose_stream(workers) else {
-                return 0;
-            };
+            let idx = self.choose_stream(workers)?;
             self.tokens[idx] = (self.tokens[idx] - len_f).max(MAX_DEFICIT);
-            return idx;
+            return Some(idx);
         };
 
         self.evict_flows(now);
@@ -357,40 +448,42 @@ impl UplinkState {
                 state.sticky_until = Some(now + SMALL_UDP_STICKY);
             }
             let sticky = state.sticky_until.is_some_and(|until| now < until);
-            let assigned_ok =
-                state.idx < count && workers[state.idx].channels.allocation.is_sendable();
+            let assigned_ok = state.idx < count
+                && workers[state.idx].channels.id == state.worker_id
+                && workers[state.idx].channels.incarnation_id == state.incarnation_id
+                && workers[state.idx].channels.allocation.is_sendable();
             if assigned_ok && (sticky || state.burst_left >= total_len) {
                 let idx = state.idx;
                 state.burst_left = state.burst_left.saturating_sub(total_len);
                 self.flows.insert(key, state);
                 self.tokens[idx] = (self.tokens[idx] - len_f).max(MAX_DEFICIT);
-                return idx;
+                return Some(idx);
             }
 
-            let Some(idx) = self.choose_stream(workers) else {
-                return 0;
-            };
+            let idx = self.choose_stream(workers)?;
             state.idx = idx;
+            state.worker_id = workers[idx].channels.id;
+            state.incarnation_id = workers[idx].channels.incarnation_id;
             state.burst_left = FLOW_BURST_BYTES.saturating_sub(total_len);
             self.flows.insert(key, state);
             self.tokens[idx] = (self.tokens[idx] - len_f).max(MAX_DEFICIT);
-            return idx;
+            return Some(idx);
         }
 
-        let Some(idx) = self.choose_stream(workers) else {
-            return 0;
-        };
+        let idx = self.choose_stream(workers)?;
         self.flows.insert(
             key,
             FlowState {
                 idx,
+                worker_id: workers[idx].channels.id,
+                incarnation_id: workers[idx].channels.incarnation_id,
                 last_seen: now,
                 burst_left: FLOW_BURST_BYTES.saturating_sub(total_len),
                 sticky_until: small_udp.then(|| now + SMALL_UDP_STICKY),
             },
         );
         self.tokens[idx] = (self.tokens[idx] - len_f).max(MAX_DEFICIT);
-        idx
+        Some(idx)
     }
 
     #[cfg_attr(not(test), allow(dead_code))]
@@ -1333,6 +1426,9 @@ impl Dispatcher {
             )
         };
 
+        let Some(selected_idx) = selected_idx else {
+            return;
+        };
         let target = &workers[selected_idx];
         let wrapped = target.channels.cipher.wrap(
             &mut packet,
@@ -1387,6 +1483,9 @@ impl Dispatcher {
             )
         };
 
+        let Some(selected_idx) = selected_idx else {
+            return;
+        };
         let target = &workers[selected_idx];
         let mut failed = false;
         for mut frag in fragments {
