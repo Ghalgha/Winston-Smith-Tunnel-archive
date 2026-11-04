@@ -80,6 +80,8 @@ internal fun withoutLogStickers(message: String): String = message
     .trim()
 
 object TunnelManager {
+    const val TUN_UDS_NAME = "wstt_tun_uds"
+
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     @Volatile
@@ -1086,7 +1088,7 @@ object TunnelManager {
             "-peer", params.peer,
             "-n", totalWorkers.toString(),
             "-listen", "${CsqttConstants.Network.LOCAL_LISTEN_HOST}:${params.port}",
-            "-tun-uds", "csqtt_tun_uds",
+            "-tun-uds", TUN_UDS_NAME,
         )
         if (hashList.isNotEmpty()) {
             cmd.add("-vk")

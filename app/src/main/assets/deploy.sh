@@ -130,18 +130,8 @@ wstt_docker_container_exists() {
 }
 
 docker_container_runs_wstt() {
-    local container="$1" container_id proc pid cgroup executable command_line details
+    local container="$1" container_id proc pid cgroup executable
     docker inspect "$container" >/dev/null 2>&1 || return 1
-    details="$(docker inspect --format '{{.Name}}|{{.Config.Image}}|{{json .Config.Entrypoint}}|{{json .Config.Cmd}}|{{range .Mounts}}{{.Source}}:{{.Destination}}|{{end}}' "$container" 2>/dev/null || true)"
-    case "$details" in
-        *'|wstt|'*|*'|wstt:'*|*'|wstt-docker-'*|*'/usr/local/bin/wstt'*|*":${WSTT_CONFIG_DIR}"*) return 0 ;;
-    esac
-    if docker top "$container" -eo pid,args 2>/dev/null | awk '
-NR > 1 && $0 ~ /(^|[[:space:]])\/usr\/local\/bin\/wstt([[:space:]]|$)/ { found = 1 }
-END { exit !found }
-'; then
-        return 0
-    fi
     container_id="$(docker inspect --format '{{.Id}}' "$container" 2>/dev/null || true)"
     [ -n "$container_id" ] || return 1
     for proc in /proc/[0-9]*; do
@@ -154,10 +144,6 @@ END { exit !found }
         executable="$(readlink "$proc/exe" 2>/dev/null || true)"
         case "$executable" in
             /usr/local/bin/wstt|'/usr/local/bin/wstt (deleted)') return 0 ;;
-        esac
-        command_line="$({ tr '\0' ' ' < "$proc/cmdline"; } 2>/dev/null || true)"
-        case " $command_line " in
-            *" /usr/local/bin/wstt "*|*" --config-dir ${WSTT_CONFIG_DIR} "*) return 0 ;;
         esac
     done
     return 1
@@ -202,26 +188,21 @@ docker_container_for_pid() {
 }
 
 wstt_process_is_owned() {
-    local pid="$1" executable command_line
+    local pid="$1" executable
     case "$pid" in
         ''|*[!0-9]*) return 1 ;;
     esac
-    [ -r "/proc/$pid/cmdline" ] || return 1
+    [ -r "/proc/$pid/exe" ] || return 1
     executable="$(readlink "/proc/$pid/exe" 2>/dev/null || true)"
     case "$executable" in
-        /usr/local/bin/wstt|'/usr/local/bin/wstt (deleted)'|/usr/local/lib/wstt/*|'/usr/local/lib/wstt/'*' (deleted)') return 0 ;;
+        /usr/local/bin/wstt|'/usr/local/bin/wstt (deleted)') return 0 ;;
     esac
     local container_id
     container_id="$(docker_container_for_pid "$pid" || true)"
     if [ -n "$container_id" ] && docker_container_runs_wstt "$container_id"; then
         return 0
     fi
-    command_line="$({ tr '\0' ' ' < "/proc/$pid/cmdline"; } 2>/dev/null || true)"
-    case " $command_line " in
-        *" --config-dir ${WSTT_CONFIG_DIR} "*|*" /usr/local/bin/wstt "*|*" /usr/local/lib/wstt/"*) ;;
-        *) return 1 ;;
-    esac
-    return 0
+    return 1
 }
 
 wstt_process_owns_peer_port() { wstt_process_is_owned "$1"; }
@@ -1172,14 +1153,10 @@ peer_port_pids() {
 
 wstt_process_is_owned() {
     pid="\$1"
-    [ -r "/proc/\$pid/cmdline" ] || return 1
+    [ -r "/proc/\$pid/exe" ] || return 1
     executable="\$(readlink "/proc/\$pid/exe" 2>/dev/null || true)"
     case "\$executable" in
-        /usr/local/bin/wstt|'/usr/local/bin/wstt (deleted)'|/usr/local/lib/wstt/*|'/usr/local/lib/wstt/'*' (deleted)') return 0 ;;
-    esac
-    command_line="\$({ tr '\\0' ' ' < "/proc/\$pid/cmdline"; } 2>/dev/null || true)"
-    case " \$command_line " in
-        *" --config-dir \$WSTT_CONFIG_DIR "*|*" /usr/local/bin/wstt "*|*" /usr/local/lib/wstt/"*) return 0 ;;
+        /usr/local/bin/wstt|'/usr/local/bin/wstt (deleted)') return 0 ;;
         *) return 1 ;;
     esac
 }
@@ -1189,22 +1166,38 @@ release_owned_peer_port() {
         peer_port_is_busy || return 0
         pids="\$(peer_port_pids)"
         if [ -z "\$pids" ]; then
-            echo "[WSTT] UDP/\$PEER_PORT is occupied by a runtime without visible PID" >&2
+            echo "[WSTT] UDP/\$PEER_PORT is occupied but its owner PID is unavailable; refusing recovery" >&2
             ss -H -lunp "sport = :\$PEER_PORT" >&2 || true
             return 24
         fi
+
+        # Validate every listener before signalling any process. Never touch CSQTT
+        # or another service if it shares the configured UDP port.
         for pid in \$pids; do
-            if [ "\$attempt" -le 2 ]; then
-                echo "[WSTT] UDP/\$PEER_PORT runtime PID \$pid; terminating" >&2
-                kill -TERM "\$pid" 2>/dev/null || true
-            else
-                echo "[WSTT] UDP/\$PEER_PORT runtime PID \$pid; killing" >&2
-                kill -KILL "\$pid" 2>/dev/null || true
+            case "\$pid" in ''|*[!0-9]*)
+                echo "[WSTT] Invalid listener PID on UDP/\$PEER_PORT; refusing recovery" >&2
+                return 24
+                ;;
+            esac
+            if ! wstt_process_is_owned "\$pid"; then
+                echo "[WSTT] UDP/\$PEER_PORT belongs to foreign PID \$pid; refusing to stop it" >&2
+                ss -H -lunp "sport = :\$PEER_PORT" >&2 || true
+                return 24
             fi
+        done
+
+        for pid in \$pids; do
+            # Recheck ownership immediately before signalling to reduce PID-reuse risk.
+            if ! wstt_process_is_owned "\$pid"; then
+                echo "[WSTT] PID \$pid changed owner; refusing to signal it" >&2
+                return 24
+            fi
+            echo "[WSTT] Stopping owned WSTT runtime PID \$pid (attempt \$attempt)" >&2
+            kill -TERM "\$pid" 2>/dev/null || true
         done
         sleep 0.2
     done
-    echo "[WSTT] UDP/\$PEER_PORT did not release" >&2
+    echo "[WSTT] UDP/\$PEER_PORT did not release after graceful WSTT shutdown" >&2
     ss -H -lunp "sport = :\$PEER_PORT" >&2 || true
     return 24
 }

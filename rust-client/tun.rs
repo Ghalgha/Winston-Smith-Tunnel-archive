@@ -67,6 +67,9 @@ impl FdReceiver {
                         match accept(self.listener.get_ref().as_raw_fd()) {
                             Ok(descriptor) => {
                                 let descriptor = unsafe { OwnedFd::from_raw_fd(descriptor) };
+                                if !peer_uid_matches(descriptor.as_raw_fd()) {
+                                    continue;
+                                }
                                 if let Err(error) = configure_nonblocking(descriptor.as_fd()) {
                                     crate::log_error!(
                                         "[ОШИБКА] Не удалось перевести TUN FD (UDS accept) в nonblocking: {error}"
@@ -112,9 +115,8 @@ impl FdReceiver {
                             MsgFlags::empty(),
                         ) {
                             Ok(message) => {
-                                if message.bytes == 0 {
-                                    break 'conn;
-                                }
+                                let byte_count = message.bytes;
+                                let control_truncated = message.flags.contains(MsgFlags::MSG_CTRUNC);
                                 let controls = match message.cmsgs() {
                                     Ok(controls) => controls,
                                     Err(error) => {
@@ -136,9 +138,16 @@ impl FdReceiver {
                                         }
                                     }
                                 }
+                                drop(message);
+                                drop(slices);
+                                if control_truncated || byte_count != 1 || data[0] != 1 {
+                                    break 'conn;
+                                }
                                 let mut received = owned.into_iter();
                                 let descriptor = received.next();
-                                drop(received);
+                                if received.next().is_some() {
+                                    break 'conn;
+                                }
                                 if let Some(descriptor) = descriptor {
                                     let file = File::from(descriptor);
                                     if let Err(error) = configure_nonblocking(file.as_fd()) {
@@ -169,6 +178,32 @@ impl FdReceiver {
             }
         }
     }
+}
+
+#[cfg(any(target_os = "android", target_os = "linux"))]
+fn peer_uid_matches(descriptor: std::os::fd::RawFd) -> bool {
+    use std::mem::{MaybeUninit, size_of};
+
+    let mut credentials = MaybeUninit::<libc::ucred>::uninit();
+    let mut length = size_of::<libc::ucred>() as libc::socklen_t;
+    let result = unsafe {
+        libc::getsockopt(
+            descriptor,
+            libc::SOL_SOCKET,
+            libc::SO_PEERCRED,
+            credentials.as_mut_ptr().cast(),
+            &mut length,
+        )
+    };
+    if result != 0 || (length as usize) < size_of::<libc::ucred>() {
+        return false;
+    }
+    unsafe { credentials.assume_init().uid == libc::geteuid() }
+}
+
+#[cfg(not(any(target_os = "android", target_os = "linux")))]
+fn peer_uid_matches(_descriptor: std::os::fd::RawFd) -> bool {
+    true
 }
 
 #[cfg(unix)]
@@ -217,7 +252,7 @@ mod tests {
     };
     use tokio_util::sync::CancellationToken;
 
-    fn send_fd(name: &str, file: &File) -> OwnedFd {
+    fn send_fds(name: &str, files: &[&File]) -> OwnedFd {
         let socket = socket(
             AddressFamily::Unix,
             SockType::Stream,
@@ -232,7 +267,8 @@ mod tests {
         .unwrap();
         let payload = [1u8];
         let slices = [IoSlice::new(&payload)];
-        let controls = [ControlMessage::ScmRights(&[file.as_raw_fd()])];
+        let raw_fds: Vec<_> = files.iter().map(|file| file.as_raw_fd()).collect();
+        let controls = [ControlMessage::ScmRights(&raw_fds)];
         sendmsg::<UnixAddr>(
             socket.as_raw_fd(),
             &slices,
@@ -244,12 +280,39 @@ mod tests {
         socket
     }
 
+    fn send_fd(name: &str, file: &File) -> OwnedFd {
+        send_fds(name, &[file])
+    }
+
     fn receive_ack(socket: &OwnedFd) -> u8 {
         let mut ack = [0u8; 1];
         let received =
             unsafe { libc::recv(socket.as_raw_fd(), ack.as_mut_ptr().cast(), ack.len(), 0) };
         assert_eq!(received, 1);
         ack[0]
+    }
+
+    #[tokio::test]
+    async fn receiver_rejects_truncated_control_messages() {
+        let name = format!(
+            "wstt-tun-truncated-test-{}-{}",
+            std::process::id(),
+            rand::random::<u64>()
+        );
+        let receiver = FdReceiver::bind(&name).unwrap();
+        let cancel = CancellationToken::new();
+        let sources: Vec<File> = (0..5)
+            .map(|_| File::open("/dev/null").unwrap())
+            .collect();
+        let references: Vec<&File> = sources.iter().collect();
+        let _truncated_socket = send_fds(&name, &references);
+
+        let valid_source = File::open("/dev/null").unwrap();
+        let valid_socket = send_fd(&name, &valid_source);
+        let received = receiver.receive(&cancel).await.unwrap();
+
+        assert_eq!(receive_ack(&valid_socket), 1);
+        assert!(received.metadata().unwrap().file_type().is_char_device());
     }
 
     #[tokio::test]
