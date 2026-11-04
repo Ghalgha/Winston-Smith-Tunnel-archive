@@ -18,8 +18,9 @@ class TvManifestTest {
         assertTrue(manifest.contains("android.hardware.touchscreen"))
         assertTrue(manifest.contains("android.hardware.wifi"))
         assertTrue(manifest.contains("android:banner=\"@drawable/tv_banner\""))
-        assertTrue(manifest.contains("android:scheme=\"wst\""))
-        assertTrue(!manifest.contains("android:scheme=\"wstt\""))
+        assertTrue(manifest.contains("android:scheme=\"wstt\""))
+        assertTrue(manifest.contains("android:scheme=\"csqtt\""))
+        assertTrue(!manifest.contains("android:scheme=\"wst\""))
     }
 
     @Test
