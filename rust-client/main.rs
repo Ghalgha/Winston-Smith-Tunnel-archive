@@ -443,6 +443,7 @@ async fn run(arguments: Arguments) -> Result<i32> {
         stdin,
         params_workers,
         scale_notify,
+        configured_workers,
     );
     let required_ready_bots = required_js_ready_bots(groups);
     if js_auth_mode {
@@ -758,6 +759,7 @@ fn start_control_input(
     mut stdin: tokio::sync::mpsc::Receiver<StdinLine>,
     worker_count: Arc<AtomicUsize>,
     scale_notify: Arc<tokio::sync::Notify>,
+    worker_ceiling: usize,
 ) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
         let control_required = events.enabled();
@@ -810,7 +812,7 @@ fn start_control_input(
                     } else if let Some(raw_count) = line.strip_prefix("SET_WORKERS|") {
                         match raw_count.parse::<usize>() {
                             Ok(requested) => {
-                                let target = normalize_worker_count(requested);
+                                let target = normalize_worker_count(requested).min(worker_ceiling);
                                 let previous = worker_count.swap(target, Ordering::AcqRel);
                                 if previous != target {
                                     scale_notify.notify_waiters();
