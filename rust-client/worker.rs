@@ -719,8 +719,7 @@ async fn supervise_worker(
     loop {
         if worker_cancel.is_cancelled()
             || context.cancel.is_cancelled()
-            || (id > context.params.workers.load(Ordering::Acquire)
-                && id > context.params.configured_workers)
+            || id > context.params.workers.load(Ordering::Acquire)
         {
             return;
         }
@@ -735,8 +734,7 @@ async fn supervise_worker(
             Ok(()) => {
                 if worker_cancel.is_cancelled()
                     || context.cancel.is_cancelled()
-                    || (id > context.params.workers.load(Ordering::Acquire)
-                        && id > context.params.configured_workers)
+                    || id > context.params.workers.load(Ordering::Acquire)
                 {
                     return;
                 }
@@ -782,8 +780,7 @@ async fn worker_loop(
     loop {
         if worker_cancel.is_cancelled()
             || context.cancel.is_cancelled()
-            || (id > context.params.workers.load(Ordering::Acquire)
-                && id > context.params.configured_workers)
+            || id > context.params.workers.load(Ordering::Acquire)
         {
             return;
         }
@@ -925,8 +922,7 @@ async fn worker_loop(
         drop(config_guard);
         if worker_cancel.is_cancelled()
             || context.cancel.is_cancelled()
-            || (id > context.params.workers.load(Ordering::Acquire)
-                && id > context.params.configured_workers)
+            || id > context.params.workers.load(Ordering::Acquire)
             || group_creds.is_unavailable()
             || group_creds.is_exhausted()
         {
@@ -941,8 +937,7 @@ async fn worker_loop(
             let lower = message.to_ascii_lowercase();
             if lower.contains("invalid_worker_count")
                 || message.contains("превышен лимит потоков")
-                || (id > context.params.workers.load(Ordering::Acquire)
-                    && id > context.params.configured_workers)
+                || id > context.params.workers.load(Ordering::Acquire)
             {
                 return;
             }
