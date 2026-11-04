@@ -2115,16 +2115,17 @@ object TunnelManager {
             hashes,
             params.allowHashRedistribution || params.vkHashMode == CsqttConstants.VkAutoHash.MODE_AUTO_JS,
         )
-        if (targetWorkers == currentWorkers) return
         if (writeProcessCommand(identity, "SET_WORKERS|$targetWorkers", "workers_update_error")) {
             currentParams = params.copy(workersPerHash = targetWorkers)
-            updateProcessLog(
-                identity,
-                "workers_dynamic_update",
-                "[ПОТОКИ] Число активных потоков изменено: $targetWorkers",
-                15,
-                false,
-            )
+            if (targetWorkers != currentWorkers) {
+                updateProcessLog(
+                    identity,
+                    "workers_dynamic_update",
+                    "[ПОТОКИ] Число активных потоков изменено: $targetWorkers",
+                    15,
+                    false,
+                )
+            }
         }
     }
 
