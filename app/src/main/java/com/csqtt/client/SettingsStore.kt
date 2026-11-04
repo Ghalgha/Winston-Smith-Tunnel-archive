@@ -363,6 +363,13 @@ class SettingsStore(context: Context) {
         val profile = prefs[ACTIVE_PROFILE] ?: 0
         prefs[getProfileKey(SECONDARY_VK_HASH, profile)] ?: ""
     }
+    val configuredWorkersPerHash: Flow<Int> = dataStore.data.map { prefs ->
+        val profile = prefs[ACTIVE_PROFILE] ?: 0
+        val isExtra = prefs[getProfileKey(EXTRA_WORKERS, profile)] ?: false
+        val max = WorkerCountPolicy.defaultMaximum(isExtra)
+        val current = prefs[getProfileKey(WORKERS_PER_HASH, profile)] ?: 18
+        WorkerCountPolicy.normalize(current, maximum = max)
+    }
     val workersPerHash: Flow<Int> = dataStore.data.map { prefs ->
         val profile = prefs[ACTIVE_PROFILE] ?: 0
         val isExtra = prefs[getProfileKey(EXTRA_WORKERS, profile)] ?: false
