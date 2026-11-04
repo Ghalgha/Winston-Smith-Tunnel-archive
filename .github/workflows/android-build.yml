@@ -75,11 +75,8 @@ jobs:
             echo 'WSTT web panel must not reuse the CSQTT browser session cookie' >&2
             exit 1
           fi
-          if grep -q 'android:scheme="csqtt"' app/src/main/AndroidManifest.xml; then
-            echo 'WSTT must not claim the CSQTT Android URI scheme' >&2
-            exit 1
-          fi
-          grep -Fq 'android:scheme="wst"' app/src/main/AndroidManifest.xml
+          grep -Fq 'android:scheme="wstt"' app/src/main/AndroidManifest.xml
+          grep -Fq 'android:scheme="csqtt"' app/src/main/AndroidManifest.xml
           python3 - <<'PY'
           import pathlib, re, sys
           source = pathlib.Path("rust-server/web_panel.rs").read_text()
