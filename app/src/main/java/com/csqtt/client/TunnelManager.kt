@@ -1083,10 +1083,16 @@ object TunnelManager {
             hashList,
             params.allowHashRedistribution || jsHashMode,
         )
+        val maxWorkers = WorkerCountPolicy.normalizeForHashValues(
+            params.maxWorkersPerHash,
+            hashList,
+            params.allowHashRedistribution || jsHashMode,
+        )
         val cmd = mutableListOf(
             binaryPath,
             "-peer", params.peer,
             "-n", totalWorkers.toString(),
+            "--max-workers", maxWorkers.toString(),
             "-listen", "${CsqttConstants.Network.LOCAL_LISTEN_HOST}:${params.port}",
             "-tun-uds", TUN_UDS_NAME,
         )
@@ -2173,6 +2179,7 @@ data class TunnelParams(
     val vkHashes: String,
     val secondaryVkHash: String = "",
     val workersPerHash: Int,
+    val maxWorkersPerHash: Int = workersPerHash,
     val port: Int,
     val sni: String = "",
     val connectionPassword: String = "",
