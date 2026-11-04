@@ -281,7 +281,7 @@ class SettingsStore(context: Context) {
     init {
         if (migrationsStarted.compareAndSet(false, true)) {
             CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
-                migrateConnectionPasswordsToLocalStorage()
+                migrateConnectionPasswordsToKeystore()
                 migrateSecretsToKeystore()
                 migrateLegacyWhitelistMode()
             }
@@ -1038,16 +1038,8 @@ class SettingsStore(context: Context) {
     suspend fun saveConnectionPassword(password: String) {
         dataStore.edit { prefs ->
             val profile = prefs[ACTIVE_PROFILE] ?: 0
-            val localKey = getProfileKey(CONNECTION_PASSWORD_LOCAL, profile)
-            val legacyKey = getProfileKey(CONNECTION_PASSWORD, profile)
-            val encryptedKey = getProfileKey(CONNECTION_PASSWORD_ENCRYPTED, profile)
-            if (password.isBlank()) {
-                prefs.remove(localKey)
-            } else {
-                prefs[localKey] = password
-            }
-            prefs.remove(legacyKey)
-            prefs.remove(encryptedKey)
+            prefs.putSecret(CONNECTION_PASSWORD_ENCRYPTED, CONNECTION_PASSWORD, password, profile)
+            prefs.remove(getProfileKey(CONNECTION_PASSWORD_LOCAL, profile))
         }
     }
 
@@ -1368,7 +1360,7 @@ class SettingsStore(context: Context) {
         }
     }
 
-    private suspend fun migrateConnectionPasswordsToLocalStorage() {
+    private suspend fun migrateConnectionPasswordsToKeystore() {
         dataStore.edit { prefs ->
             for (profile in CsqttConstants.Profiles.MIN_INDEX..CsqttConstants.Profiles.MAX_INDEX) {
                 val localKey = getProfileKey(CONNECTION_PASSWORD_LOCAL, profile)
@@ -1382,12 +1374,13 @@ class SettingsStore(context: Context) {
                 )
                 if (password.state == StoredSecretState.Readable) {
                     if (password.value.isBlank()) {
-                        prefs.remove(localKey)
-                    } else {
-                        prefs[localKey] = password.value
+                        prefs.remove(encryptedKey)
+                    } else if (prefs[encryptedKey].isNullOrBlank() ||
+                        secureStore.decrypt(prefs[encryptedKey]) == null) {
+                        prefs[encryptedKey] = secureStore.encrypt(password.value)
                     }
+                    prefs.remove(localKey)
                     prefs.remove(legacyKey)
-                    prefs.remove(encryptedKey)
                 }
             }
         }
@@ -1527,7 +1520,8 @@ class SettingsStore(context: Context) {
             tunnel.put("listen_port", prefs[LISTEN_PORT] ?: CsqttConstants.Network.DEFAULT_LOCAL_PORT)
             tunnel.put("manual_ports_enabled", prefs[MANUAL_PORTS_ENABLED] ?: false)
             tunnel.put("server_peer_port", prefs[SERVER_PEER_PORT] ?: CsqttConstants.Network.DEFAULT_SERVER_PEER_PORT)
-            tunnel.put("connection_password", prefs[CONNECTION_PASSWORD_LOCAL] ?: prefs[CONNECTION_PASSWORD] ?: "")
+            val profile = prefs[ACTIVE_PROFILE] ?: 0
+            tunnel.put("connection_password", readConnectionPasswordState(prefs, profile).value)
             tunnel.put("obfs_mode", prefs[OBFS_MODE] ?: CsqttConstants.Tunnel.DEFAULT_OBFS_MODE)
             tunnel.put("turn_transport", prefs[TURN_TRANSPORT] ?: CsqttConstants.Tunnel.DEFAULT_TURN_TRANSPORT)
             tunnel.put("srtp_mode", prefs[SRTP_MODE] ?: CsqttConstants.SrtpMode.DEFAULT)
@@ -1613,8 +1607,9 @@ class SettingsStore(context: Context) {
                     if (tunnel.has("server_peer_port")) mutable[SERVER_PEER_PORT] = tunnel.getInt("server_peer_port")
                     if (tunnel.has("connection_password")) {
                         val pw = tunnel.getString("connection_password")
-                        mutable[CONNECTION_PASSWORD_LOCAL] = pw
-                        mutable[CONNECTION_PASSWORD] = pw
+                        val profile = mutable[ACTIVE_PROFILE] ?: 0
+                        mutable.putSecret(CONNECTION_PASSWORD_ENCRYPTED, CONNECTION_PASSWORD, pw, profile)
+                        mutable.remove(getProfileKey(CONNECTION_PASSWORD_LOCAL, profile))
                     }
                     if (tunnel.has("obfs_mode")) mutable[OBFS_MODE] = tunnel.getString("obfs_mode")
                     if (tunnel.has("turn_transport")) mutable[TURN_TRANSPORT] = tunnel.getString("turn_transport")
