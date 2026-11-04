@@ -46,12 +46,9 @@ const ADAPTIVE_DECREASE_FACTOR: f64 = 0.85;
 const ADAPTIVE_INCREASE_BYTES_PER_SEC: f64 = 5_000.0;
 const ADAPTIVE_ADJUST_INTERVAL: Duration = Duration::from_millis(100);
 
-const FLOW_BURST_BYTES: usize = 16 * 1024;
 const FLOW_TABLE_MAX: usize = 1024;
 const FLOW_EVICT_EVERY: u32 = 1024;
 const FLOW_IDLE_TTL: Duration = Duration::from_secs(30);
-const SMALL_UDP_MAX_LEN: usize = 300;
-const SMALL_UDP_STICKY: Duration = Duration::from_secs(1);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 enum FlowKey {
@@ -79,8 +76,6 @@ struct FlowState {
     worker_id: usize,
     incarnation_id: u64,
     last_seen: std::time::Instant,
-    burst_left: usize,
-    sticky_until: Option<std::time::Instant>,
 }
 
 fn transport_ports(packet: &[u8], offset: usize, proto: u8) -> (u16, u16) {
@@ -224,14 +219,6 @@ fn flow_key(packet: &[u8]) -> Option<FlowKey> {
         _ => None,
     }
 }
-fn is_small_udp(key: &FlowKey, packet_len: usize) -> bool {
-    packet_len <= SMALL_UDP_MAX_LEN
-        && matches!(
-            key,
-            FlowKey::V4 { proto: 17, .. } | FlowKey::V6 { proto: 17, .. }
-        )
-}
-
 #[cfg(unix)]
 const TUN_REPLACEMENT_TIMEOUT: Duration = Duration::from_secs(20);
 #[cfg(unix)]
@@ -369,8 +356,14 @@ impl UplinkState {
         }
         self.flows
             .retain(|_, state| now.saturating_duration_since(state.last_seen) < FLOW_IDLE_TTL);
-        if self.flows.len() >= FLOW_TABLE_MAX {
-            self.flows.clear();
+        if self.flows.len() >= FLOW_TABLE_MAX
+            && let Some(oldest_key) = self
+                .flows
+                .iter()
+                .min_by_key(|(_, state)| state.last_seen)
+                .map(|(key, _)| *key)
+        {
+            self.flows.remove(&oldest_key);
         }
     }
 
@@ -406,16 +399,14 @@ impl UplinkState {
         best_idx
     }
 
-    /// Равномерное размазывание по здоровым потокам с per-flow порядком:
-    /// маленькие UDP-потоки (игры/голос) закрепляются за одним воркером, а
-    /// TCP/крупный UDP идёт берстами по 16 КБ и переезжает на другой воркер
-    /// только на границе берста. Внутри берста порядок пакетов сохраняется,
-    /// поэтому TCP не видит per-packet reordering, как в старом водопаде.
+    /// Распределение по здоровым worker'ам с постоянной привязкой каждого
+    /// распознанного потока. Перенос потока допускается только при недоступности
+    /// прежнего worker'а или смене его incarnation_id.
     fn select_deficit_waterfall(
         &mut self,
         workers: &[WorkerEntry],
         total_len: usize,
-        packet_len: usize,
+        _packet_len: usize,
         flow: Option<FlowKey>,
         now: std::time::Instant,
     ) -> Option<usize> {
@@ -440,21 +431,14 @@ impl UplinkState {
         };
 
         self.evict_flows(now);
-        let small_udp = is_small_udp(&key, packet_len);
-
         if let Some(mut state) = self.flows.get(&key).copied() {
             state.last_seen = now;
-            if small_udp {
-                state.sticky_until = Some(now + SMALL_UDP_STICKY);
-            }
-            let sticky = state.sticky_until.is_some_and(|until| now < until);
             let assigned_ok = state.idx < count
                 && workers[state.idx].channels.id == state.worker_id
                 && workers[state.idx].channels.incarnation_id == state.incarnation_id
                 && workers[state.idx].channels.allocation.is_sendable();
-            if assigned_ok && (sticky || state.burst_left >= total_len) {
+            if assigned_ok {
                 let idx = state.idx;
-                state.burst_left = state.burst_left.saturating_sub(total_len);
                 self.flows.insert(key, state);
                 self.tokens[idx] = (self.tokens[idx] - len_f).max(MAX_DEFICIT);
                 return Some(idx);
@@ -464,7 +448,6 @@ impl UplinkState {
             state.idx = idx;
             state.worker_id = workers[idx].channels.id;
             state.incarnation_id = workers[idx].channels.incarnation_id;
-            state.burst_left = FLOW_BURST_BYTES.saturating_sub(total_len);
             self.flows.insert(key, state);
             self.tokens[idx] = (self.tokens[idx] - len_f).max(MAX_DEFICIT);
             return Some(idx);
@@ -478,8 +461,6 @@ impl UplinkState {
                 worker_id: workers[idx].channels.id,
                 incarnation_id: workers[idx].channels.incarnation_id,
                 last_seen: now,
-                burst_left: FLOW_BURST_BYTES.saturating_sub(total_len),
-                sticky_until: small_udp.then(|| now + SMALL_UDP_STICKY),
             },
         );
         self.tokens[idx] = (self.tokens[idx] - len_f).max(MAX_DEFICIT);
