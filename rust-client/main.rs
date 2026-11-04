@@ -339,15 +339,6 @@ async fn run(arguments: Arguments) -> Result<i32> {
             return Err(error);
         }
     };
-    let control_task = start_control_input(
-        cancel.clone(),
-        paused.clone(),
-        captcha,
-        events.clone(),
-        finish_js_calls.clone(),
-        dispatcher.clone(),
-        stdin,
-    );
     let local_port: Arc<str> = Arc::from(local_port);
     let raw_turn_ips = if !arguments.custom_turn_ips.is_empty() {
         &arguments.custom_turn_ips
@@ -376,7 +367,7 @@ async fn run(arguments: Arguments) -> Result<i32> {
         salt: Arc::from(arguments.salt.as_str()),
         local_port: local_port.clone(),
         password: Arc::from(password.as_str()),
-        workers: params_workers,
+        workers: params_workers.clone(),
         configured_workers: workers,
     });
     print_configuration(
@@ -433,8 +424,19 @@ async fn run(arguments: Arguments) -> Result<i32> {
         repair,
         shutdown: Arc::new(ShutdownCoordinator::new()),
         cancel: cancel.clone(),
-        scale_notify,
+        scale_notify: scale_notify.clone(),
     });
+    let control_task = start_control_input(
+        cancel.clone(),
+        paused.clone(),
+        captcha,
+        events.clone(),
+        finish_js_calls.clone(),
+        dispatcher.clone(),
+        stdin,
+        params_workers,
+        scale_notify,
+    );
     let required_ready_bots = required_js_ready_bots(groups);
     if js_auth_mode {
         crate::log_error!("[VK JS] Создатель удерживает звонок");
@@ -746,6 +748,8 @@ fn start_control_input(
     finish_js_calls: Arc<AtomicBool>,
     dispatcher: Arc<Dispatcher>,
     mut stdin: tokio::sync::mpsc::Receiver<StdinLine>,
+    worker_count: Arc<AtomicUsize>,
+    scale_notify: Arc<tokio::sync::Notify>,
 ) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
         let control_required = events.enabled();
@@ -795,6 +799,20 @@ fn start_control_input(
                         }
                     } else if let Some(payload) = line.strip_prefix("UPDATE_DOMAINS|") {
                         dispatcher.update_domain_routing(payload);
+                    } else if let Some(raw_count) = line.strip_prefix("SET_WORKERS|") {
+                        match raw_count.parse::<usize>() {
+                            Ok(requested) => {
+                                let target = normalize_worker_count(requested);
+                                let previous = worker_count.swap(target, Ordering::AcqRel);
+                                if previous != target {
+                                    scale_notify.notify_waiters();
+                                    crate::log_error!(
+                                        "[ПОТОКИ] Динамическое изменение числа потоков: {previous} -> {target}"
+                                    );
+                                }
+                            }
+                            Err(_) => crate::log_error!("[ПОТОКИ] Некорректная команда SET_WORKERS"),
+                        }
                     }
                 }
             }
