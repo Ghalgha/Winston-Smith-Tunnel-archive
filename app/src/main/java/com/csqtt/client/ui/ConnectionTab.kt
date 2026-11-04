@@ -356,7 +356,7 @@ private fun TunnelConnectionPanel(
                         fontWeight = FontWeight.SemiBold,
                     )
                     Text(
-                        text = "Уменьшает число активных потоков VPN",
+                        text = "Сокращает число активных потоков без переподключения",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
