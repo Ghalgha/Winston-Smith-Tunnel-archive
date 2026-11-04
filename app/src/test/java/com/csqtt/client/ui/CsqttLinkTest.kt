@@ -11,7 +11,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class WsttLinkTest {
-    private fun enc(plain: String): String = "wst://" + encryptWsttPayload(plain)
+    private fun enc(plain: String): String = "wstt://" + encryptWsttPayload(plain)
 
     @Test
     fun parsesV2WithoutHashes() {
@@ -65,7 +65,7 @@ class WsttLinkTest {
     @Test
     fun formatsAndParsesCleanV2LinkWithPassword() {
         val formatted = formatWsttLink("203.0.113.7", 46000, "SecretPass123456", listOf("abcdefghijklmnop1"))
-        assertTrue(formatted.startsWith("wst://"))
+        assertTrue(formatted.startsWith("wstt://"))
         val link = parseWsttLink(formatted)
         requireNotNull(link)
         assertEquals("203.0.113.7", link.host)
@@ -133,7 +133,7 @@ class WsttLinkTest {
     fun parsesEncryptedLink() {
         val rawPayload = "connect?v=2&host=203.0.113.7&peer=46000&workers=36"
         val encryptedBase64 = encryptWsttPayload(rawPayload)
-        val encryptedLink = "wst://$encryptedBase64"
+        val encryptedLink = "wstt://$encryptedBase64"
         val link = parseWsttLink(encryptedLink)
         requireNotNull(link)
         assertEquals("203.0.113.7", link.host)
@@ -191,11 +191,11 @@ class WsttLinkTest {
         val decoded = java.util.Base64.getUrlDecoder().decode(validEncrypted)
         decoded[decoded.size - 1] = (decoded[decoded.size - 1].toInt() xor 1).toByte()
         val tamperedBase64 = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(decoded)
-        assertNull(parseWsttLink("wst://$tamperedBase64"))
+        assertNull(parseWsttLink("wstt://$tamperedBase64"))
     }
 
     @Test
     fun truncatedEncryptedLinkFailsToDecrypt() {
-        assertNull(parseWsttLink("wst://" + java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(ByteArray(10))))
+        assertNull(parseWsttLink("wstt://" + java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(ByteArray(10))))
     }
 }
