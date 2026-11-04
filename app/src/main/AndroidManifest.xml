@@ -61,6 +61,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="wst" />
+                <data android:scheme="csqtt" />
             </intent-filter>
         </activity>
 
