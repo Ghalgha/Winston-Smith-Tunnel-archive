@@ -78,6 +78,19 @@ struct FlowState {
     last_seen: std::time::Instant,
 }
 
+fn flow_binding_matches(
+    state: &FlowState,
+    worker_idx: usize,
+    worker_id: usize,
+    incarnation_id: u64,
+    sendable: bool,
+) -> bool {
+    state.idx == worker_idx
+        && state.worker_id == worker_id
+        && state.incarnation_id == incarnation_id
+        && sendable
+}
+
 fn transport_ports(packet: &[u8], offset: usize, proto: u8) -> (u16, u16) {
     if (proto == 6 || proto == 17) && packet.len() >= offset + 4 {
         (
@@ -447,9 +460,13 @@ impl UplinkState {
         if let Some(mut state) = self.flows.get(&key).copied() {
             state.last_seen = now;
             let assigned_ok = state.idx < count
-                && workers[state.idx].channels.id == state.worker_id
-                && workers[state.idx].channels.incarnation_id == state.incarnation_id
-                && workers[state.idx].channels.allocation.is_sendable();
+                && flow_binding_matches(
+                    &state,
+                    state.idx,
+                    workers[state.idx].channels.id,
+                    workers[state.idx].channels.incarnation_id,
+                    workers[state.idx].channels.allocation.is_sendable(),
+                );
             if assigned_ok {
                 let idx = state.idx;
                 self.flows.insert(key, state);
@@ -1922,6 +1939,22 @@ mod tests {
                 ..
             }
         ));
+    }
+
+    #[test]
+    fn flow_binding_invalidates_replaced_worker_incarnation() {
+        let now = std::time::Instant::now();
+        let state = FlowState {
+            idx: 1,
+            worker_id: 7,
+            incarnation_id: 100,
+            last_seen: now,
+        };
+
+        assert!(flow_binding_matches(&state, 1, 7, 100, true));
+        assert!(!flow_binding_matches(&state, 1, 7, 101, true));
+        assert!(!flow_binding_matches(&state, 1, 7, 100, false));
+        assert!(!flow_binding_matches(&state, 0, 7, 100, true));
     }
 
     #[test]
