@@ -1123,7 +1123,6 @@ async fn run_allocated_session(
     };
     if let Some(target) = &runtime.target_workers
         && config.id > target.load(Ordering::Acquire)
-        && config.id > runtime.configured_workers
     {
         return Ok(false);
     }
