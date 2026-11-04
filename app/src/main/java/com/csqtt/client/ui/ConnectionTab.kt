@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -84,6 +85,7 @@ internal fun ConnectionTab(
     val vkHashes by settingsStore.vkHashes.collectAsStateWithLifecycle(initialValue = "")
     val vkHashCheckResultsJson by settingsStore.vkHashCheckResults.collectAsStateWithLifecycle(initialValue = "{}")
     val workersPerHash by settingsStore.workersPerHash.collectAsStateWithLifecycle(initialValue = 18)
+    val powerSaverEnabled by settingsStore.powerSaverEnabled.collectAsStateWithLifecycle(initialValue = false)
     val sni by settingsStore.sni.collectAsStateWithLifecycle(initialValue = "")
     val turnTransport by settingsStore.turnTransport.collectAsStateWithLifecycle(initialValue = CsqttConstants.Tunnel.DEFAULT_TURN_TRANSPORT)
     val srtpMode by settingsStore.srtpMode.collectAsStateWithLifecycle(initialValue = SettingsStore.cachedSrtpMode ?: CsqttConstants.SrtpMode.DEFAULT)
@@ -265,6 +267,8 @@ internal fun ConnectionTab(
                 autoPausedForWifi = autoPausedForWifi,
                 cooldownActive = cooldownActive,
                 configurationValid = isValid,
+                powerSaverEnabled = powerSaverEnabled,
+                onPowerSaverChange = { enabled -> scope.launch { settingsStore.savePowerSaverEnabled(enabled) } },
                 onToggleTunnel = { toggleTunnel() },
             )
         }
@@ -279,6 +283,8 @@ private fun TunnelConnectionPanel(
     autoPausedForWifi: Boolean,
     cooldownActive: Boolean,
     configurationValid: Boolean,
+    powerSaverEnabled: Boolean,
+    onPowerSaverChange: (Boolean) -> Unit,
     onToggleTunnel: () -> Unit,
 ) {
     val isStarting = tunnelStarting && !tunnelRunning && !tunnelStopping
@@ -337,6 +343,26 @@ private fun TunnelConnectionPanel(
                     else -> 0.34f
                 },
             )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = "Энергосберегающий режим",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = "Уменьшает число активных потоков VPN",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(checked = powerSaverEnabled, onCheckedChange = onPowerSaverChange)
+            }
 
             Text(
                 text = statusText,
