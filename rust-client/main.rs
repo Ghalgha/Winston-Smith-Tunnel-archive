@@ -97,6 +97,8 @@ struct Arguments {
     peer: String,
     #[arg(short = 'n', long, default_value_t = 18)]
     workers: usize,
+    #[arg(long = "max-workers", default_value_t = 0)]
+    max_workers: usize,
     #[arg(long, default_value_t = 0)]
     runtime_threads: usize,
     #[arg(long, default_value = "vkcalls")]
@@ -272,6 +274,11 @@ async fn run(arguments: Arguments) -> Result<i32> {
     } else {
         normalize_worker_count(arguments.workers)
     };
+    let configured_workers = if arguments.max_workers == 0 {
+        workers
+    } else {
+        normalize_worker_count(arguments.max_workers).max(workers)
+    };
     let groups = workers.div_ceil(WORKERS_PER_GROUP);
     let cancel = CancellationToken::new();
     let captcha = CaptchaSolver::new(&arguments.captcha_mode, cancel.clone());
@@ -368,7 +375,7 @@ async fn run(arguments: Arguments) -> Result<i32> {
         local_port: local_port.clone(),
         password: Arc::from(password.as_str()),
         workers: params_workers.clone(),
-        configured_workers: workers,
+        configured_workers,
     });
     print_configuration(
         &arguments,
@@ -592,6 +599,7 @@ fn normalize_cli_argument(argument: String) -> String {
         "direct-ips",
         "runtime-threads",
         "workers",
+        "max-workers",
         "exact-workers",
     ];
     let Some(rest) = argument.strip_prefix('-') else {
