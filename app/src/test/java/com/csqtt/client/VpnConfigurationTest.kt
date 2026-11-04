@@ -35,8 +35,8 @@ class VpnConfigurationTest {
             .substringBefore("\n}\n\nrelease_owned_peer_port || exit")
 
         assertTrue(recovery.contains("if ! wstt_process_is_owned"))
-        assertTrue(recovery.contains("/proc/\\\\$pid/exe"))
-        assertFalse(recovery.contains("/proc/\\\\$pid/cmdline"))
+        assertTrue(recovery.contains("/proc/\\\\\\$pid/exe"))
+        assertFalse(recovery.contains("/proc/\\\\\\$pid/cmdline"))
         assertTrue(recovery.indexOf("wstt_process_is_owned") < recovery.indexOf("kill -TERM"))
         assertFalse(recovery.contains("kill -KILL"))
     }
