@@ -2089,6 +2089,39 @@ object TunnelManager {
         writeProcessCommand(identity, "CAPTCHA_RESULT|$result", "captcha_write_err")
     }
 
+    fun updateWorkerCount(workersPerHash: Int) {
+        if (!running.value || !vpnReady.value) return
+        val params = currentParams ?: return
+        val identity = processIdentity ?: return
+        if (!identity.process.isAlive) return
+        val hashes = params.vkHashes
+            .split(Regex("[,\\\\s\\\\n]+"))
+            .map(String::trim)
+            .filter(String::isNotEmpty)
+            .take(CsqttConstants.Tunnel.MAX_VK_HASHES)
+        val targetWorkers = WorkerCountPolicy.normalizeForHashValues(
+            workersPerHash,
+            hashes,
+            params.allowHashRedistribution || params.vkHashMode == CsqttConstants.VkAutoHash.MODE_AUTO_JS,
+        )
+        val currentWorkers = WorkerCountPolicy.normalizeForHashValues(
+            params.workersPerHash,
+            hashes,
+            params.allowHashRedistribution || params.vkHashMode == CsqttConstants.VkAutoHash.MODE_AUTO_JS,
+        )
+        if (targetWorkers == currentWorkers) return
+        if (writeProcessCommand(identity, "SET_WORKERS|$targetWorkers", "workers_update_error")) {
+            currentParams = params.copy(workersPerHash = targetWorkers)
+            updateProcessLog(
+                identity,
+                "workers_dynamic_update",
+                "[ПОТОКИ] Число активных потоков изменено: $targetWorkers",
+                15,
+                false,
+            )
+        }
+    }
+
     private fun writeProcessCommand(
         identity: ProcessIdentity,
         command: String,
