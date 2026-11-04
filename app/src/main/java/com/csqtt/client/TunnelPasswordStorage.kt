@@ -6,10 +6,8 @@ internal fun resolveTunnelPasswordStorage(
     encryptedValue: String?,
     decrypt: (String?) -> String?,
 ): StoredSecret {
-    if (!persistentValue.isNullOrBlank()) {
-        return StoredSecret(persistentValue, StoredSecretState.Readable)
-    }
-    return resolveStoredSecret(encryptedValue, legacyValue, decrypt)
+    val fallback = persistentValue?.takeIf { it.isNotBlank() } ?: legacyValue
+    return resolveStoredSecret(encryptedValue, fallback, decrypt)
 }
 
 internal fun shouldResetUnreadableTunnelPassword(
