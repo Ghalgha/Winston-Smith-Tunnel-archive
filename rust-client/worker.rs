@@ -902,7 +902,6 @@ async fn worker_loop(
                 _ = context.scale_notify.notified() => {
                     if id > context.params.workers.load(Ordering::Acquire) {
                         session_cancel.cancel();
-                        break session.as_mut().await;
                     }
                 }
                 _started = &mut allocation_started_rx, if !allocation_started_observed => {
