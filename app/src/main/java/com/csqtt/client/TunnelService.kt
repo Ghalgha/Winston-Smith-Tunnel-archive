@@ -161,6 +161,7 @@ class TunnelService : Service() {
                         }
 
                         val requestedWorkers = intent.getIntExtra("workers_per_hash", 18)
+                        val requestedMaxWorkers = intent.getIntExtra("max_workers_per_hash", requestedWorkers)
                         val requestedVkAuthMode = sanitizeVkAuthMode(intent.getStringExtra("vk_auth_mode"))
                         val intentHashes = intent.getStringExtra("vk_hashes") ?: ""
                         val hashesFromLink = intent.getBooleanExtra("vk_hashes_from_link", false)
@@ -182,6 +183,7 @@ class TunnelService : Service() {
                         val accountAutoJs = vkAuthMode == CsqttConstants.VkAuth.MODE_AUTO_JS
                         val maxWorkers = CsqttConstants.Tunnel.MAX_WORKERS
                         val workersPerHash = WorkerCountPolicy.normalize(requestedWorkers, maximum = maxWorkers)
+                        val maxWorkersPerHash = WorkerCountPolicy.normalize(requestedMaxWorkers, maximum = maxWorkers)
                         TunnelManager.isLoggingEnabled = store.loggingEnabled.first()
                         if (accountAutoJs) {
                             store.saveVkAuthMode(CsqttConstants.VkAuth.MODE_AUTO_JS)
@@ -235,6 +237,7 @@ class TunnelService : Service() {
                             vkHashes = resolvedHashes.value,
                             secondaryVkHash = intent.getStringExtra("secondary_vk_hash") ?: "",
                             workersPerHash = workersPerHash,
+                            maxWorkersPerHash = maxWorkersPerHash,
                             port = intent.getIntExtra("port", 0),
                             sni = intent.getStringExtra("sni") ?: "",
                             connectionPassword = intent.getStringExtra("connection_password") ?: "",
@@ -414,6 +417,7 @@ class TunnelService : Service() {
                 val salt = newTunnelSessionId()
                 val requestedVkAuthMode = sanitizeVkAuthMode(store.vkAuthMode.first())
                 val workersPerHash = WorkerCountPolicy.normalize(store.workersPerHash.first())
+                val maxWorkersPerHash = WorkerCountPolicy.normalize(store.configuredWorkersPerHash.first())
                 TunnelManager.isLoggingEnabled = store.loggingEnabled.first()
                 val configuredHashMode = store.vkHashMode.first()
                 val vkAuthMode = when {
@@ -459,6 +463,7 @@ class TunnelService : Service() {
                     vkHashes = restoredHashes?.value ?: "",
                     secondaryVkHash = store.secondaryVkHash.first(),
                     workersPerHash = workersPerHash,
+                    maxWorkersPerHash = maxWorkersPerHash,
                     port = 0,
                     sni = store.sni.first(),
                     connectionPassword = source.password,
