@@ -342,7 +342,7 @@ mod coexistence_tests {
     use super::TUN_SUBNET_V6_PREFIX;
 
     #[test]
-    fn wstt_ipv6_prefix_is_disjoint_from_csqtt() {
+    fn wstt_ipv6_prefix_is_disjoint_from_legacy_pool() {
         assert_eq!(&TUN_SUBNET_V6_PREFIX[..4], &[0xfd, 0x67, 0x00, 0x68]);
         assert_ne!(&TUN_SUBNET_V6_PREFIX[..4], &[0xfd, 0x66, 0x00, 0x67]);
     }
