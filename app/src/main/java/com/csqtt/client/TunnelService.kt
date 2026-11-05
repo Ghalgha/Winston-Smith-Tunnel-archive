@@ -1224,7 +1224,7 @@ class TunnelService : Service() {
         val pm = getSystemService(POWER_SERVICE) as PowerManager
         wakeLock = pm.newWakeLock(
             PowerManager.PARTIAL_WAKE_LOCK,
-            "csqtt:tunnel_cpu"
+            "wstt:tunnel_cpu"
         ).apply {
             setReferenceCounted(false)
             acquire(WAKE_LOCK_TIMEOUT_MS)
@@ -1237,7 +1237,7 @@ class TunnelService : Service() {
         if (wifiLock?.isHeld == true) return
         val wm = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
 
-        wifiLock = wm.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "csqtt:wifi_perf").apply {
+        wifiLock = wm.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "wstt:wifi_perf").apply {
             setReferenceCounted(false)
             acquire()
         }
