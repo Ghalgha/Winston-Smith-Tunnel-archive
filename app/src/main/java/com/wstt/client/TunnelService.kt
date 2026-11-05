@@ -42,7 +42,7 @@ import kotlinx.coroutines.sync.withLock
 import java.net.HttpURLConnection
 import java.net.URL
 
-private const val TUNNEL_NOTIFICATION_CHANNEL_ID = WsttConstants.Notifications.TUNNEL_CHANNEL_ID
+private val TUNNEL_NOTIFICATION_CHANNEL_ID = WsttConstants.Notifications.TUNNEL_CHANNEL_ID
 private const val TUNNEL_NOTIFICATION_ID = WsttConstants.Notifications.TUNNEL_NOTIFICATION_ID
 private const val NOTIFICATION_MIN_REBUILD_INTERVAL_MS = 5_000L
 private const val NETWORK_SWAP_SETTLE_MS = 4_000L
