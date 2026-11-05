@@ -137,10 +137,10 @@ fn apply_workers_limit(
     if let Some(ceiling) = worker_ceiling {
         ceiling.store(effective, Ordering::Release);
     }
-    if let (Some(target), Some(desired), Some(ceiling), Some(notify)) =
-        (target_workers, desired_workers, worker_ceiling, scale_notify)
+    if let (Some(target), Some(desired), Some(ceiling)) =
+        (target_workers, desired_workers, worker_ceiling)
     {
-        reconcile_worker_target(target, desired, ceiling, notify);
+        reconcile_worker_target(target, desired, ceiling, scale_notify);
     } else if let Some(target) = target_workers {
         let desired = desired_workers
             .map(|workers| workers.load(Ordering::Acquire))
@@ -155,12 +155,11 @@ fn apply_workers_limit(
     }
 }
 
-
 pub(crate) fn reconcile_worker_target(
     target: &AtomicUsize,
     desired: &AtomicUsize,
     ceiling: &AtomicUsize,
-    scale_notify: &tokio::sync::Notify,
+    scale_notify: Option<&tokio::sync::Notify>,
 ) {
     loop {
         let requested = desired.load(Ordering::Acquire);
@@ -170,8 +169,10 @@ pub(crate) fn reconcile_worker_target(
         if desired.load(Ordering::Acquire) == requested
             && ceiling.load(Ordering::Acquire).max(1) == maximum
         {
-            if previous != next {
-                scale_notify.notify_waiters();
+            if previous != next
+                && let Some(notify) = scale_notify
+            {
+                notify.notify_waiters();
             }
             return;
         }
@@ -1355,7 +1356,13 @@ async fn request_configuration(
                                 server_limit
                             );
                             events.workers(server_limit as u32);
-                            apply_workers_limit(agreed, scale.target, scale.desired, scale.ceiling, scale.notify);
+                            apply_workers_limit(
+                                agreed,
+                                scale.target,
+                                scale.desired,
+                                scale.ceiling,
+                                scale.notify,
+                            );
                         }
                         continue;
                     }
@@ -1380,7 +1387,13 @@ async fn request_configuration(
                                 config.server_stream_repair.store(true, Ordering::Release);
                             }
                             if let Some(agreed) = parse_workers_from_tunconf(&value) {
-                                apply_workers_limit(agreed, scale.target, scale.desired, scale.ceiling, scale.notify);
+                                apply_workers_limit(
+                                agreed,
+                                scale.target,
+                                scale.desired,
+                                scale.ceiling,
+                                scale.notify,
+                            );
                             }
                             if let Some(sender) = &config_tx {
                                 let _ = sender.try_send(value);
@@ -1539,7 +1552,13 @@ async fn reader_loop(
         if packet.as_slice().starts_with(b"TUNCONF:") {
             if let Ok(ConfigResponse::Config(config)) = parse_config_response(packet.as_slice()) {
                 if let Some(agreed) = parse_workers_from_tunconf(&config) {
-                    apply_workers_limit(agreed, target_workers.as_ref(), desired_workers.as_ref(), worker_ceiling.as_ref(), scale_notify.as_ref());
+                    apply_workers_limit(
+                        agreed,
+                        target_workers.as_ref(),
+                        desired_workers.as_ref(),
+                        worker_ceiling.as_ref(),
+                        scale_notify.as_ref(),
+                    );
                 }
                 let _ = config_tx.try_send(config);
             }
@@ -1563,7 +1582,13 @@ async fn reader_loop(
                     server_limit
                 );
                 events.workers(server_limit as u32);
-                apply_workers_limit(agreed, target_workers.as_ref(), desired_workers.as_ref(), worker_ceiling.as_ref(), scale_notify.as_ref());
+                apply_workers_limit(
+                        agreed,
+                        target_workers.as_ref(),
+                        desired_workers.as_ref(),
+                        worker_ceiling.as_ref(),
+                        scale_notify.as_ref(),
+                    );
             }
             continue;
         }
@@ -2436,6 +2461,7 @@ mod tests {
             _ => panic!("expected Config"),
         }
     }
+
     #[test]
     fn server_worker_limit_does_not_override_a_lower_local_target() {
         let target = Arc::new(AtomicUsize::new(5));

@@ -827,11 +827,10 @@ fn start_control_input(
                                     &worker_count,
                                     &desired_workers,
                                     &worker_ceiling,
-                                    &scale_notify,
+                                    Some(&scale_notify),
                                 );
                                 let target = worker_count.load(Ordering::Acquire);
                                 if previous != target {
-                                    scale_notify.notify_waiters();
                                     crate::log_error!(
                                         "[ПОТОКИ] Динамическое изменение числа потоков: {previous} -> {target}"
                                     );
