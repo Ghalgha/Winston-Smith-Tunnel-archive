@@ -282,6 +282,7 @@ async fn outbound_writer_loop(queue: Arc<OutboundQueue>) {
                     .outbound_queue_full_drops
                     .fetch_add(1, Ordering::Relaxed);
                 drop(packet);
+                queue.complete();
                 continue;
             }
             match queue.socket.try_send(packet.as_slice()) {
