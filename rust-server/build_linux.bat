@@ -4,8 +4,8 @@ setlocal EnableDelayedExpansion
 set "BUILD_SCRIPT=%~f0"
 set "SERVER_DIR=%~dp0"
 set "PROJECT_ROOT=%~dp0..\"
-set "LINUX_TARGET_DIR=%PROJECT_ROOT%build\csqtt-uring-linux"
-set "CLIPPY_TARGET_DIR=%PROJECT_ROOT%build\csqtt-uring-linux-clippy"
+set "LINUX_TARGET_DIR=%PROJECT_ROOT%build\wstt-uring-linux"
+set "CLIPPY_TARGET_DIR=%PROJECT_ROOT%build\wstt-uring-linux-clippy"
 set "CARGO_TARGET_DIR=%LINUX_TARGET_DIR%"
 set "ASSETS_DIR=%PROJECT_ROOT%app\src\main\assets"
 set "PROVENANCE_SCRIPT=%PROJECT_ROOT%scripts\server_asset_provenance.ps1"
@@ -52,7 +52,7 @@ if not defined RUN_TESTS (
 set "CARGO_FEATURES="
 if defined DIAGNOSTICS set "CARGO_FEATURES=--features diagnostics"
 
-set "PY3_SHIM_DIR=%TEMP%\csqtt-py3-shim"
+set "PY3_SHIM_DIR=%TEMP%\wstt-py3-shim"
 if not exist "%PY3_SHIM_DIR%" mkdir "%PY3_SHIM_DIR%" >nul 2>nul
 >"%PY3_SHIM_DIR%\python3.cmd" echo @exit /b 1
 set "PATH=%PY3_SHIM_DIR%;!PATH!"
@@ -133,14 +133,14 @@ if errorlevel 1 goto fail
 
 echo Verifying Linux server assets...
 if not exist "%ASSETS_DIR%" mkdir "%ASSETS_DIR%"
-del /q "%ASSETS_DIR%\csqtt" >nul 2>nul
+del /q "%ASSETS_DIR%\wstt" >nul 2>nul
 powershell -NoProfile -ExecutionPolicy Bypass -File "%PROVENANCE_SCRIPT%" -Mode Write
 if errorlevel 1 goto fail
 powershell -NoProfile -ExecutionPolicy Bypass -File "%PROVENANCE_SCRIPT%" -Mode Verify
 if errorlevel 1 goto fail
-for %%F in ("%ASSETS_DIR%\csqtt-linux-amd64") do echo csqtt-linux-amd64: %%~zF bytes
-for %%F in ("%ASSETS_DIR%\csqtt-linux-arm64") do echo csqtt-linux-arm64: %%~zF bytes
-for %%F in ("%ASSETS_DIR%\csqtt-linux-armv7") do echo csqtt-linux-armv7: %%~zF bytes
+for %%F in ("%ASSETS_DIR%\wstt-linux-amd64") do echo wstt-linux-amd64: %%~zF bytes
+for %%F in ("%ASSETS_DIR%\wstt-linux-arm64") do echo wstt-linux-arm64: %%~zF bytes
+for %%F in ("%ASSETS_DIR%\wstt-linux-armv7") do echo wstt-linux-armv7: %%~zF bytes
 echo Success: Linux server variants copied to %ASSETS_DIR%
 exit /b 0
 
@@ -157,15 +157,15 @@ call :build_server_variant "%~1" "%~2"
 exit /b !errorlevel!
 
 :build_server_variant
-set "CARGO_TARGET_DIR=%PROJECT_ROOT%build\csqtt-uring-linux-%~2"
+set "CARGO_TARGET_DIR=%PROJECT_ROOT%build\wstt-uring-linux-%~2"
 cargo zigbuild --release --target %~1 !CARGO_FEATURES!
 if errorlevel 1 exit /b 1
-copy /Y "%CARGO_TARGET_DIR%\%~1\release\csqtt" "%ASSETS_DIR%\%~2" >nul
+copy /Y "%CARGO_TARGET_DIR%\%~1\release\wstt" "%ASSETS_DIR%\%~2" >nul
 if errorlevel 1 exit /b 1
 exit /b 0
 
 :setup_test_zig_wrappers
-set "TEST_ZIG_WRAPPER_DIR=%TEMP%\csqtt-zig-test-%RANDOM%%RANDOM%"
+set "TEST_ZIG_WRAPPER_DIR=%TEMP%\wstt-zig-test-%RANDOM%%RANDOM%"
 mkdir "%TEST_ZIG_WRAPPER_DIR%" >nul 2>nul
 if errorlevel 1 exit /b 1
 >"%TEST_ZIG_WRAPPER_DIR%\zigcc.cmd" echo @call "%BUILD_SCRIPT%" --test-zig-cc %%*
