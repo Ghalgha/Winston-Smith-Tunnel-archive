@@ -318,6 +318,7 @@ pub struct UplinkState {
     pub tokens: Vec<f64>,
     rates: Vec<RateController>,
     pub cursor: usize,
+    worker_signature: Vec<(usize, u64)>,
     flows: HashMap<FlowKey, FlowState>,
     flow_evict_counter: u32,
 }
@@ -434,6 +435,12 @@ impl UplinkState {
         flow: Option<FlowKey>,
         now: std::time::Instant,
     ) -> Option<usize> {
+        let signature: Vec<_> = workers
+            .iter()
+            .map(|worker| (worker.channels.id, worker.channels.incarnation_id))
+            .collect();
+        self.sync_worker_set(&signature, now);
+
         let count = workers.len();
         if count == 0 {
             return None;
@@ -1937,6 +1944,40 @@ mod tests {
                 ..
             }
         ));
+    }
+
+    #[test]
+    fn worker_set_reorder_resets_token_and_flow_bindings() {
+        let mut state = UplinkState::new();
+        let now = std::time::Instant::now();
+        state.tokens = vec![1.0, 2.0];
+        state.rates = vec![RateController::new(), RateController::new()];
+        state.cursor = 1;
+        state.flows.insert(
+            FlowKey::V4 {
+                src: [10, 0, 0, 1],
+                dst: [10, 0, 0, 2],
+                proto: 6,
+                fragment_id: None,
+                sport: 12345,
+                dport: 443,
+            },
+            FlowState {
+                idx: 0,
+                worker_id: 1,
+                incarnation_id: 10,
+                last_seen: now,
+            },
+        );
+        state.sync_worker_set(&[(1, 10), (2, 20)], now);
+        state.tokens[0] = 100.0;
+        state.cursor = 1;
+
+        state.sync_worker_set(&[(2, 20), (1, 10)], now + Duration::from_millis(1));
+
+        assert_eq!(state.tokens, vec![TB_CAPACITY_BYTES; 2]);
+        assert_eq!(state.cursor, 0);
+        assert!(state.flows.is_empty());
     }
 
     #[test]
