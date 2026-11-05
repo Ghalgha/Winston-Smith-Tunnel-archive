@@ -111,13 +111,13 @@ export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_MUSLEABIHF_LINKER="$CC_WRAPPER"
 export WSTT_ZIG_TARGET=x86_64-linux-musl
 if [[ "$RUN_CHECKS" == 1 ]]; then
   cargo +1.97.1 fmt --all -- --check
-  CARGO_TARGET_DIR="$ROOT/build/linux-musl-check" cargo +1.97.1 clippy --release --target x86_64-unknown-linux-musl "${FEATURE_ARGS[@]}" --all-targets -- -D warnings
+  CARGO_TARGET_DIR="$ROOT/build/linux-musl-check" cargo +1.97.1 clippy --locked --release --target x86_64-unknown-linux-musl "${FEATURE_ARGS[@]}" --all-targets -- -D warnings
   if [[ "$HOST" == *linux* ]]; then
     echo "Running Linux musl tests..."
-    CARGO_TARGET_DIR="$ROOT/build/linux-musl-tests" cargo +1.97.1 test --target x86_64-unknown-linux-musl "${FEATURE_ARGS[@]}" --all-targets
+    CARGO_TARGET_DIR="$ROOT/build/linux-musl-tests" cargo +1.97.1 test --locked --target x86_64-unknown-linux-musl "${FEATURE_ARGS[@]}" --all-targets
   else
     echo "Compiling Linux musl test binaries (they cannot run on this non-Linux host)..."
-    CARGO_TARGET_DIR="$ROOT/build/linux-musl-tests" cargo +1.97.1 zigbuild --target x86_64-unknown-linux-musl "${FEATURE_ARGS[@]}" --tests
+    CARGO_TARGET_DIR="$ROOT/build/linux-musl-tests" cargo +1.97.1 zigbuild --locked --target x86_64-unknown-linux-musl "${FEATURE_ARGS[@]}" --tests
   fi
 fi
 CPU_COUNT="$(getconf _NPROCESSORS_ONLN 2>/dev/null || nproc 2>/dev/null || echo 3)"
@@ -136,7 +136,7 @@ build_variant() {
     ZIG_LOCAL_CACHE_DIR="$ROOT/build/zig-cache/$asset/local" \
     CARGO_TARGET_DIR="$target_dir" \
     CARGO_BUILD_JOBS="$BUILD_JOBS_PER_TARGET" \
-    cargo +1.97.1 zigbuild --release --target "$target" "${FEATURE_ARGS[@]}"
+    cargo +1.97.1 zigbuild --locked --release --target "$target" "${FEATURE_ARGS[@]}"
   mkdir -p "$ROOT/dist" "$ROOT/../app/src/main/assets"
   cp "$target_dir/$target/release/wstt" "$ROOT/dist/$asset"
   cp "$target_dir/$target/release/wstt" "$ROOT/../app/src/main/assets/$asset"

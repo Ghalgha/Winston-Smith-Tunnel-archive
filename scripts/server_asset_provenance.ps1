@@ -117,9 +117,12 @@ function Get-BuildInputHash {
         "scripts/server_asset_provenance.ps1"
     )
 
-    & git -C $projectRoot diff --quiet HEAD -- @paths
+    $changedPaths = @(& git -C $projectRoot diff --name-only HEAD -- @paths)
     if ($LASTEXITCODE -ne 0) {
-        throw "Tracked Rust server build inputs are modified in the working tree"
+        throw "Unable to inspect tracked Rust server build inputs"
+    }
+    if ($changedPaths.Count -gt 0) {
+        throw "Tracked Rust server build inputs are modified in the working tree: $($changedPaths -join ', ')"
     }
 
     $tree = Get-GitText -Arguments (@("ls-tree", "-r", "--full-tree", "HEAD", "--") + $paths)
