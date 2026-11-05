@@ -384,7 +384,7 @@ private fun ConfigOptionRow(
 }
 
 private fun saveJsonToDownloads(context: Context, json: String): String? {
-    val filename = "csqtt-config-${SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())}.json"
+    val filename = "wstt-config-${SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())}.json"
     return try {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val resolver = context.contentResolver
