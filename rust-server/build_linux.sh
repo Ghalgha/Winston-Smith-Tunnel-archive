@@ -120,6 +120,14 @@ if [[ "$RUN_CHECKS" == 1 ]]; then
     CARGO_TARGET_DIR="$ROOT/build/linux-musl-tests" cargo +1.97.1 zigbuild --target x86_64-unknown-linux-musl "${FEATURE_ARGS[@]}" --tests
   fi
 fi
+CPU_COUNT="$(getconf _NPROCESSORS_ONLN 2>/dev/null || nproc 2>/dev/null || echo 3)"
+DEFAULT_BUILD_JOBS_PER_TARGET=$((CPU_COUNT / 3))
+if (( DEFAULT_BUILD_JOBS_PER_TARGET < 1 )); then DEFAULT_BUILD_JOBS_PER_TARGET=1; fi
+BUILD_JOBS_PER_TARGET="${WSTT_BUILD_JOBS_PER_TARGET:-$DEFAULT_BUILD_JOBS_PER_TARGET}"
+if [[ ! "$BUILD_JOBS_PER_TARGET" =~ ^[1-9][0-9]*$ ]]; then
+  echo "WSTT_BUILD_JOBS_PER_TARGET must be a positive integer" >&2
+  exit 2
+fi
 build_variant() {
   local target="$1" zig_target="$2" asset="$3"
   local target_dir="$ROOT/build/linux-musl-$asset"
@@ -127,7 +135,7 @@ build_variant() {
     ZIG_GLOBAL_CACHE_DIR="$ROOT/build/zig-cache/$asset/global" \
     ZIG_LOCAL_CACHE_DIR="$ROOT/build/zig-cache/$asset/local" \
     CARGO_TARGET_DIR="$target_dir" \
-    CARGO_BUILD_JOBS="${WSTT_BUILD_JOBS_PER_TARGET:-1}" \
+    CARGO_BUILD_JOBS="$BUILD_JOBS_PER_TARGET" \
     cargo +1.97.1 zigbuild --release --target "$target" "${FEATURE_ARGS[@]}"
   mkdir -p "$ROOT/dist" "$ROOT/../app/src/main/assets"
   cp "$target_dir/$target/release/wstt" "$ROOT/dist/$asset"
