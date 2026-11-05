@@ -58,7 +58,7 @@ pub(crate) async fn solve_slider(
     let size = puzzle.size;
     let swaps = puzzle.swaps;
     let attempts = puzzle.attempts;
-    let guesses = crate::cpu_task::run("csqtt-captcha-slider", move || {
+    let guesses = crate::cpu_task::run("wstt-captcha-slider", move || {
         rank_guesses(&puzzle.image, size, &swaps)
     })
     .await?;
