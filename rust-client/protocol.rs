@@ -2,9 +2,9 @@ use anyhow::{Result, bail};
 
 use crate::wire_protocol::PATH_ECHO_PREFIX;
 
-pub const PANEL_RESTART_NOTICE: &[u8] = b"\xffCSQTT_PANEL_RESTART_V1\x00\x91\x7d\x03\xa8";
-pub const STREAM_REPAIR_PREFIX: &[u8] = b"\xffCSQTT_STREAM_REPAIR_V1";
-pub const STREAM_ALIVE_PREFIX: &[u8] = b"\xffCSQTT_STREAM_ALIVE_V1";
+pub const PANEL_RESTART_NOTICE: &[u8] = b"\xff\x43\x53\x51\x54\x54_PANEL_RESTART_V1\x00\x91\x7d\x03\xa8";
+pub const STREAM_REPAIR_PREFIX: &[u8] = b"\xff\x43\x53\x51\x54\x54_STREAM_REPAIR_V1";
+pub const STREAM_ALIVE_PREFIX: &[u8] = b"\xff\x43\x53\x51\x54\x54_STREAM_ALIVE_V1";
 const MAX_STREAM_WORKERS: u16 = 100;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -221,7 +221,7 @@ mod tests {
     #[test]
     fn panel_restart_notice_requires_an_exact_match() {
         assert!(is_panel_restart_notice(PANEL_RESTART_NOTICE));
-        assert!(!is_panel_restart_notice(b"CSQTT_PANEL_RESTART_V1"));
+        assert!(!is_panel_restart_notice(b"\x43\x53\x51\x54\x54_PANEL_RESTART_V1"));
         let mut modified = PANEL_RESTART_NOTICE.to_vec();
         modified[1] ^= 1;
         assert!(!is_panel_restart_notice(&modified));
