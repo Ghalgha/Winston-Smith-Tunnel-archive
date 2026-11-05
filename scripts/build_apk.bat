@@ -16,7 +16,7 @@ set "PROVENANCE_SCRIPT=%PROJECT_ROOT%scripts\native_client_provenance.ps1"
 set "SERVER_PROVENANCE_SCRIPT=%PROJECT_ROOT%scripts\server_asset_provenance.ps1"
 cd /d "%PROJECT_ROOT%"
 
-echo === CSQTT APK Build Script ===
+echo === WSTT APK Build Script ===
 echo === Output: 4 APKs (universal, arm64-v8a, armeabi-v7a, x86_64) ===
 echo.
 
@@ -67,32 +67,32 @@ echo.
 echo Copying APKs to release folder...
 
 if exist "%APK_DIR%\app-x86-release.apk" del /Q "%APK_DIR%\app-x86-release.apk"
-if exist "%PROJECT_ROOT%app\release\CSQTT-x86.apk" del /Q "%PROJECT_ROOT%app\release\CSQTT-x86.apk"
+if exist "%PROJECT_ROOT%app\release\WSTT-x86.apk" del /Q "%PROJECT_ROOT%app\release\WSTT-x86.apk"
 
 if exist "%APK_DIR%\app-universal-release.apk" (
-    copy /Y "%APK_DIR%\app-universal-release.apk" "%PROJECT_ROOT%app\release\CSQTT-universal.apk" >nul
-    for %%F in ("%PROJECT_ROOT%app\release\CSQTT-universal.apk") do echo   [OK] CSQTT-universal.apk  [%%~zF bytes]
+    copy /Y "%APK_DIR%\app-universal-release.apk" "%PROJECT_ROOT%app\release\WSTT-universal.apk" >nul
+    for %%F in ("%PROJECT_ROOT%app\release\WSTT-universal.apk") do echo   [OK] WSTT-universal.apk  [%%~zF bytes]
 ) else (
     echo   [!!] Universal APK not found
 )
 
 if exist "%APK_DIR%\app-arm64-v8a-release.apk" (
-    copy /Y "%APK_DIR%\app-arm64-v8a-release.apk" "%PROJECT_ROOT%app\release\CSQTT-arm64-v8a.apk" >nul
-    for %%F in ("%PROJECT_ROOT%app\release\CSQTT-arm64-v8a.apk") do echo   [OK] CSQTT-arm64-v8a.apk  [%%~zF bytes]
+    copy /Y "%APK_DIR%\app-arm64-v8a-release.apk" "%PROJECT_ROOT%app\release\WSTT-arm64-v8a.apk" >nul
+    for %%F in ("%PROJECT_ROOT%app\release\WSTT-arm64-v8a.apk") do echo   [OK] WSTT-arm64-v8a.apk  [%%~zF bytes]
 ) else (
     echo   [!!] arm64-v8a APK not found
 )
 
 if exist "%APK_DIR%\app-armeabi-v7a-release.apk" (
-    copy /Y "%APK_DIR%\app-armeabi-v7a-release.apk" "%PROJECT_ROOT%app\release\CSQTT-armeabi-v7a.apk" >nul
-    for %%F in ("%PROJECT_ROOT%app\release\CSQTT-armeabi-v7a.apk") do echo   [OK] CSQTT-armeabi-v7a.apk  [%%~zF bytes]
+    copy /Y "%APK_DIR%\app-armeabi-v7a-release.apk" "%PROJECT_ROOT%app\release\WSTT-armeabi-v7a.apk" >nul
+    for %%F in ("%PROJECT_ROOT%app\release\WSTT-armeabi-v7a.apk") do echo   [OK] WSTT-armeabi-v7a.apk  [%%~zF bytes]
 ) else (
     echo   [!!] armeabi-v7a APK not found
 )
 
 if exist "%APK_DIR%\app-x86_64-release.apk" (
-    copy /Y "%APK_DIR%\app-x86_64-release.apk" "%PROJECT_ROOT%app\release\CSQTT-x86_64.apk" >nul
-    for %%F in ("%PROJECT_ROOT%app\release\CSQTT-x86_64.apk") do echo   [OK] CSQTT-x86_64.apk  [%%~zF bytes]
+    copy /Y "%APK_DIR%\app-x86_64-release.apk" "%PROJECT_ROOT%app\release\WSTT-x86_64.apk" >nul
+    for %%F in ("%PROJECT_ROOT%app\release\WSTT-x86_64.apk") do echo   [OK] WSTT-x86_64.apk  [%%~zF bytes]
 ) else (
     echo   [!!] x86_64 APK not found
 )
@@ -101,10 +101,10 @@ echo.
 echo === DONE ===
 echo Output directory: app\release\
 echo.
-echo   CSQTT-universal.apk    - all architectures in one APK
-echo   CSQTT-arm64-v8a.apk    - 64-bit ARM only
-echo   CSQTT-armeabi-v7a.apk  - 32-bit ARM only
-echo   CSQTT-x86_64.apk       - 64-bit x86 only
+echo   WSTT-universal.apk    - all architectures in one APK
+echo   WSTT-arm64-v8a.apk    - 64-bit ARM only
+echo   WSTT-armeabi-v7a.apk  - 32-bit ARM only
+echo   WSTT-x86_64.apk       - 64-bit x86 only
 echo.
 if not defined CI pause
 exit /b 0
