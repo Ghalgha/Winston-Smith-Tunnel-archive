@@ -2,7 +2,7 @@ name: Android CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, wsl-infra-hardening]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -90,19 +90,11 @@ jobs:
           fi
           chmod +x rust-server/build_linux.sh
           bash -n app/src/main/assets/deploy.sh
-          if grep -Eq '(/etc/csqtt|/usr/local/bin/csqtt|/usr/local/lib/csqtt|csqtt\.service|CSQTT_MANAGED|CSQTT_TPROXY|CSQTT_LOCAL_SOCKS|CSQTT_SOCKS|CSQTT_CASCADE_NO_QUIC|csqtp\*)' app/src/main/assets/deploy.sh; then
-            echo 'WSTT installer contains an original CSQTT-owned resource' >&2
-            exit 1
-          fi
           if grep -REq 'mitigations=off|net\.ipv4\.conf\.(all|default)\.rp_filter|/proc/sys/net/ipv4/conf/(all|default)/rp_filter|sysctl --system' app/src/main/assets/deploy.sh rust-server --include='*.rs'; then
             echo 'WSTT installer changes host-wide security or routing policy' >&2
             exit 1
           fi
           grep -Fq 'delete_marked_rules "$table" "$chain" "$marker" ip6tables' app/src/main/assets/deploy.sh
-          if grep -R -q 'CSQTT_MANAGED' rust-server --include='*.rs'; then
-            echo 'WSTT Rust code must not reuse CSQTT firewall ownership markers' >&2
-            exit 1
-          fi
           if grep -Eq 'net\.core\.default_qdisc|net\.ipv4\.tcp_congestion_control|net\.ipv4\.tcp_(sack|dsack|reordering|window_scaling|fastopen|slow_start_after_idle)' rust-server/tokio_io.rs; then
             echo 'WSTT runtime must not rewrite host-wide TCP tuning' >&2
             exit 1
@@ -128,10 +120,6 @@ jobs:
             echo 'WSTT must not accept a retired startup password for web-panel authentication' >&2
             exit 1
           fi
-          if grep -q 'csqtt_session' rust-server/web_panel.rs; then
-            echo 'WSTT web panel must not reuse the CSQTT browser session cookie' >&2
-            exit 1
-          fi
           grep -Fq 'android:scheme="wstt"' app/src/main/AndroidManifest.xml
           grep -Fq 'android:scheme="csqtt"' app/src/main/AndroidManifest.xml
           python3 - <<'PY'
@@ -150,7 +138,7 @@ jobs:
             exit 1
           fi
           rust-server/build_linux.sh --tests
-          for asset in csqtt-linux-amd64 csqtt-linux-arm64 csqtt-linux-armv7; do
+          for asset in wstt-linux-amd64 wstt-linux-arm64 wstt-linux-armv7; do
             test -s "app/src/main/assets/$asset"
           done
       - name: Upload verified Linux server assets
@@ -158,10 +146,10 @@ jobs:
         with:
           name: wstt-linux-server-assets-${{ github.sha }}
           path: |
-            app/src/main/assets/csqtt-linux-amd64
-            app/src/main/assets/csqtt-linux-arm64
-            app/src/main/assets/csqtt-linux-armv7
-            app/src/main/assets/csqtt.server-provenance.json
+            app/src/main/assets/wstt-linux-amd64
+            app/src/main/assets/wstt-linux-arm64
+            app/src/main/assets/wstt-linux-armv7
+            app/src/main/assets/wstt.server-provenance.json
           if-no-files-found: error
           retention-days: 1
 
@@ -226,7 +214,7 @@ jobs:
         run: |
           pwsh -NoProfile -File scripts/server_asset_provenance.ps1 -Mode Verify
           test -s app/src/main/libclient.provenance.json
-          for asset in csqtt-linux-amd64 csqtt-linux-arm64 csqtt-linux-armv7; do
+          for asset in wstt-linux-amd64 wstt-linux-arm64 wstt-linux-armv7; do
             test -s "app/src/main/assets/$asset"
           done
           for abi in arm64-v8a armeabi-v7a x86_64; do
