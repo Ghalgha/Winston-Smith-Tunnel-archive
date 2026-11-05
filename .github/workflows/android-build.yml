@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: android-ci-${ github.ref }
+  group: android-ci-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -29,9 +29,9 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             rust-client/target
-          key: rust-client-tests-${ runner.os }-1.97.1-${ hashFiles('rust-client/Cargo.lock') }
+          key: rust-client-tests-${{ runner.os }}-1.97.1-${{ hashFiles('rust-client/Cargo.lock') }}
           restore-keys: |
-            rust-client-tests-${ runner.os }-1.97.1-
+            rust-client-tests-${{ runner.os }}-1.97.1-
       - name: Run Rust client unit tests
         run: cargo +1.97.1 test --locked --manifest-path rust-client/Cargo.toml --all-targets
 
@@ -47,9 +47,9 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             ~/.cargo/bin
-          key: android-build-${ runner.os }-rust-1.97.1-${ hashFiles('rust-server/Cargo.lock', 'rust-client/Cargo.lock') }
+          key: android-build-${{ runner.os }}-rust-1.97.1-${{ hashFiles('rust-server/Cargo.lock') }}
           restore-keys: |
-            android-build-${ runner.os }-rust-1.97.1-
+            android-build-${{ runner.os }}-rust-1.97.1-
       - name: Verify PowerShell for provenance checks
         run: pwsh --version
       - uses: mlugg/setup-zig@v2
@@ -181,7 +181,7 @@ jobs:
           done
       - uses: actions/upload-artifact@v4
         with:
-          name: WSTT-${ github.sha }-CI-debug
+          name: WSTT-${{ github.sha }}-CI-debug
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 7
