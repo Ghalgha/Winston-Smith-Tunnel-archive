@@ -8,7 +8,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-pub const EVENT_PREFIX: &str = "__CSQTT_EVENT__|";
+pub const EVENT_PREFIX: &str = "__WSTT_EVENT__|";
 const NETWORK_TIMEOUT_BURST_WINDOW: Duration = Duration::from_secs(15);
 
 #[derive(Clone)]
@@ -23,7 +23,7 @@ pub struct Events {
 
 impl Events {
     pub fn from_env() -> Self {
-        Self::new(std::env::var("CSQTT_EVENTS").as_deref() == Ok("1"))
+        Self::new(std::env::var("WSTT_EVENTS").as_deref() == Ok("1"))
     }
 
     pub(crate) fn new(enabled: bool) -> Self {
@@ -183,19 +183,19 @@ mod tests {
     fn no_payload_lifecycle_events_are_json_objects() {
         assert_eq!(
             encode_event("READY", &serde_json::json!({})).as_deref(),
-            Some("__CSQTT_EVENT__|READY|{}")
+            Some("__WSTT_EVENT__|READY|{}")
         );
         assert_eq!(
             encode_event("STOPPED", &serde_json::json!({})).as_deref(),
-            Some("__CSQTT_EVENT__|STOPPED|{}")
+            Some("__WSTT_EVENT__|STOPPED|{}")
         );
         assert_eq!(
             encode_event("ACTIVE_ZERO", &serde_json::json!({})).as_deref(),
-            Some("__CSQTT_EVENT__|ACTIVE_ZERO|{}")
+            Some("__WSTT_EVENT__|ACTIVE_ZERO|{}")
         );
         assert_eq!(
             encode_event("TUN_LOST", &serde_json::json!({})).as_deref(),
-            Some("__CSQTT_EVENT__|TUN_LOST|{}")
+            Some("__WSTT_EVENT__|TUN_LOST|{}")
         );
     }
 
@@ -212,7 +212,7 @@ mod tests {
             )
             .as_deref(),
             Some(
-                "__CSQTT_EVENT__|ERROR|{\"code\":\"authentication_rejected\",\"fatal\":true,\"message\":\"FATAL_AUTH: invalid password\"}"
+                "__WSTT_EVENT__|ERROR|{\"code\":\"authentication_rejected\",\"fatal\":true,\"message\":\"FATAL_AUTH: invalid password\"}"
             )
         );
     }
