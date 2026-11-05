@@ -61,8 +61,7 @@ NS_CREATED=0
 cleanup() {
   local p
   if [ -n "$UNIT" ] && command -v systemctl >/dev/null; then
-    if command -v timeout >/dev/null; then timeout 10 timeout 8s systemctl stop "$UNIT" >/dev/null 2>&1 || true
-    else systemctl stop "$UNIT" >/dev/null 2>&1 || true; fi
+    timeout 8s systemctl stop "$UNIT" >/dev/null 2>&1 || true
     systemctl reset-failed "$UNIT" >/dev/null 2>&1 || true
   fi
   if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
