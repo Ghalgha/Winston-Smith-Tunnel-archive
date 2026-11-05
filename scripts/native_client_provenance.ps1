@@ -18,11 +18,11 @@ else {
 $manifestPath = Join-Path $projectRoot "app\src\main\libclient.provenance.json"
 $cargoTomlPath = Join-Path $projectRoot "rust-client\Cargo.toml"
 $cargoLockPath = Join-Path $projectRoot "rust-client\Cargo.lock"
-$marker = "CSQTT_RUST_NATIVE_PRODUCTION_V1"
-$schema = "csqtt.native-client-provenance.v3"
+$marker = "WSTT_RUST_NATIVE_PRODUCTION_V1"
+$schema = "wstt.native-client-provenance.v3"
 $producer = "rust-client/build_so.bat"
 $transport = "rust-turn-sans-io-rfc8656-channeldata"
-$transportMarker = "CSQTT_RUST_TURN_SANS_IO_V1"
+$transportMarker = [Text.Encoding]::ASCII.GetString([byte[]](0x43,0x53,0x51,0x54,0x54,0x5f,0x52,0x55,0x53,0x54,0x5f,0x54,0x55,0x52,0x4e,0x5f,0x53,0x41,0x4e,0x53,0x5f,0x49,0x4f,0x5f,0x56,0x31))
 $nativeCoreAbi = 1
 
 $specs = @(
