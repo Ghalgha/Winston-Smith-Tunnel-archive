@@ -278,52 +278,6 @@ class SettingsStore(context: Context) {
     private val dataStore = appContext.dataStore
     private val secureStore = SecureStringStore(appContext)
 
-    init {
-        if (migrationsStarted.compareAndSet(false, true)) {
-            CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
-                migrateConnectionPasswordsToKeystore()
-                migrateSecretsToKeystore()
-                migrateLegacyWhitelistMode()
-            }
-        }
-        if (uiCacheStarted.compareAndSet(false, true)) {
-            CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
-                launch {
-                    dataStore.edit { prefs ->
-                        for (p in WsttConstants.Profiles.MIN_INDEX..WsttConstants.Profiles.MAX_INDEX) {
-                            prefs[getProfileKey(EXTRA_WORKERS, p)] = false
-                        }
-                    }
-                }
-                launch { vkHashMode.collect { cachedVkHashMode = it } }
-                launch { vkAccessToken.collect { cachedVkAccessToken = it } }
-                launch { obfsMode.collect { cachedObfsMode = it } }
-                launch { turnTransport.collect { cachedTurnTransport = it } }
-                launch { srtpMode.collect { cachedSrtpMode = it } }
-                launch { wsttLinkMode.collect { cachedWsttLinkMode = it } }
-                launch { workersPerHash.collect { cachedWorkersPerHash = it } }
-                launch { manualPortsEnabled.collect { cachedManualPortsEnabled = it } }
-                launch { serverPeerPort.collect { cachedServerPeerPort = it } }
-                cachedExtraWorkers = false
-                launch { customTurnIps.collect { cachedCustomTurnIps = it } }
-                launch { excludedApps.collect { cachedExcludedApps = it } }
-                launch { whitelistApps.collect { cachedWhitelistApps = it } }
-                launch { isWhitelist.collect { cachedIsWhitelist = it } }
-                launch { domainRoutingEnabled.collect { cachedDomainRoutingEnabled = it } }
-                launch { domainIsWhitelist.collect { cachedDomainIsWhitelist = it } }
-                launch { excludeRuZonesEnabled.collect { cachedExcludeRuZonesEnabled = it } }
-                launch { templateDomainsEnabled.collect { cachedTemplateDomainsEnabled = it } }
-                launch { directDomains.collect { cachedDirectDomains = it } }
-                launch { directDomainsBlack.collect { cachedDirectDomainsBlack = it } }
-                launch { directDomainsWhite.collect { cachedDirectDomainsWhite = it } }
-                launch { ipRoutingEnabled.collect { cachedIpRoutingEnabled = it } }
-                launch { ipIsWhitelist.collect { cachedIpIsWhitelist = it } }
-                launch { directIpsBlack.collect { cachedDirectIpsBlack = it } }
-                launch { directIpsWhite.collect { cachedDirectIpsWhite = it } }
-            }
-        }
-    }
-
     val activeProfile: Flow<Int> = dataStore.data.map {
         (it[ACTIVE_PROFILE] ?: WsttConstants.Profiles.MIN_INDEX).coerceIn(
             WsttConstants.Profiles.MIN_INDEX,
@@ -1679,4 +1633,52 @@ class SettingsStore(context: Context) {
             true
         }.getOrDefault(false)
     }
+
+    // Keep startup work after all Flow properties have been initialized.
+    init {
+        if (migrationsStarted.compareAndSet(false, true)) {
+            CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+                migrateConnectionPasswordsToKeystore()
+                migrateSecretsToKeystore()
+                migrateLegacyWhitelistMode()
+            }
+        }
+        if (uiCacheStarted.compareAndSet(false, true)) {
+            CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
+                launch {
+                    dataStore.edit { prefs ->
+                        for (p in WsttConstants.Profiles.MIN_INDEX..WsttConstants.Profiles.MAX_INDEX) {
+                            prefs[getProfileKey(EXTRA_WORKERS, p)] = false
+                        }
+                    }
+                }
+                launch { vkHashMode.collect { cachedVkHashMode = it } }
+                launch { vkAccessToken.collect { cachedVkAccessToken = it } }
+                launch { obfsMode.collect { cachedObfsMode = it } }
+                launch { turnTransport.collect { cachedTurnTransport = it } }
+                launch { srtpMode.collect { cachedSrtpMode = it } }
+                launch { wsttLinkMode.collect { cachedWsttLinkMode = it } }
+                launch { workersPerHash.collect { cachedWorkersPerHash = it } }
+                launch { manualPortsEnabled.collect { cachedManualPortsEnabled = it } }
+                launch { serverPeerPort.collect { cachedServerPeerPort = it } }
+                cachedExtraWorkers = false
+                launch { customTurnIps.collect { cachedCustomTurnIps = it } }
+                launch { excludedApps.collect { cachedExcludedApps = it } }
+                launch { whitelistApps.collect { cachedWhitelistApps = it } }
+                launch { isWhitelist.collect { cachedIsWhitelist = it } }
+                launch { domainRoutingEnabled.collect { cachedDomainRoutingEnabled = it } }
+                launch { domainIsWhitelist.collect { cachedDomainIsWhitelist = it } }
+                launch { excludeRuZonesEnabled.collect { cachedExcludeRuZonesEnabled = it } }
+                launch { templateDomainsEnabled.collect { cachedTemplateDomainsEnabled = it } }
+                launch { directDomains.collect { cachedDirectDomains = it } }
+                launch { directDomainsBlack.collect { cachedDirectDomainsBlack = it } }
+                launch { directDomainsWhite.collect { cachedDirectDomainsWhite = it } }
+                launch { ipRoutingEnabled.collect { cachedIpRoutingEnabled = it } }
+                launch { ipIsWhitelist.collect { cachedIpIsWhitelist = it } }
+                launch { directIpsBlack.collect { cachedDirectIpsBlack = it } }
+                launch { directIpsWhite.collect { cachedDirectIpsWhite = it } }
+            }
+        }
+    }
+
 }
