@@ -36,7 +36,7 @@ mod web_panel;
 #[path = "../shared/wire_protocol.rs"]
 mod wire_protocol;
 
-const WIRE_PROTOCOL_REVISION: &str = "CSQTT-WIRE-3";
+const WIRE_PROTOCOL_REVISION: &str = "WSTT-WIRE-3";
 
 use anyhow::{Context, Result, bail};
 use clap::Parser;
