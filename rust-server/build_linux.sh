@@ -45,12 +45,12 @@ HOST="$(rustc +1.97.1 -vV | sed -n 's/^host: //p')"
 if [[ "$HOST" == *windows* ]]; then
 cat > "$WRAP/zigcc.ps1" <<'PS1'
 $filtered = @($args | Where-Object { $_ -notlike "--target=*" })
-& zig cc -target $env:CSQTT_ZIG_TARGET @filtered
+& zig cc -target $env:WSTT_ZIG_TARGET @filtered
 exit $LASTEXITCODE
 PS1
 cat > "$WRAP/zigcxx.ps1" <<'PS1'
 $filtered = @($args | Where-Object { $_ -notlike "--target=*" })
-& zig c++ -target $env:CSQTT_ZIG_TARGET @filtered
+& zig c++ -target $env:WSTT_ZIG_TARGET @filtered
 exit $LASTEXITCODE
 PS1
 cat > "$WRAP/zigcc.cmd" <<'CMD'
@@ -75,8 +75,8 @@ args=()
 for arg in "$@"; do
   [[ "$arg" == --target=* ]] || args+=("$arg")
 done
-if [[ "$CSQTT_ZIG_TARGET" == arm-linux-musleabihf ]]; then args+=("-mcpu=cortex_a7"); fi
-exec zig cc -target "$CSQTT_ZIG_TARGET" "${args[@]}"
+if [[ "$WSTT_ZIG_TARGET" == arm-linux-musleabihf ]]; then args+=("-mcpu=cortex_a7"); fi
+exec zig cc -target "$WSTT_ZIG_TARGET" "${args[@]}"
 SH
 cat > "$WRAP/zigcxx" <<'SH'
 #!/usr/bin/env bash
@@ -84,8 +84,8 @@ args=()
 for arg in "$@"; do
   [[ "$arg" == --target=* ]] || args+=("$arg")
 done
-if [[ "$CSQTT_ZIG_TARGET" == arm-linux-musleabihf ]]; then args+=("-mcpu=cortex_a7"); fi
-exec zig c++ -target "$CSQTT_ZIG_TARGET" "${args[@]}"
+if [[ "$WSTT_ZIG_TARGET" == arm-linux-musleabihf ]]; then args+=("-mcpu=cortex_a7"); fi
+exec zig c++ -target "$WSTT_ZIG_TARGET" "${args[@]}"
 SH
 cat > "$WRAP/zigar" <<'SH'
 #!/usr/bin/env bash
@@ -108,7 +108,7 @@ export CC_armv7_unknown_linux_musleabihf="$CC_WRAPPER"
 export CXX_armv7_unknown_linux_musleabihf="$CXX_WRAPPER"
 export AR_armv7_unknown_linux_musleabihf="$AR_WRAPPER"
 export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_MUSLEABIHF_LINKER="$CC_WRAPPER"
-export CSQTT_ZIG_TARGET=x86_64-linux-musl
+export WSTT_ZIG_TARGET=x86_64-linux-musl
 if [[ "$RUN_CHECKS" == 1 ]]; then
   cargo +1.97.1 fmt --all -- --check
   cargo +1.97.1 zigbuild --all-targets --target x86_64-unknown-linux-musl "${FEATURE_ARGS[@]}"
@@ -124,24 +124,24 @@ fi
 build_variant() {
   local target="$1" zig_target="$2" asset="$3"
   local target_dir="$ROOT/build/linux-musl-$asset"
-  CSQTT_ZIG_TARGET="$zig_target" \
+  WSTT_ZIG_TARGET="$zig_target" \
     ZIG_GLOBAL_CACHE_DIR="$ROOT/build/zig-cache/$asset/global" \
     ZIG_LOCAL_CACHE_DIR="$ROOT/build/zig-cache/$asset/local" \
     CARGO_TARGET_DIR="$target_dir" \
     CARGO_BUILD_JOBS="${WSTT_BUILD_JOBS_PER_TARGET:-1}" \
     cargo +1.97.1 zigbuild --release --target "$target" "${FEATURE_ARGS[@]}"
   mkdir -p "$ROOT/dist" "$ROOT/../app/src/main/assets"
-  cp "$target_dir/$target/release/csqtt" "$ROOT/dist/$asset"
-  cp "$target_dir/$target/release/csqtt" "$ROOT/../app/src/main/assets/$asset"
+  cp "$target_dir/$target/release/wstt" "$ROOT/dist/$asset"
+  cp "$target_dir/$target/release/wstt" "$ROOT/../app/src/main/assets/$asset"
   ls -lh "$ROOT/dist/$asset"
 }
 
 mkdir -p "$ROOT/build"
-build_variant x86_64-unknown-linux-musl x86_64-linux-musl csqtt-linux-amd64 > "$ROOT/build/csqtt-linux-amd64.log" 2>&1 &
+build_variant x86_64-unknown-linux-musl x86_64-linux-musl wstt-linux-amd64 > "$ROOT/build/wstt-linux-amd64.log" 2>&1 &
 amd64_pid=$!
-build_variant aarch64-unknown-linux-musl aarch64-linux-musl csqtt-linux-arm64 > "$ROOT/build/csqtt-linux-arm64.log" 2>&1 &
+build_variant aarch64-unknown-linux-musl aarch64-linux-musl wstt-linux-arm64 > "$ROOT/build/wstt-linux-arm64.log" 2>&1 &
 arm64_pid=$!
-build_variant armv7-unknown-linux-musleabihf arm-linux-musleabihf csqtt-linux-armv7 > "$ROOT/build/csqtt-linux-armv7.log" 2>&1 &
+build_variant armv7-unknown-linux-musleabihf arm-linux-musleabihf wstt-linux-armv7 > "$ROOT/build/wstt-linux-armv7.log" 2>&1 &
 armv7_pid=$!
 
 build_status=0
@@ -150,7 +150,7 @@ for pid in "$amd64_pid" "$arm64_pid" "$armv7_pid"; do
     build_status=1
   fi
 done
-for asset in csqtt-linux-amd64 csqtt-linux-arm64 csqtt-linux-armv7; do
+for asset in wstt-linux-amd64 wstt-linux-arm64 wstt-linux-armv7; do
   echo "===== $asset build log ====="
   cat "$ROOT/build/$asset.log"
 done
@@ -158,7 +158,7 @@ if [[ "$build_status" != 0 ]]; then
   echo "At least one Linux architecture build failed" >&2
   exit 1
 fi
-rm -f "$ROOT/../app/src/main/assets/csqtt"
+rm -f "$ROOT/../app/src/main/assets/wstt"
 if command -v pwsh >/dev/null; then
   pwsh -NoProfile -File "$ROOT/../scripts/server_asset_provenance.ps1" -Mode Write
   pwsh -NoProfile -File "$ROOT/../scripts/server_asset_provenance.ps1" -Mode Verify
