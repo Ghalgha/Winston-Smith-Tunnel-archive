@@ -1186,7 +1186,7 @@ object TunnelManager {
         pb.environment()[WsttConstants.Tunnel.PROCESS_ENV_EVENTS] = "1"
         pb.environment()["RAYON_NUM_THREADS"] = "2"
         if (params.connectionPassword.isNotEmpty()) {
-            pb.environment()["CSQTT_PASSWORD"] = params.connectionPassword
+            pb.environment()["WSTT_PASSWORD"] = params.connectionPassword
         }
 
         val ticket = lifecycleState.reserveProcess(epoch, process == null)
