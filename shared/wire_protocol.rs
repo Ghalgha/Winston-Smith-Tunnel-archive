@@ -1,10 +1,10 @@
 #[allow(dead_code)]
-pub const PATH_ECHO_PREFIX: &[u8] = b"\xffCSQTT_PATH_ECHO_V1";
+pub const PATH_ECHO_PREFIX: &[u8] = b"\xff\x43\x53\x51\x54\x54_PATH_ECHO_V1";
 
 #[cfg(test)]
 pub const CLIENT_GETCONF_AUDIO_FIXTURE: &str = "b06f77881122334410203040bede0002325566775199aa005c468ea9f0329817714cb0d49b032855ae1b18c3ee81bf342bdd58cd166bdf23a16575b0ca29cb53618501b45b3ae4bb1fda630bb39ce45dbf5dde3073f99f87f2da0010b786331f3d88ba24fe8cf3be";
 
-pub const CSQTT_FRAG_MAGIC: u8 = 0xCF;
+pub const WSTT_FRAG_MAGIC: u8 = 0xCF;
 pub const MAX_FRAG_PAYLOAD: usize = 1272;
 pub const FRAG_HEADER_LEN: usize = 8;
 pub const MAX_PACKET_LEN: usize = 2048;
@@ -22,7 +22,7 @@ impl FragHeader {
         if out.len() < FRAG_HEADER_LEN {
             return false;
         }
-        out[0] = CSQTT_FRAG_MAGIC;
+        out[0] = WSTT_FRAG_MAGIC;
         out[1] = self.frag_idx;
         out[2] = self.total_frags;
         out[3] = 0;
@@ -32,7 +32,7 @@ impl FragHeader {
     }
 
     pub fn decode(src: &[u8]) -> Option<Self> {
-        if src.len() < FRAG_HEADER_LEN || src[0] != CSQTT_FRAG_MAGIC {
+        if src.len() < FRAG_HEADER_LEN || src[0] != WSTT_FRAG_MAGIC {
             return None;
         }
         let frag_idx = src[1];
