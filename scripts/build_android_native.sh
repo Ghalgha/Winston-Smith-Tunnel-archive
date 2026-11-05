@@ -16,9 +16,11 @@ if [[ ! -d "$ANDROID_NDK_HOME" ]]; then
   exit 1
 fi
 
-rustup toolchain install 1.97.1 --profile minimal
-rustup default 1.97.1
-rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
+if [[ "${WSTT_RUST_TOOLCHAIN_READY:-0}" != "1" ]]; then
+  rustup toolchain install 1.97.1 --profile minimal
+  rustup default 1.97.1
+  rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
+fi
 cargo install cargo-ndk --locked
 
 cd "$ROOT/rust-client"

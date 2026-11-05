@@ -33,8 +33,10 @@ command -v cargo >/dev/null
 command -v rustup >/dev/null
 command -v zig >/dev/null
 cargo zigbuild --help >/dev/null
-rustup toolchain install 1.97.1 --profile minimal --component rustfmt --component clippy
-rustup target add x86_64-unknown-linux-musl aarch64-unknown-linux-musl armv7-unknown-linux-musleabihf --toolchain 1.97.1
+if [[ "${WSTT_RUST_TOOLCHAIN_READY:-0}" != "1" ]]; then
+  rustup toolchain install 1.97.1 --profile minimal --component rustfmt --component clippy
+  rustup target add x86_64-unknown-linux-musl aarch64-unknown-linux-musl armv7-unknown-linux-musleabihf --toolchain 1.97.1
+fi
 rustc +1.97.1 --version
 zig version
 WRAP="$ROOT/build/zig-wrappers"

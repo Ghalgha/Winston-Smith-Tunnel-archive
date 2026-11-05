@@ -8,26 +8,66 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: android-ci-${{ github.ref }}
+  group: android-ci-${ github.ref }
   cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
+  rust-client-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Rust 1.97.1
+        run: rustup toolchain install 1.97.1 --profile minimal
+      - name: Cache Rust client test dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust-client/target
+          key: rust-client-tests-${ runner.os }-1.97.1-${ hashFiles('rust-client/Cargo.lock') }
+          restore-keys: |
+            rust-client-tests-${ runner.os }-1.97.1-
+      - name: Run Rust client unit tests
+        run: cargo +1.97.1 test --locked --manifest-path rust-client/Cargo.toml --all-targets
+
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-
-      # Run the complete Linux/Rust validation before provisioning the Android SDK/NDK.
-      # A Rust test or cross-build failure therefore exits before the expensive Android steps.
+      - name: Cache build tools and Rust dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin
+            rust-client/target
+          key: android-build-${ runner.os }-rust-1.97.1-${ hashFiles('rust-server/Cargo.lock', 'rust-client/Cargo.lock') }
+          restore-keys: |
+            android-build-${ runner.os }-rust-1.97.1-
       - name: Verify PowerShell for provenance checks
         run: pwsh --version
       - uses: mlugg/setup-zig@v2
         with:
           version: 0.15.2
+      - name: Set up Rust toolchain and all required targets once
+        run: |
+          rustup toolchain install 1.97.1 --profile minimal --component rustfmt --component clippy
+          rustup default 1.97.1
+          rustup target add \
+            x86_64-unknown-linux-musl \
+            aarch64-unknown-linux-musl \
+            armv7-unknown-linux-musleabihf \
+            aarch64-linux-android \
+            armv7-linux-androideabi \
+            x86_64-linux-android
+          echo "WSTT_RUST_TOOLCHAIN_READY=1" >> "$GITHUB_ENV"
       - name: Run Rust checks and build Linux server binaries
         run: |
           cargo install cargo-zigbuild --locked
@@ -96,11 +136,8 @@ jobs:
           for asset in csqtt-linux-amd64 csqtt-linux-arm64 csqtt-linux-armv7; do
             test -s "app/src/main/assets/$asset"
           done
-
-      - name: Run Rust client unit tests
-        run: cargo +1.97.1 test --locked --manifest-path rust-client/Cargo.toml --all-targets
-
-      # Android tooling is only provisioned after Rust tests and Linux cross-build pass.
+      - name: Reclaim disk space after Linux cross-build
+        run: rm -rf rust-server/build rust-server/target .zig-cache
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -118,14 +155,18 @@ jobs:
           test -d "$SDK_ROOT/platforms/android-37"
       - name: Build native Android libraries
         run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential cmake ninja-build
+          command -v cmake
+          command -v ninja
+          command -v make
           chmod +x scripts/build_android_native.sh
           scripts/build_android_native.sh
-      - name: Build debug APK for CI verification only
+      - name: Remove Rust intermediates before Gradle
+        run: rm -rf rust-client/target
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build debug APK and run Android unit tests
         run: |
           chmod +x ./gradlew
-          ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleDebug
+          ./gradlew :app:testDebugUnitTest :app:assembleDebug
           for abi in arm64-v8a armeabi-v7a x86_64; do
             found=false
             for apk in app/build/outputs/apk/debug/*.apk; do
@@ -141,7 +182,7 @@ jobs:
           done
       - uses: actions/upload-artifact@v4
         with:
-          name: WSTT-${{ github.sha }}-CI-debug
+          name: WSTT-${ github.sha }-CI-debug
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 7
