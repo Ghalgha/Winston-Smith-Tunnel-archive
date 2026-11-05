@@ -141,7 +141,7 @@ jobs:
               relative = path.as_posix()
               content = path.read_text(encoding="utf-8", errors="replace")
               content = re.sub(r"(?i)csqtt://", "", content)
-          content = content.replace('android:scheme="csqtt"', "")
+              content = content.replace('android:scheme="csqtt"', "")
               if re.search(r"(?i)csqtt", relative) or re.search(r"(?i)csqtt", content):
                   violations.append(relative)
           if violations:
