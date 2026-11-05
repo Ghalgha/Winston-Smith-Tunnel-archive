@@ -17,6 +17,9 @@ pass() { echo "[PASS] $*"; }
 if [ "$RUNTIME_ONLY" -eq 0 ]; then
   command -v cargo >/dev/null || fail "cargo is not on PATH"
   command -v rustup >/dev/null || fail "rustup is not on PATH"
+  if ! rustup toolchain list | grep -Eq '^1\\.97\\.1(-|$)'; then
+    rustup toolchain install 1.97.1 --profile minimal
+  fi
   if ! rustup target list --installed --toolchain 1.97.1 | grep -Fxq x86_64-unknown-linux-gnu; then
     rustup target add x86_64-unknown-linux-gnu --toolchain 1.97.1
   fi
@@ -98,12 +101,17 @@ PY
 }
 ready() {
   local port="$1" code=000
-  for n in $(seq 1 30); do
+  for n in $(seq 1 20); do
     code="$(ip netns exec "$NS" curl -kfsS --connect-timeout 0.5 --max-time 1 -o /dev/null -w '%{http_code}' "https://127.0.0.1:$port/" 2>/dev/null || true)"
     [ "$code" = 200 ] && return 0
     sleep .25
   done
   return 1
+}
+ready_once() {
+  local port="$1" code=000
+  code="$(ip netns exec "$NS" curl -kfsS --connect-timeout 0.5 --max-time 1 -o /dev/null -w '%{http_code}' "https://127.0.0.1:$port/" 2>/dev/null || true)"
+  [ "$code" = 200 ]
 }
 stop_server() {
   kill -TERM "$1" 2>/dev/null || true
@@ -139,7 +147,7 @@ if command -v systemd-run >/dev/null && command -v systemctl >/dev/null && syste
     || fail "systemd-run failed"
   OK=0
   for n in $(seq 1 40); do
-    if systemctl is-active --quiet "$UNIT" && ready "$WEB"; then OK=1; break; fi
+    if systemctl is-active --quiet "$UNIT" && ready_once "$WEB"; then OK=1; break; fi
     sleep .25
   done
   [ "$OK" -eq 1 ] || { systemctl status "$UNIT" --no-pager >&2 || true; fail "Transient systemd unit failed"; }
@@ -172,7 +180,7 @@ if command -v docker >/dev/null && docker info >/dev/null 2>&1; then
     [[ "$HP" =~ ^[0-9]+$ ]] || fail "Docker host port not assigned"
     OK=0
     for n in $(seq 1 40); do
-      CODE="$(curl -kfsS --connect-timeout 1 --max-time 2 -o /dev/null -w '%{http_code}' "https://127.0.0.1:$HP/" 2>/dev/null || true)"
+      CODE="$(curl -kfsS --connect-timeout 0.5 --max-time 1 -o /dev/null -w '%{http_code}' "https://127.0.0.1:$HP/" 2>/dev/null || true)"
       if [ "$CODE" = 200 ]; then OK=1; break; fi
       sleep .25
     done
