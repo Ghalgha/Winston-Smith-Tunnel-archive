@@ -357,15 +357,15 @@ fn url_encode(input: &str) -> String {
     out
 }
 
-pub const CSQTT_CIPHER_KEY_SEED: &str = "csqtt-chiper-key";
+const WSTT_CIPHER_KEY_SEED: &[u8] = &[99, 115, 113, 116, 116, 45, 99, 104, 105, 112, 101, 114, 45, 107, 101, 121];
 
-pub fn encrypt_csqtt_link(payload: &str) -> String {
+pub fn encrypt_wstt_link(payload: &str) -> String {
     use aws_lc_rs::aead::{AES_256_GCM, Aad, LessSafeKey, Nonce, UnboundKey};
     use base64::Engine;
     use hmac::{Hmac, KeyInit, Mac};
     use sha2::{Digest, Sha256};
 
-    let key_hash = Sha256::digest(CSQTT_CIPHER_KEY_SEED.as_bytes());
+    let key_hash = Sha256::digest(WSTT_CIPHER_KEY_SEED);
     let unbound = match UnboundKey::new(&AES_256_GCM, &key_hash) {
         Ok(k) => k,
         Err(_) => {
@@ -411,7 +411,7 @@ pub fn encrypt_csqtt_link(payload: &str) -> String {
 }
 
 #[allow(dead_code)]
-pub fn decrypt_csqtt_link(raw_link: &str) -> Option<String> {
+pub fn decrypt_wstt_link(raw_link: &str) -> Option<String> {
     use aws_lc_rs::aead::{AES_256_GCM, Aad, LessSafeKey, Nonce, UnboundKey};
     use base64::Engine;
     use sha2::{Digest, Sha256};
@@ -430,7 +430,7 @@ pub fn decrypt_csqtt_link(raw_link: &str) -> Option<String> {
         .ok()?;
 
     if bytes.len() >= 28 {
-        let key_hash = Sha256::digest(CSQTT_CIPHER_KEY_SEED.as_bytes());
+        let key_hash = Sha256::digest(WSTT_CIPHER_KEY_SEED);
         if let Ok(unbound) = UnboundKey::new(&AES_256_GCM, &key_hash) {
             let key = LessSafeKey::new(unbound);
             let mut iv = [0u8; 12];
@@ -484,7 +484,7 @@ fn make_client_link(
         payload.push_str("&token=");
         payload.push_str(&url_encode(shared_token));
     }
-    encrypt_csqtt_link(&payload)
+    encrypt_wstt_link(&payload)
 }
 
 #[inline]
@@ -658,7 +658,7 @@ fn expired_session_cookie() -> &'static str {
     "wstt_session=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax; Secure"
 }
 
-const STEALTH_ABORT_HEADER: &str = "x-csqtt-stealth-rst";
+const STEALTH_ABORT_HEADER: &str = "x-wstt-stealth-rst";
 
 fn stealth_abort_response() -> Response {
     (
@@ -849,7 +849,7 @@ async fn login(
         return (StatusCode::BAD_REQUEST, message).into_response();
     }
     let source = addr.ip().to_string();
-    if let Ok(forwarded) = std::env::var("CSQTT_TRUST_XFF")
+    if let Ok(forwarded) = std::env::var("WSTT_TRUST_XFF")
         && (forwarded == "1" || forwarded.eq_ignore_ascii_case("true"))
         && let Some(forwarded) = headers
             .get("x-forwarded-for")
@@ -1447,7 +1447,7 @@ async fn settings_post(
     }
     if main_password_changed && let Err(message) = refresh_credentials_report(&state).await {
         let warning = format!("saved but reload failed: {message}");
-        return (StatusCode::OK, [("x-csqtt-reload-error", warning)], "saved").into_response();
+        return (StatusCode::OK, [("x-wstt-reload-error", warning)], "saved").into_response();
     }
     if let Some(dns) = applied_dns {
         *state.app.dns.write().await = dns;
@@ -1460,7 +1460,7 @@ async fn settings_post(
             ),
             Err(error) => {
                 let warning = format!("saved but DNS apply failed: {error:#}");
-                return (StatusCode::OK, [("x-csqtt-reload-error", warning)], "saved")
+                return (StatusCode::OK, [("x-wstt-reload-error", warning)], "saved")
                     .into_response();
             }
         }
@@ -2011,7 +2011,7 @@ async fn client_update(
     }
     if let Err(message) = refresh_credentials_report(&state).await {
         let warning = format!("saved but reload failed: {message}");
-        return (StatusCode::OK, [("x-csqtt-reload-error", warning)], "saved").into_response();
+        return (StatusCode::OK, [("x-wstt-reload-error", warning)], "saved").into_response();
     }
     StatusCode::OK.into_response()
 }
@@ -2032,7 +2032,7 @@ async fn client_toggle(State(state): State<WebState>, Path(password): Path<Strin
     crate::protocol::drop_password_sessions(&state.app, &password);
     if let Err(message) = refresh_credentials_report(&state).await {
         let warning = format!("saved but reload failed: {message}");
-        return (StatusCode::OK, [("x-csqtt-reload-error", warning)], "saved").into_response();
+        return (StatusCode::OK, [("x-wstt-reload-error", warning)], "saved").into_response();
     }
 
     StatusCode::OK.into_response()
@@ -2060,7 +2060,7 @@ async fn client_delete(State(state): State<WebState>, Path(password): Path<Strin
     crate::protocol::drop_password_sessions(&state.app, &password);
     if let Err(message) = refresh_credentials_report(&state).await {
         let warning = format!("saved but reload failed: {message}");
-        return (StatusCode::OK, [("x-csqtt-reload-error", warning)], "saved").into_response();
+        return (StatusCode::OK, [("x-wstt-reload-error", warning)], "saved").into_response();
     }
 
     StatusCode::OK.into_response()
@@ -2914,7 +2914,7 @@ async fn groups_delete(State(state): State<WebState>, Path(id): Path<String>) ->
     }
     if let Err(message) = refresh_credentials_report(&state).await {
         let warning = format!("saved but reload failed: {message}");
-        return (StatusCode::OK, [("x-csqtt-reload-error", warning)], "saved").into_response();
+        return (StatusCode::OK, [("x-wstt-reload-error", warning)], "saved").into_response();
     }
     StatusCode::OK.into_response()
 }
@@ -3013,12 +3013,12 @@ fn html_escape(input: &str) -> String {
         .replace('\'', "&#39;")
 }
 
-fn render_client_sub_html(client_name: &str, csqtt_link: &str) -> String {
+fn render_client_sub_html(client_name: &str, wstt_link: &str) -> String {
     let name_esc = html_escape(client_name);
-    let link_esc = html_escape(csqtt_link);
+    let link_esc = html_escape(wstt_link);
     CLIENT_SUB_HTML
         .replace("__CLIENT_NAME__", &name_esc)
-        .replace("__CSQTT_LINK__", &link_esc)
+        .replace("__WSTT_LINK__", &link_esc)
 }
 
 fn render_group_sub_html(group_name: &str, clients_json: &str, count: usize) -> String {
@@ -3839,7 +3839,7 @@ async fn group_admin_client_create(
         let warning = format!("saved but reload failed: {message}");
         return (
             StatusCode::OK,
-            [("x-csqtt-reload-error", warning)],
+            [("x-wstt-reload-error", warning)],
             Json(serde_json::json!({
                 "ok": true,
                 "password": pass,
@@ -5986,14 +5986,14 @@ const CLIENT_SUB_HTML: &str = r##"<!DOCTYPE html>
         <div style="display: flex; flex-direction: column; align-items: center; gap: 16px; margin: 16px 0;">
             <div id="qrCodeContainer" class="qr-box"></div>
             <div style="width: 100%; display: flex; gap: 8px; align-items: center;">
-                <input id="qrDlgLink" readonly="" value="__CSQTT_LINK__" style="flex: 1; height: 42px; font-size: 12px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; padding: 0 10px; background: var(--surface-hover); color: var(--text-muted); border-radius: 8px; border: 1px solid var(--border);" onclick="this.select()">
+                <input id="qrDlgLink" readonly="" value="__WSTT_LINK__" style="flex: 1; height: 42px; font-size: 12px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; padding: 0 10px; background: var(--surface-hover); color: var(--text-muted); border-radius: 8px; border: 1px solid var(--border);" onclick="this.select()">
                 <button class="btn btn-ghost" id="qrDlgCopyBtn" onclick="copyQrDlgLink(this)" style="height: 42px; width: 44px; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: #27272a; border: 1px solid #3f3f46; color: #ffffff; border-radius: 8px;" title="Копировать ссылку">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                 </button>
             </div>
         </div>
         <div class="dlg-actions" style="justify-content: center; display: flex; margin-top: 16px;">
-            <a id="qrDlgConnectBtn" href="__CSQTT_LINK__" class="btn btn-primary" style="width: 100%; height: 42px; text-decoration: none; display: flex; align-items: center; justify-content: center; font-weight: 500; font-size: 14px; border-radius: 8px;">Подключить в приложении WSTT</a>
+            <a id="qrDlgConnectBtn" href="__WSTT_LINK__" class="btn btn-primary" style="width: 100%; height: 42px; text-decoration: none; display: flex; align-items: center; justify-content: center; font-weight: 500; font-size: 14px; border-radius: 8px;">Подключить в приложении WSTT</a>
         </div>
     </dialog>
 
@@ -7107,9 +7107,9 @@ const GROUP_ADMIN_HTML: &str = r##"<!DOCTYPE html>
         function toggleTheme() {
             const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
             document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
-            localStorage.setItem('csqtt-theme', isDark ? 'light' : 'dark');
+            localStorage.setItem('wstt-theme', isDark ? 'light' : 'dark');
         }
-        if (localStorage.getItem('csqtt-theme') === 'dark') {
+        if (localStorage.getItem('wstt-theme') === 'dark') {
             document.documentElement.setAttribute('data-theme', 'dark');
         }
 
@@ -10609,12 +10609,12 @@ async function copyText(text, btn) {
         function toggleTheme() {
             const isDark = document.body.parentElement.getAttribute('data-theme') === 'dark';
             document.body.parentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
-            localStorage.setItem('csqtt-theme', isDark ? 'light' : 'dark');
+            localStorage.setItem('wstt-theme', isDark ? 'light' : 'dark');
             document.getElementById('themeIcon').innerHTML = isDark
                 ? '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>'
                 : '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>';
         }
-        if (localStorage.getItem('csqtt-theme') === 'dark') { toggleTheme(); }
+        if (localStorage.getItem('wstt-theme') === 'dark') { toggleTheme(); }
 
         const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
@@ -12990,7 +12990,7 @@ async function copyText(text, btn) {
             document.getElementById('clients-section').style.display = tabId === 'clients' ? 'block' : 'none';
             document.getElementById('logs-section').style.display = tabId === 'logs' ? 'block' : 'none';
             document.getElementById('settings-section').style.display = tabId === 'settings' ? 'block' : 'none';
-            localStorage.setItem('csqtt-active-tab', tabId);
+            localStorage.setItem('wstt-active-tab', tabId);
             if (tabId === 'clients') {
                 loadClients();
             }
@@ -12999,7 +12999,7 @@ async function copyText(text, btn) {
             }
         }
 
-        const savedTab = localStorage.getItem('csqtt-active-tab') || 'monitoring';
+        const savedTab = localStorage.getItem('wstt-active-tab') || 'monitoring';
         switchTab(savedTab);
 
         let updateIntervalId = null;
@@ -13025,7 +13025,7 @@ async function copyText(text, btn) {
 
         function changeUpdateInterval() {
             const ms = parseInt(document.getElementById('updateIntervalSelect').value, 10);
-            localStorage.setItem('csqtt-update-interval', ms);
+            localStorage.setItem('wstt-update-interval', ms);
             startUpdateInterval(ms);
         }
 
@@ -13062,7 +13062,7 @@ async function copyText(text, btn) {
         updateApiDocsPaths();
         loadStats(); loadSettings(); if (savedTab === 'clients') { loadClients(); } if (savedTab === 'logs') { loadLogs(); }
 
-        const savedInterval = parseInt(localStorage.getItem('csqtt-update-interval'), 10) || 3000;
+        const savedInterval = parseInt(localStorage.getItem('wstt-update-interval'), 10) || 3000;
         const selectElem = document.getElementById('updateIntervalSelect');
         if (selectElem) {
             selectElem.value = savedInterval;
@@ -13166,8 +13166,8 @@ mod tests {
     use super::{
         DNS_PROVIDERS, LOGIN_HTML, MAX_CLIENT_NAME_BYTES, PANEL_HTML, PWA_ICON_192_PNG,
         PWA_ICON_512_PNG, PWA_MANIFEST, PWA_SERVICE_WORKER, count_active_sessions,
-        decrypt_csqtt_link, deploy_dns_profile_or_yandex, dns_provider_by_id, dns_provider_id,
-        encrypt_csqtt_link, make_client_link, manual_dns, manual_dns_combined,
+        decrypt_wstt_link, deploy_dns_profile_or_yandex, dns_provider_by_id, dns_provider_id,
+        encrypt_wstt_link, make_client_link, manual_dns, manual_dns_combined,
         normalize_client_vk_hashes, normalize_vk_access_token, process_memory,
         process_memory_rollup, provider_dns, validate_client_name, validate_proxy_profile_name,
         validate_workers,
@@ -13401,42 +13401,42 @@ mod tests {
     }
 
     #[test]
-    fn csqtt_link_encryption_and_decryption() {
+    fn wstt_link_encryption_and_decryption() {
         let payload = "connect?v=2&host=1.2.3.4&peer=46100&password=testpass";
-        let encrypted1 = encrypt_csqtt_link(payload);
-        let encrypted2 = encrypt_csqtt_link(payload);
+        let encrypted1 = encrypt_wstt_link(payload);
+        let encrypted2 = encrypt_wstt_link(payload);
         assert!(encrypted1.starts_with("wstt://"));
         assert_eq!(
             encrypted1, encrypted2,
             "link encryption must be deterministic for identical payload"
         );
-        let decrypted = decrypt_csqtt_link(&encrypted1).expect("decryption should succeed");
+        let decrypted = decrypt_wstt_link(&encrypted1).expect("decryption should succeed");
         assert_eq!(decrypted, payload);
     }
 
     #[test]
-    fn csqtt_link_legacy_scheme_remains_readable() {
+    fn wstt_link_legacy_scheme_remains_readable() {
         let payload = "connect?v=2&host=1.2.3.4&peer=46100&password=legacy";
-        let current = encrypt_csqtt_link(payload);
+        let current = encrypt_wstt_link(payload);
         let legacy = current.replacen("wstt://", "csqtt://", 1);
-        assert_eq!(decrypt_csqtt_link(&legacy).as_deref(), Some(payload));
+        assert_eq!(decrypt_wstt_link(&legacy).as_deref(), Some(payload));
     }
 
     #[test]
-    fn csqtt_link_legacy_plaintext_rejected() {
+    fn wstt_link_legacy_plaintext_rejected() {
         use base64::Engine;
         let payload = "connect?v=2&host=1.2.3.4&peer=46100&password=legacy";
         let legacy_b64 =
             base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(payload.as_bytes());
         let legacy_link = format!("csqtt://{legacy_b64}");
-        assert!(decrypt_csqtt_link(&legacy_link).is_none());
+        assert!(decrypt_wstt_link(&legacy_link).is_none());
     }
 
     #[test]
     fn make_client_link_contains_password_and_aes_roundtrip() {
         let link = make_client_link("1.2.3.4", 46100, "abc1234567890123", "", false, "");
         assert!(link.starts_with("wstt://"));
-        let decrypted = decrypt_csqtt_link(&link).expect("must decrypt");
+        let decrypted = decrypt_wstt_link(&link).expect("must decrypt");
         assert!(decrypted.contains("password=abc1234567890123"));
         assert!(!decrypted.contains("client="));
         assert!(!decrypted.contains("&workers="));
@@ -13445,7 +13445,7 @@ mod tests {
     #[test]
     fn owner_link_contains_owner_password_without_workers() {
         let link = make_client_link("1.2.3.4", 46100, "ownerpass1234567", "", false, "");
-        let decrypted = decrypt_csqtt_link(&link).expect("must decrypt");
+        let decrypted = decrypt_wstt_link(&link).expect("must decrypt");
         assert!(decrypted.contains("password=ownerpass1234567"));
         assert!(!decrypted.contains("client="));
         assert!(!decrypted.contains("&workers="));
