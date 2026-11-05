@@ -47,10 +47,10 @@ const DIAGNOSTIC_REQUEST_MAX_BYTES: usize = 128;
 const DIAGNOSTIC_HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(3);
 const DIAGNOSTIC_WRITE_TIMEOUT: Duration = Duration::from_secs(5);
 const DIAGNOSTIC_LEASE: Duration = Duration::from_secs(5 * 60);
-const SESSION_LEASE: &[u8] = b"\xffCSQTT_LEASE";
-pub const PANEL_RESTART_NOTICE: &[u8] = b"\xffCSQTT_PANEL_RESTART_V1\x00\x91\x7d\x03\xa8";
-const STREAM_REPAIR_PREFIX: &[u8] = b"\xffCSQTT_STREAM_REPAIR_V1";
-const STREAM_ALIVE_PREFIX: &[u8] = b"\xffCSQTT_STREAM_ALIVE_V1";
+const SESSION_LEASE: &[u8] = b"\xff\x43\x53\x51\x54\x54_LEASE";
+pub const PANEL_RESTART_NOTICE: &[u8] = b"\xff\x43\x53\x51\x54\x54_PANEL_RESTART_V1\x00\x91\x7d\x03\xa8";
+const STREAM_REPAIR_PREFIX: &[u8] = b"\xff\x43\x53\x51\x54\x54_STREAM_REPAIR_V1";
+const STREAM_ALIVE_PREFIX: &[u8] = b"\xff\x43\x53\x51\x54\x54_STREAM_ALIVE_V1";
 pub(crate) const MAX_STREAM_WORKERS: usize = 100;
 const MAX_STREAM_WORKERS_U16: u16 = MAX_STREAM_WORKERS as u16;
 const STREAM_RECONCILE_INTERVAL_MS: u64 = 3_000;
@@ -2314,7 +2314,7 @@ impl ProtocolEngine {
             .map(|session| session.peer.to_string())
             .unwrap_or_default();
         eprintln!(
-            "[CSQTT] dropped uplink IPv4 packet from {peer}: source address is not the session tunnel IP (total {})",
+            "[WSTT] dropped uplink IPv4 packet from {peer}: source address is not the session tunnel IP (total {})",
             self.uplink_source_drops
         );
     }
@@ -2331,7 +2331,7 @@ impl ProtocolEngine {
         self.unauthenticated_setup_logged = true;
         self.last_unauthenticated_setup_log_ms = self.monotonic_ms;
         eprintln!(
-            "[CSQTT] UDP setup from {peer} rejected ({wire_len} bytes): no active credential could decrypt or accept GETCONF"
+            "[WSTT] UDP setup from {peer} rejected ({wire_len} bytes): no active credential could decrypt or accept GETCONF"
         );
     }
 
@@ -2376,7 +2376,7 @@ impl ProtocolEngine {
 
                 Err(error) => {
                     eprintln!(
-                        "[CSQTT] DTLS: рукопожатие с {peer} отклонено ({error}), сбрасываем состояние"
+                        "[WSTT] DTLS: рукопожатие с {peer} отклонено ({error}), сбрасываем состояние"
                     );
                     self.dtls_handshakes.remove(&key);
                     return;
@@ -2392,7 +2392,7 @@ impl ProtocolEngine {
 
             if let Some(flight) = flight.as_ref() {
                 eprintln!(
-                    "[CSQTT] DTLS: полёт → {peer} ({} байт, {}), состояние {}",
+                    "[WSTT] DTLS: полёт → {peer} ({} байт, {}), состояние {}",
                     flight.len(),
                     if is_channel { "ChannelData" } else { "UDP" },
                     dtls_state_label(handshake.state())
@@ -2436,7 +2436,7 @@ impl ProtocolEngine {
                         if self.credentials.contains_password(password) =>
                     {
                         eprintln!(
-                            "[CSQTT] DTLS: рукопожатие с {peer} завершено, SRTP-ключи согласованы, GETCONF {} байт внутри DTLS",
+                            "[WSTT] DTLS: рукопожатие с {peer} завершено, SRTP-ключи согласованы, GETCONF {} байт внутри DTLS",
                             app_data.len()
                         );
                         let slot = self.create_legacy_session(
@@ -2457,14 +2457,14 @@ impl ProtocolEngine {
                     }
                     _ => {
                         eprintln!(
-                            "[CSQTT] DTLS: рукопожатие с {peer} завершено, но GETCONF не распознан"
+                            "[WSTT] DTLS: рукопожатие с {peer} завершено, но GETCONF не распознан"
                         );
                         self.report_unauthenticated_setup(peer, packet.len());
                     }
                 }
             } else if ready {
                 eprintln!(
-                    "[CSQTT] DTLS: рукопожатие с {peer} завершено, SRTP-ключи согласованы, ожидаем GETCONF по SRTP"
+                    "[WSTT] DTLS: рукопожатие с {peer} завершено, SRTP-ключи согласованы, ожидаем GETCONF по SRTP"
                 );
             }
             return;
@@ -2488,7 +2488,7 @@ impl ProtocolEngine {
 
         if self.sessions.len() >= MAX_ACTIVE_SESSIONS || self.setup_budget == 0 {
             eprintln!(
-                "[CSQTT] DTLS: ClientHello от {peer} отброшен (сессий {}, бюджет настройки {})",
+                "[WSTT] DTLS: ClientHello от {peer} отброшен (сессий {}, бюджет настройки {})",
                 self.sessions.len(),
                 self.setup_budget
             );
@@ -2497,7 +2497,7 @@ impl ProtocolEngine {
         self.setup_budget -= 1;
 
         let Ok(mut handshake) = crate::dtls::DtlsServerHandshake::new() else {
-            eprintln!("[CSQTT] DTLS: не удалось создать сертификат для {peer}");
+            eprintln!("[WSTT] DTLS: не удалось создать сертификат для {peer}");
             return;
         };
         match handshake.handle_datagram(payload) {
@@ -2509,8 +2509,8 @@ impl ProtocolEngine {
                     (handshake, flight, self.monotonic_ms),
                 );
             }
-            Ok(None) => eprintln!("[CSQTT] DTLS: ClientHello от {peer} без ответа"),
-            Err(error) => eprintln!("[CSQTT] DTLS: ClientHello от {peer} отвергнут ({error})"),
+            Ok(None) => eprintln!("[WSTT] DTLS: ClientHello от {peer} без ответа"),
+            Err(error) => eprintln!("[WSTT] DTLS: ClientHello от {peer} отвергнут ({error})"),
         }
     }
 
@@ -2748,7 +2748,7 @@ impl ProtocolEngine {
             if rem.is_empty() {
                 break;
             }
-            if rem[0] == crate::wire_protocol::CSQTT_FRAG_MAGIC {
+            if rem[0] == crate::wire_protocol::WSTT_FRAG_MAGIC {
                 if rem.len() < crate::wire_protocol::FRAG_HEADER_LEN {
                     break;
                 }
@@ -5493,7 +5493,7 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
-        let directory = std::env::temp_dir().join(format!("csqtt-legacy-getconf-{unique}"));
+        let directory = std::env::temp_dir().join(format!("wstt-legacy-getconf-{unique}"));
         std::fs::create_dir_all(&directory).unwrap();
 
         let mut legacy = Database {
@@ -5656,7 +5656,7 @@ mod tests {
         let decoded = unwrap_legacy_in_place(&aes, &hmac, &mut matching, None, false).unwrap();
         assert_eq!(
             decoded.range.get(&matching),
-            b"GETCONF:46000|wire-device|wire-password|7|wire-salt|1|27|CSQTT-WIRE-2"
+            b"GETCONF:46000|wire-device|wire-password|7|wire-salt|1|27|\x43\x53\x51\x54\x54-WIRE-2"
         );
         assert_eq!(
             parse_getconf_identity(decoded.range.get(&matching)),
@@ -5699,7 +5699,7 @@ mod tests {
                 assert_eq!(address, peer);
                 assert_eq!(
                     payload,
-                    b"GETCONF:46000|wire-device|wire-password|7|wire-salt|1|27|CSQTT-WIRE-2"
+                    b"GETCONF:46000|wire-device|wire-password|7|wire-salt|1|27|\x43\x53\x51\x54\x54-WIRE-2"
                 );
             }
             _ => panic!("expected GETCONF payload"),
