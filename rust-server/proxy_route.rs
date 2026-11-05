@@ -1175,7 +1175,11 @@ mod coexistence_tests {
 
     #[test]
     fn wstt_cleanup_does_not_claim_legacy_rules() {
-        let rules = format!(\n            r#"-A PREROUTING -i {iface} -p udp -m comment --comment "{marker}:10669" -j TPROXY"#,\n            iface = concat!("cs", "qtt1"),\n            marker = concat!("CS", "QTT_TPROXY"),\n        );
+        let rules = format!(
+            r#"-A PREROUTING -i {iface} -p udp -m comment --comment "{marker}:10669" -j TPROXY"#,
+            iface = concat!("cs", "qtt1"),
+            marker = concat!("CS", "QTT_TPROXY"),
+        );
         assert!(marked_rule_specs(rules, "PREROUTING", &["WSTT_TPROXY"]).is_empty());
     }
 }
