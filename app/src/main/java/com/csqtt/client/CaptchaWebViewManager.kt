@@ -60,8 +60,8 @@ object CaptchaWebViewManager {
 
     private val interceptorJSCode = """
         (function() {
-            if (window.__csqtt_interceptor_installed) return;
-            window.__csqtt_interceptor_installed = true;
+            if (window.__wstt_interceptor_installed) return;
+            window.__wstt_interceptor_installed = true;
 
             const origFetch = window.fetch;
             window.fetch = async function() {
@@ -91,12 +91,12 @@ object CaptchaWebViewManager {
             const origXHROpen = XMLHttpRequest.prototype.open;
             const origXHRSend = XMLHttpRequest.prototype.send;
             XMLHttpRequest.prototype.open = function(method, url) {
-                this._csqtt_url = url;
+                this._wstt_url = url;
                 return origXHROpen.apply(this, arguments);
             };
             XMLHttpRequest.prototype.send = function() {
                 const xhr = this;
-                if (xhr._csqtt_url && xhr._csqtt_url.includes('captchaNotRobot.check')) {
+                if (xhr._wstt_url && xhr._wstt_url.includes('captchaNotRobot.check')) {
                     xhr.addEventListener('load', function() {
                         try {
                             const data = JSON.parse(xhr.responseText);
