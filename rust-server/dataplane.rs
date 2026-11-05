@@ -191,7 +191,7 @@ where
     let thread_queued_commands = queued_commands;
     let thread_cancel_token = cancel_token.clone();
     let join = std::thread::Builder::new()
-        .name("csqtt-dataplane".to_owned())
+        .name("wstt-dataplane".to_owned())
         .stack_size(DATAPLANE_STACK_BYTES)
         .spawn(move || {
             let mut command_rx = command_rx;
