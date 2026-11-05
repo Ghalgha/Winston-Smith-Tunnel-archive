@@ -2245,8 +2245,7 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
-        let directory =
-            std::env::temp_dir().join(format!("wstt-persistence-stress-test-{unique}"));
+        let directory = std::env::temp_dir().join(format!("wstt-persistence-stress-test-{unique}"));
         let persistence = DatabasePersistence::new(directory.clone()).unwrap();
         let database = std::sync::Arc::new(tokio::sync::Mutex::new(Database::default()));
         let final_revision = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));

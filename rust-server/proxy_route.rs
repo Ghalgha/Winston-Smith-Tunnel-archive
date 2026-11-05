@@ -178,8 +178,7 @@ async fn start_tproxy_child_with_retry(
 }
 
 fn spawn_tproxy_child(config: &LocalProxyProfile, port: u16, status_path: &Path) -> Result<Child> {
-    let executable =
-        std::env::current_exe().context("resolve WSTT executable for TPROXY child")?;
+    let executable = std::env::current_exe().context("resolve WSTT executable for TPROXY child")?;
     let payload = serde_json::to_vec(config).context("serialize TPROXY child configuration")?;
     let mut child = Command::new(executable)
         .arg("--tproxy-child")

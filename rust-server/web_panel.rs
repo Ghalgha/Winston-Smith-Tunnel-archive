@@ -357,7 +357,9 @@ fn url_encode(input: &str) -> String {
     out
 }
 
-const WSTT_CIPHER_KEY_SEED: &[u8] = &[99, 115, 113, 116, 116, 45, 99, 104, 105, 112, 101, 114, 45, 107, 101, 121];
+const WSTT_CIPHER_KEY_SEED: &[u8] = &[
+    99, 115, 113, 116, 116, 45, 99, 104, 105, 112, 101, 114, 45, 107, 101, 121,
+];
 
 pub fn encrypt_wstt_link(payload: &str) -> String {
     use aws_lc_rs::aead::{AES_256_GCM, Aad, LessSafeKey, Nonce, UnboundKey};

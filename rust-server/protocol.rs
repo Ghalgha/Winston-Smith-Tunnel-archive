@@ -48,7 +48,8 @@ const DIAGNOSTIC_HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(3);
 const DIAGNOSTIC_WRITE_TIMEOUT: Duration = Duration::from_secs(5);
 const DIAGNOSTIC_LEASE: Duration = Duration::from_secs(5 * 60);
 const SESSION_LEASE: &[u8] = b"\xff\x43\x53\x51\x54\x54_LEASE";
-pub const PANEL_RESTART_NOTICE: &[u8] = b"\xff\x43\x53\x51\x54\x54_PANEL_RESTART_V1\x00\x91\x7d\x03\xa8";
+pub const PANEL_RESTART_NOTICE: &[u8] =
+    b"\xff\x43\x53\x51\x54\x54_PANEL_RESTART_V1\x00\x91\x7d\x03\xa8";
 const STREAM_REPAIR_PREFIX: &[u8] = b"\xff\x43\x53\x51\x54\x54_STREAM_REPAIR_V1";
 const STREAM_ALIVE_PREFIX: &[u8] = b"\xff\x43\x53\x51\x54\x54_STREAM_ALIVE_V1";
 pub(crate) const MAX_STREAM_WORKERS: usize = 100;
