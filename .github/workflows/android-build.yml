@@ -57,7 +57,7 @@ jobs:
       - name: Verify PowerShell syntax for build and WSL scripts
         run: |
           pwsh --version
-          pwsh -NoProfile -Command '$files = @("scripts/test_wsl_unified.ps1", "rust-server/build_linux_variants.ps1", "scripts/server_asset_provenance.ps1", "scripts/native_client_provenance.ps1", "scripts/build_both_parallel.ps1"); foreach ($file in $files) { $tokens = $null; $errors = $null; [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file), [ref]$tokens, [ref]$errors); if ($errors.Count) { $errors | ForEach-Object { Write-Error $_ }; exit 1 } }'
+          pwsh -NoProfile -Command '$files = @("scripts/test_wsl_unified.ps1", "rust-server/build_linux_variants.ps1", "scripts/server_asset_provenance.ps1", "scripts/native_client_provenance.ps1", "scripts/build_both_parallel.ps1"); foreach ($file in $files) { $tokens = $null; $parseErrors = $null; [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file), [ref]$tokens, [ref]$parseErrors); if ($parseErrors.Count) { $parseErrors | ForEach-Object { Write-Error $_ }; exit 1 } }'
       - name: Install Zig 0.15.2 (checksum verified)
         run: |
           set -euo pipefail
