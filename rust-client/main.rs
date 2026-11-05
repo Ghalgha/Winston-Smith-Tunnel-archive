@@ -46,7 +46,7 @@ use events::Events;
 use obfs::ObfsMode;
 use packet::{PacketPool, packet_pool_size};
 use repair::RepairState;
-use session::ShutdownCoordinator;
+use session::{ShutdownCoordinator, reconcile_worker_target};
 use srtp_mode::SrtpMode;
 use stats::Stats;
 use std::{
@@ -822,9 +822,14 @@ fn start_control_input(
                             Ok(requested) => {
                                 let desired = normalize_worker_count(requested).min(configured_workers);
                                 desired_workers.store(desired, Ordering::Release);
-                                let ceiling = worker_ceiling.load(Ordering::Acquire).max(1);
-                                let target = desired.min(ceiling);
-                                let previous = worker_count.swap(target, Ordering::AcqRel);
+                                let previous = worker_count.load(Ordering::Acquire);
+                                reconcile_worker_target(
+                                    &worker_count,
+                                    &desired_workers,
+                                    &worker_ceiling,
+                                    &scale_notify,
+                                );
+                                let target = worker_count.load(Ordering::Acquire);
                                 if previous != target {
                                     scale_notify.notify_waiters();
                                     crate::log_error!(

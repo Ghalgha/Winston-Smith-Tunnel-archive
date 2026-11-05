@@ -137,7 +137,11 @@ fn apply_workers_limit(
     if let Some(ceiling) = worker_ceiling {
         ceiling.store(effective, Ordering::Release);
     }
-    if let Some(target) = target_workers {
+    if let (Some(target), Some(desired), Some(ceiling), Some(notify)) =
+        (target_workers, desired_workers, worker_ceiling, scale_notify)
+    {
+        reconcile_worker_target(target, desired, ceiling, notify);
+    } else if let Some(target) = target_workers {
         let desired = desired_workers
             .map(|workers| workers.load(Ordering::Acquire))
             .unwrap_or_else(|| target.load(Ordering::Acquire));
@@ -147,6 +151,29 @@ fn apply_workers_limit(
             && let Some(notify) = scale_notify
         {
             notify.notify_waiters();
+        }
+    }
+}
+
+
+pub(crate) fn reconcile_worker_target(
+    target: &AtomicUsize,
+    desired: &AtomicUsize,
+    ceiling: &AtomicUsize,
+    scale_notify: &tokio::sync::Notify,
+) {
+    loop {
+        let requested = desired.load(Ordering::Acquire);
+        let maximum = ceiling.load(Ordering::Acquire).max(1);
+        let next = requested.min(maximum);
+        let previous = target.swap(next, Ordering::AcqRel);
+        if desired.load(Ordering::Acquire) == requested
+            && ceiling.load(Ordering::Acquire).max(1) == maximum
+        {
+            if previous != next {
+                scale_notify.notify_waiters();
+            }
+            return;
         }
     }
 }
