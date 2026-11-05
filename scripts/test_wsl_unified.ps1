@@ -1,66 +1,48 @@
-# test_wsl_unified.ps1
 [CmdletBinding()]
 param(
     [string[]]$Distros = @("Ubuntu-24.04", "Debian"),
-    [string]$ProjectRoot = "F:\csqtt\csqtt-2.5.0"
+    [string]$ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 )
+$ErrorActionPreference = "Stop"
+$installed = @(& wsl.exe --list --quiet 2>$null | ForEach-Object { $_.Replace([char]0, '').Trim() } | Where-Object { $_ })
+if ($LASTEXITCODE -ne 0 -or $installed.Count -eq 0) { throw "Unable to find installed WSL distributions." }
 
-$ErrorActionPreference = "Continue"
-
-Write-Host ""
-Write-Host "================================================================================" -ForegroundColor Cyan
-Write-Host "         CSQTT 2.5.0 -- UNIFIED WSL VERIFICATION RUNNER" -ForegroundColor Cyan
-Write-Host "================================================================================" -ForegroundColor Cyan
-Write-Host "Project Root: $ProjectRoot" -ForegroundColor DarkGray
-Write-Host "Distros:      $($Distros -join ', ')" -ForegroundColor DarkGray
-Write-Host "Timestamp:    $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor DarkGray
-Write-Host ""
-
-$installed = @(wsl.exe -l -q | ForEach-Object { $_.Trim().Replace("`0", "") } | Where-Object { $_ -ne "" })
 $results = [ordered]@{}
-
+$tested = 0
 foreach ($distro in $Distros) {
-    Write-Host "--------------------------------------------------------------------------------" -ForegroundColor Yellow
-    Write-Host ">>> CHECKING DISTRO: $distro" -ForegroundColor Yellow
-    Write-Host "--------------------------------------------------------------------------------" -ForegroundColor Yellow
-
+    Write-Host ">>> WSTT checks: $distro" -ForegroundColor Cyan
     if ($installed -notcontains $distro) {
-        Write-Host "[-] $distro not installed in WSL. Skipping.`n" -ForegroundColor Red
         $results[$distro] = "NOT_INSTALLED"
+        Write-Host "[SKIP] Not installed" -ForegroundColor DarkYellow
         continue
     }
-
-    $bashCmd = "bash /mnt/f/csqtt/csqtt-2.5.0/scripts/run_wsl_checks.sh"
-    $output = wsl.exe -d $distro -u root bash -c $bashCmd
-
-    $output | ForEach-Object {
-        if ($_ -match "OK") {
-            Write-Host "  $_" -ForegroundColor Green
-        } elseif ($_ -match "SKIPPED") {
-            Write-Host "  $_" -ForegroundColor DarkYellow
-        } elseif ($_ -match "FAILED|ERROR") {
-            Write-Host "  $_" -ForegroundColor Red
-        } else {
-            Write-Host "  $_" -ForegroundColor Gray
-        }
+    $tested++
+    $rootOut = @(& wsl.exe -d $distro --exec wslpath -u $ProjectRoot 2>&1)
+    $pathCode = $LASTEXITCODE
+    if ($pathCode -ne 0 -or $rootOut.Count -eq 0) {
+        $results[$distro] = "FAILED_PATH"
+        Write-Host ($rootOut -join [Environment]::NewLine) -ForegroundColor Red
+        continue
     }
-
-    $isAllPassed = $output | Select-String -Pattern "ALL SYSTEM CHECKS PASSED SUCCESSFULLY" -SimpleMatch
-    if ($isAllPassed) {
-        $results[$distro] = "READY_FOR_RELEASE"
-    } else {
-        $results[$distro] = "FAILED"
+    $script = "$(([string]$rootOut[-1]).Trim())/scripts/run_wsl_checks.sh"
+    $output = @(& wsl.exe -d $distro --exec bash $script 2>&1)
+    $code = $LASTEXITCODE
+    foreach ($line in $output) {
+        $s = [string]$line
+        if ($s -match '^\[SKIP\]|^STATUS: PASS_WITH') { Write-Host $s -ForegroundColor DarkYellow }
+        elseif ($s -match '^\[PASS\]|^STATUS: PASS') { Write-Host $s -ForegroundColor Green }
+        elseif ($s -match '^\[FAIL\]|error|failed') { Write-Host $s -ForegroundColor Red }
+        else { Write-Host $s }
     }
-    Write-Host ""
+    if ($code -ne 0) { $results[$distro] = "FAILED ($code)" }
+    elseif (($output | Where-Object { ([string]$_) -match '^\[SKIP\]|^STATUS: PASS_WITH' }).Count -gt 0) { $results[$distro] = "PASSED_WITH_SKIPS" }
+    else { $results[$distro] = "PASSED" }
 }
-
-Write-Host "================================================================================" -ForegroundColor Cyan
-Write-Host "FINAL RELEASE READINESS MATRIX:" -ForegroundColor Cyan
-Write-Host "================================================================================" -ForegroundColor Cyan
-foreach ($d in $results.Keys) {
-    $status = $results[$d]
-    $color = if ($status -eq "READY_FOR_RELEASE") { "Green" } else { "Red" }
-    Write-Host ("Distro: {0,-16} | Status: {1}" -f $d, $status) -ForegroundColor $color
-}
-Write-Host "================================================================================" -ForegroundColor Cyan
 Write-Host ""
+Write-Host "WSL test matrix:"
+foreach ($distro in $results.Keys) {
+    $status = $results[$distro]
+    $color = if ($status -eq "PASSED") { "Green" } elseif ($status -in @("NOT_INSTALLED", "PASSED_WITH_SKIPS")) { "DarkYellow" } else { "Red" }
+    Write-Host ("{0,-16} {1}" -f $distro, $status) -ForegroundColor $color
+}
+if ($tested -eq 0 -or @($results.Values | Where-Object { $_ -notin @("PASSED", "PASSED_WITH_SKIPS", "NOT_INSTALLED") }).Count -gt 0) { exit 1 }

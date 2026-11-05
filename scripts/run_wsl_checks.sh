@@ -1,118 +1,184 @@
 #!/usr/bin/env bash
-set -eo pipefail
+set -Eeuo pipefail
+SCRIPT_PATH="$(readlink -f "$0")"
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")/.." && pwd)"
+PROJECT_ROOT="$(printenv WSTT_PROJECT_ROOT || true)"
+[ -n "$PROJECT_ROOT" ] || PROJECT_ROOT="$SCRIPT_DIR"
+RUNTIME_ONLY=0
+if [ "$#" -gt 0 ]; then
+  [ "$#" -eq 1 ] && [ "$1" = "--runtime-only" ] || { echo "Usage: $0 [--runtime-only]" >&2; exit 2; }
+  RUNTIME_ONLY=1
+fi
+fail() { echo "[FAIL] $*" >&2; exit 1; }
+skip() { echo "[SKIP] $*"; }
+pass() { echo "[PASS] $*"; }
 
-PROJECT_ROOT="/mnt/f/csqtt/csqtt-2.5.0"
-SERVER_BIN="$PROJECT_ROOT/app/src/main/assets/csqtt-linux-amd64"
-TEST_ELF="$PROJECT_ROOT/rust-server/target/x86_64-unknown-linux-musl/debug/deps/csqtt-a1c8eb2f8f054f72"
-
-echo "============================================================"
-echo "CSQTT Linux Environment Diagnostics: $(cat /etc/os-release | grep PRETTY_NAME | cut -d= -f2 | tr -d '\"')"
-echo "============================================================"
-
-# Очистка предыдущих процессов и интерфейсов если остались
-pkill -9 -f csqtt-linux-amd64 2>/dev/null || true
-ip link delete csqtt1 2>/dev/null || true
-
-# 1. Native Server Tests
-echo -n "[1/4] Running 143 Native Server Tests: "
-TEST_OUT=$($TEST_ELF --test-threads=4 2>&1)
-if echo "$TEST_OUT" | grep -q "test result: ok. 143 passed"; then
-    echo "OK (143 passed, 0 failed)"
+[ -d "$PROJECT_ROOT/rust-server" ] || fail "Missing rust-server under $PROJECT_ROOT"
+if [ "$RUNTIME_ONLY" -eq 0 ]; then
+  command -v cargo >/dev/null || fail "cargo is not on PATH"
+  command -v rustup >/dev/null || fail "rustup is not on PATH"
+  cargo +1.97.1 test --locked --manifest-path "$PROJECT_ROOT/rust-server/Cargo.toml" --all-targets
+  pass "Rust server tests"
+  cargo +1.97.1 build --locked --manifest-path "$PROJECT_ROOT/rust-server/Cargo.toml"
+  SERVER_BIN="$PROJECT_ROOT/rust-server/target/debug/csqtt"
 else
-    echo "FAILED"
-    echo "$TEST_OUT" | tail -n 10
-    exit 1
+  SERVER_BIN="$(printenv WSTT_SERVER_BIN || true)"
+  [ -n "$SERVER_BIN" ] || SERVER_BIN="$PROJECT_ROOT/rust-server/target/debug/csqtt"
+fi
+[ -x "$SERVER_BIN" ] || fail "Missing executable server binary: $SERVER_BIN"
+
+if [ "$EUID" -ne 0 ]; then
+  if command -v sudo >/dev/null; then
+    sudo -E env WSTT_PROJECT_ROOT="$PROJECT_ROOT" WSTT_SERVER_BIN="$SERVER_BIN" bash "$SCRIPT_PATH" --runtime-only
+    exit $?
+  fi
+  if [ "$RUNTIME_ONLY" -eq 1 ]; then skip "Runtime-only mode requires root; runtime checks not run"
+  else skip "Runtime checks need root; Rust tests/build completed"; fi
+  echo "STATUS: PASS_WITH_RUNTIME_SKIPPED"
+  exit 0
 fi
 
-# 2. Standalone TUN & Web Panel
-echo -n "[2/4] Testing Standalone TUN (MTU 1500, qlen 1000) & HTTPS Web Panel: "
-rm -rf /tmp/csqtt-standalone-chk
-mkdir -p /tmp/csqtt-standalone-chk
-$SERVER_BIN --config-dir /tmp/csqtt-standalone-chk --web-port 46102 --listen 0.0.0.0:46100 >/tmp/csqtt-standalone-chk.log 2>&1 &
-STANDALONE_PID=$!
-sleep 2
-
-TUN_LINE=$(ip link show csqtt1 2>/dev/null || echo "")
-HTTP_CODE=$(curl -k -s -o /dev/null -w "%{http_code}" https://127.0.0.1:46102/ || echo "000")
-
-kill -9 $STANDALONE_PID 2>/dev/null || true
-ip link delete csqtt1 2>/dev/null || true
-rm -rf /tmp/csqtt-standalone-chk /tmp/csqtt-standalone-chk.log
-
-if echo "$TUN_LINE" | grep -q "qlen 1000" && [ "$HTTP_CODE" = "200" ]; then
-    echo "OK (TUN UP, qlen 1000, HTTPS 200)"
-else
-    echo "FAILED (TUN: $TUN_LINE, HTTP: $HTTP_CODE)"
-    exit 2
+for tool in ip python3 curl ss; do command -v "$tool" >/dev/null || fail "Missing required tool: $tool"; done
+if [ ! -c /dev/net/tun ]; then
+  skip "/dev/net/tun unavailable; runtime checks skipped"
+  echo "STATUS: PASS_WITH_RUNTIME_SKIPPED"
+  exit 0
 fi
 
-# 3. Systemd Service Lifecycle
-echo -n "[3/4] Testing Systemd Service Deployment: "
-rm -rf /tmp/csqtt-sysd-chk
-mkdir -p /tmp/csqtt-sysd-chk
-cat << 'EOF' > /etc/systemd/system/csqtt-test.service
-[Unit]
-Description=CSQTT Test Service
-After=network.target
+RUN_DIR="$(mktemp -d /tmp/wstt-wsl-check.XXXXXX)"
+chmod 700 "$RUN_DIR"
+NS="wstt-check-$$-$RANDOM"
+PID=""
+UNIT=""
+NS_CREATED=0
+cleanup() {
+  local p
+  if [ -n "$UNIT" ] && command -v systemctl >/dev/null; then
+    if command -v timeout >/dev/null; then timeout 10 systemctl stop "$UNIT" >/dev/null 2>&1 || true
+    else systemctl stop "$UNIT" >/dev/null 2>&1 || true; fi
+    systemctl reset-failed "$UNIT" >/dev/null 2>&1 || true
+  fi
+  if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
+    kill -TERM "$PID" 2>/dev/null || true
+    sleep 1
+    kill -KILL "$PID" 2>/dev/null || true
+    wait "$PID" 2>/dev/null || true
+  fi
+  if [ "$NS_CREATED" -eq 1 ]; then
+    while read -r p; do [ -n "$p" ] && kill -TERM "$p" 2>/dev/null || true; done < <(ip netns pids "$NS" 2>/dev/null || true)
+    sleep 1
+    while read -r p; do [ -n "$p" ] && kill -KILL "$p" 2>/dev/null || true; done < <(ip netns pids "$NS" 2>/dev/null || true)
+    ip netns del "$NS" 2>/dev/null || echo "[WARN] Could not remove namespace $NS" >&2
+  fi
+  rm -rf -- "$RUN_DIR"
+}
+trap cleanup EXIT INT TERM
 
-[Service]
-Type=simple
-ExecStart=/mnt/f/csqtt/csqtt-2.5.0/app/src/main/assets/csqtt-linux-amd64 --config-dir /tmp/csqtt-sysd-chk --web-port 46202 --listen 0.0.0.0:46200
-Restart=no
-LimitNOFILE=65535
+if ! ip netns add "$NS" 2>"$RUN_DIR/netns.err"; then
+  skip "Network namespaces unavailable: $(tr '\n' ' ' < "$RUN_DIR/netns.err")"
+  echo "STATUS: PASS_WITH_RUNTIME_SKIPPED"
+  exit 0
+fi
+NS_CREATED=1
+ip netns exec "$NS" ip link set lo up
 
-[Install]
-WantedBy=multi-user.target
-EOF
+ports() {
+  ip netns exec "$NS" python3 - <<'PY'
+import socket
+for kind in (socket.SOCK_DGRAM, socket.SOCK_STREAM):
+    s = socket.socket(socket.AF_INET, kind)
+    s.bind(("127.0.0.1", 0))
+    print(s.getsockname()[1], end=" ")
+    s.close()
+print()
+PY
+}
+ready() {
+  local port="$1" code=000
+  for n in $(seq 1 40); do
+    code="$(ip netns exec "$NS" curl -kfsS --connect-timeout 1 --max-time 2 -o /dev/null -w '%{http_code}' "https://127.0.0.1:$port/" 2>/dev/null || true)"
+    [ "$code" = 200 ] && return 0
+    sleep .25
+  done
+  return 1
+}
+stop_server() {
+  kill -TERM "$1" 2>/dev/null || true
+  for n in $(seq 1 40); do
+    if ! kill -0 "$1" 2>/dev/null; then wait "$1" 2>/dev/null || true; PID=""; return 0; fi
+    sleep .25
+  done
+  return 1
+}
 
-systemctl daemon-reload
-systemctl start csqtt-test.service
-sleep 2
+echo "[3/3] Isolated WSTT runtime"
+read -r UDP WEB < <(ports)
+[[ "$UDP" =~ ^[0-9]+$ && "$WEB" =~ ^[0-9]+$ ]] || fail "Could not allocate test ports"
+mkdir "$RUN_DIR/config"
+ip netns exec "$NS" "$SERVER_BIN" --config-dir "$RUN_DIR/config" --web-port "$WEB" --listen "127.0.0.1:$UDP" >"$RUN_DIR/server.log" 2>&1 &
+PID=$!
+ready "$WEB" || { cat "$RUN_DIR/server.log" >&2; fail "Standalone HTTPS endpoint did not become ready"; }
+TUN="$(ip netns exec "$NS" ip -o link show dev wstt1 2>/dev/null || true)"
+[[ "$TUN" =~ qlen[[:space:]]48([[:space:]]|$) ]] || fail "Expected wstt1 txqueuelen 48; got: $TUN"
+ip netns exec "$NS" ss -H -lun "sport = :$UDP" | grep -q . || fail "UDP listener missing on $UDP"
+pass "Isolated TUN wstt1 (qlen 48), UDP and HTTPS"
+stop_server "$PID" || fail "Server did not stop after SIGTERM"
+if ip netns exec "$NS" ip link show wstt1 >/dev/null 2>&1; then fail "TUN remained after server exit"; fi
 
-SYS_ACTIVE=$(systemctl is-active csqtt-test.service 2>/dev/null || echo "inactive")
-SYS_HTTP=$(curl -k -s -o /dev/null -w "%{http_code}" https://127.0.0.1:46202/ || echo "000")
-
-systemctl stop csqtt-test.service 2>/dev/null || true
-rm -f /etc/systemd/system/csqtt-test.service
-systemctl daemon-reload
-ip link delete csqtt1 2>/dev/null || true
-rm -rf /tmp/csqtt-sysd-chk
-
-if [ "$SYS_ACTIVE" = "active" ] && [ "$SYS_HTTP" = "200" ]; then
-    echo "OK (systemd active, HTTPS 200, clean stop)"
+if command -v systemd-run >/dev/null && command -v systemctl >/dev/null && systemctl show --property=Version --value >/dev/null 2>&1; then
+  read -r UDP WEB < <(ports)
+  UNIT="wstt-check-$$-$RANDOM.service"
+  mkdir "$RUN_DIR/systemd"
+  systemd-run --quiet --collect --unit="$UNIT" --property=Type=exec --property=Restart=no \
+    "$(command -v ip)" netns exec "$NS" "$SERVER_BIN" --config-dir "$RUN_DIR/systemd" --web-port "$WEB" --listen "127.0.0.1:$UDP" \
+    || fail "systemd-run failed"
+  OK=0
+  for n in $(seq 1 40); do
+    if systemctl is-active --quiet "$UNIT" && ready "$WEB"; then OK=1; break; fi
+    sleep .25
+  done
+  [ "$OK" -eq 1 ] || { systemctl status "$UNIT" --no-pager >&2 || true; fail "Transient systemd unit failed"; }
+  systemctl stop "$UNIT" || fail "Could not stop transient unit"
+  systemctl reset-failed "$UNIT" >/dev/null 2>&1 || true
+  UNIT=""
+  if ip netns exec "$NS" ip link show wstt1 >/dev/null 2>&1; then fail "TUN remained after systemd stop"; fi
+  pass "Transient systemd lifecycle; no persistent unit file"
 else
-    echo "FAILED (status: $SYS_ACTIVE, http: $SYS_HTTP)"
-    exit 3
+  skip "systemd unavailable; transient-unit check skipped"
 fi
 
-# 4. Docker Deployment
-echo -n "[4/4] Testing Docker Deployment: "
-service docker status >/dev/null 2>&1 || service docker start >/dev/null 2>&1 || true
-if ! docker info >/dev/null 2>&1; then
-    echo "SKIPPED (docker daemon unavailable in container)"
+if command -v docker >/dev/null && docker info >/dev/null 2>&1; then
+  IMAGE="$(printenv WSTT_WSL_DOCKER_IMAGE || true)"
+  [ -n "$IMAGE" ] || IMAGE="debian:bookworm-slim"
+  if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
+    skip "Docker image $IMAGE is not local; image was not pulled"
+  else
+    NAME="wstt-check-$$-$RANDOM"
+    read -r DUDP DWEB < <(ports)
+    docker run -d --name "$NAME" --cap-add NET_ADMIN --device /dev/net/tun \
+      -p "127.0.0.1::$DUDP/udp" -p "127.0.0.1::$DWEB/tcp" \
+      --tmpfs /tmp/wstt-check:rw,nosuid,nodev,size=16m -v "$SERVER_BIN:/usr/local/bin/wstt:ro" \
+      --entrypoint /usr/local/bin/wstt "$IMAGE" --config-dir /tmp/wstt-check --web-port "$DWEB" --listen "0.0.0.0:$DUDP" \
+      >"$RUN_DIR/docker.id" || { docker rm -f "$NAME" >/dev/null 2>&1 || true; fail "docker run failed"; }
+    DOCKER_CLEAN=1
+    clean_docker() { if [ "$DOCKER_CLEAN" -eq 1 ]; then docker rm -f "$NAME" >/dev/null 2>&1 || return 1; DOCKER_CLEAN=0; fi; }
+    trap 'clean_docker; cleanup' EXIT INT TERM
+    HP="$(docker port "$NAME" "$DWEB/tcp" | awk -F: 'NR==1 {print $NF}')"
+    [[ "$HP" =~ ^[0-9]+$ ]] || fail "Docker host port not assigned"
+    OK=0
+    for n in $(seq 1 40); do
+      CODE="$(curl -kfsS --connect-timeout 1 --max-time 2 -o /dev/null -w '%{http_code}' "https://127.0.0.1:$HP/" 2>/dev/null || true)"
+      if [ "$CODE" = 200 ]; then OK=1; break; fi
+      sleep .25
+    done
+    [ "$OK" -eq 1 ] || { docker logs "$NAME" >&2 || true; fail "Docker HTTPS endpoint failed"; }
+    docker exec "$NAME" sh -c 'test -r /sys/class/net/wstt1/ifindex && test "$(cat /sys/class/net/wstt1/ifindex)" -gt 0' || fail "Docker TUN missing"
+    [ "$(docker exec "$NAME" cat /sys/class/net/wstt1/tx_queue_len)" = 48 ] || fail "Docker TUN qlen mismatch"
+    pass "Docker isolated TUN and HTTPS"
+    clean_docker || fail "Could not remove Docker test container"
+    trap cleanup EXIT INT TERM
+  fi
 else
-    docker rm -f csqtt-dock-chk 2>/dev/null || true
-    rm -rf /tmp/csqtt-dock-chk
-    mkdir -p /tmp/csqtt-dock-chk
-    docker run -d --name csqtt-dock-chk \
-        --net=host \
-        --cap-add=NET_ADMIN \
-        -v /tmp/csqtt-dock-chk:/etc/csqtt \
-        -v "$SERVER_BIN:/usr/local/bin/csqtt:ro" \
-        debian:bookworm-slim \
-        /usr/local/bin/csqtt --config-dir /etc/csqtt --web-port 46302 --listen 0.0.0.0:46300 >/dev/null 2>&1 || true
-
-    sleep 3
-    DOCK_HTTP=$(curl -k -s -o /dev/null -w "%{http_code}" https://127.0.0.1:46302/ || echo "000")
-    docker rm -f csqtt-dock-chk >/dev/null 2>&1 || true
-    rm -rf /tmp/csqtt-dock-chk
-    ip link delete csqtt1 2>/dev/null || true
-
-    if [ "$DOCK_HTTP" = "200" ]; then
-        echo "OK (container up with --cap-add=NET_ADMIN, HTTPS 200)"
-    else
-        echo "SKIPPED or FAILED (http: $DOCK_HTTP)"
-    fi
+  skip "Docker daemon unavailable; it was not started"
 fi
-
-echo ">> STATUS: ALL SYSTEM CHECKS PASSED SUCCESSFULLY!"
+echo "STATUS: PASS (available checks passed; optional checks may be skipped)"
