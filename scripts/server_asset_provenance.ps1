@@ -17,17 +17,17 @@ else {
 }
 
 $assetDirectory = Join-Path $projectRoot "app\src\main\assets"
-$manifestPath = Join-Path $assetDirectory "csqtt.server-provenance.json"
+$manifestPath = Join-Path $assetDirectory "wstt.server-provenance.json"
 $cargoTomlPath = Join-Path $projectRoot "rust-server\Cargo.toml"
 $cargoLockPath = Join-Path $projectRoot "rust-server\Cargo.lock"
 $wireProtocolPath = Join-Path $projectRoot "shared\wire_protocol.rs"
 $wireProtocolRevisionPath = Join-Path $projectRoot "rust-server\main.rs"
-$schema = "csqtt.server-asset-provenance.v2"
-$marker = "CSQTT_RUST_SERVER_PRODUCTION_V1"
+$schema = "wstt.server-asset-provenance.v2"
+$marker = "WSTT_RUST_SERVER_PRODUCTION_V1"
 $assetSpecs = @(
-    [pscustomobject]@{ AssetName = "csqtt-linux-amd64"; Target = "x86_64-unknown-linux-musl"; ElfClass = 2; ElfMachine = 62 },
-    [pscustomobject]@{ AssetName = "csqtt-linux-arm64"; Target = "aarch64-unknown-linux-musl"; ElfClass = 2; ElfMachine = 183 },
-    [pscustomobject]@{ AssetName = "csqtt-linux-armv7"; Target = "armv7-unknown-linux-musleabihf"; ElfClass = 1; ElfMachine = 40 }
+    [pscustomobject]@{ AssetName = "wstt-linux-amd64"; Target = "x86_64-unknown-linux-musl"; ElfClass = 2; ElfMachine = 62 },
+    [pscustomobject]@{ AssetName = "wstt-linux-arm64"; Target = "aarch64-unknown-linux-musl"; ElfClass = 2; ElfMachine = 183 },
+    [pscustomobject]@{ AssetName = "wstt-linux-armv7"; Target = "armv7-unknown-linux-musleabihf"; ElfClass = 1; ElfMachine = 40 }
 )
 
 function Assert-RegularFile {
