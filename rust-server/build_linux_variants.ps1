@@ -44,7 +44,11 @@ if (-not $zig -and $env:LOCALAPPDATA) {
 }
 
 $cargo = (Get-Command cargo.exe -ErrorAction Stop).Source
-$buildJobsPerTarget = if ($env:WSTT_BUILD_JOBS_PER_TARGET -match '^[1-9][0-9]*
+$buildJobsPerTarget = if ($env:WSTT_BUILD_JOBS_PER_TARGET -match '^[1-9][0-9]*$') {
+    [int]$env:WSTT_BUILD_JOBS_PER_TARGET
+} else {
+    [Math]::Max(1, [int][Math]::Floor([Environment]::ProcessorCount / 3))
+}
 $logsDir = Join-Path $ProjectRoot "build\wstt-uring-linux-logs"
 New-Item -ItemType Directory -Force -Path $logsDir | Out-Null
 
