@@ -1180,6 +1180,6 @@ mod coexistence_tests {
             iface = concat!("cs", "qtt1"),
             marker = concat!("CS", "QTT_TPROXY"),
         );
-        assert!(marked_rule_specs(rules, "PREROUTING", &["WSTT_TPROXY"]).is_empty());
+        assert!(marked_rule_specs(&rules, "PREROUTING", &["WSTT_TPROXY"]).is_empty());
     }
 }
