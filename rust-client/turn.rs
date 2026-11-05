@@ -51,7 +51,6 @@ const UDP_TRANSIENT_ERROR_LIMIT: u32 = 16;
 const UDP_TRANSIENT_ERROR_WINDOW: Duration = Duration::from_secs(5);
 const OUTBOUND_QUEUE_CAPACITY: usize = 8;
 const OUTBOUND_IDLE_POLL: Duration = Duration::from_millis(20);
-const OUTBOUND_FLUSH_WAIT: Duration = Duration::from_millis(250);
 
 #[inline]
 fn is_retryable_maintenance(method: u32) -> bool {
