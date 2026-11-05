@@ -16,8 +16,8 @@ class DeployScriptPreflightTest {
 
     private fun deployOperations(): String {
         val candidates = listOf(
-            File("app/src/main/java/com/csqtt/client/ui/DeployOperations.kt"),
-            File("src/main/java/com/csqtt/client/ui/DeployOperations.kt"),
+            File("app/src/main/java/com/wstt/client/ui/DeployOperations.kt"),
+            File("src/main/java/com/wstt/client/ui/DeployOperations.kt"),
         )
         return candidates.first(File::isFile).readText()
     }
