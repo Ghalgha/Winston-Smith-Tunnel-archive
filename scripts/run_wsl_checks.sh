@@ -17,7 +17,7 @@ pass() { echo "[PASS] $*"; }
 if [ "$RUNTIME_ONLY" -eq 0 ]; then
   command -v cargo >/dev/null || fail "cargo is not on PATH"
   command -v rustup >/dev/null || fail "rustup is not on PATH"
-  if ! rustup toolchain list | grep -Eq '^1\\.97\\.1(-|$)'; then
+  if ! rustup toolchain list | grep -Fq '1.97.1'; then
     rustup toolchain install 1.97.1 --profile minimal
   fi
   if ! rustup target list --installed --toolchain 1.97.1 | grep -Fxq x86_64-unknown-linux-gnu; then
