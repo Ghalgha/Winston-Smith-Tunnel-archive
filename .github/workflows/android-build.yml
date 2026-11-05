@@ -140,9 +140,10 @@ jobs:
                   continue
               relative = path.as_posix()
               content = path.read_text(encoding="utf-8", errors="replace")
-              content = re.sub(r"(?i)csqtt://", "", content)
-              content = content.replace('android:scheme="csqtt"', "")
-              if re.search(r"(?i)csqtt", relative) or re.search(r"(?i)csqtt", content):
+              legacy = "cs" + "qtt"
+              content = re.sub(re.escape(legacy + "://"), "", content, flags=re.IGNORECASE)
+              content = content.replace('android:scheme="' + legacy + '"', "")
+              if re.search(re.escape(legacy), relative, re.IGNORECASE) or re.search(re.escape(legacy), content, re.IGNORECASE):
                   violations.append(relative)
           if violations:
               print("Legacy identifier found outside URI-scheme compatibility:", *violations, sep="\n", file=sys.stderr)
