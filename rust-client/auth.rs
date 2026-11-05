@@ -1088,7 +1088,7 @@ fn load_credentials(client_ids: &[String]) -> Vec<VkCredentials> {
     if !from_ids.is_empty() {
         return from_ids;
     }
-    if let Ok(value) = std::env::var("CSQTT_VK_CREDENTIALS") {
+    if let Ok(value) = std::env::var("WSTT_VK_CREDENTIALS") {
         let parsed: Vec<_> = value
             .split(',')
             .filter_map(|pair| pair.trim().split_once(':'))
