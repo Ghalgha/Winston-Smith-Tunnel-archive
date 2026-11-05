@@ -1582,7 +1582,7 @@ mod tests {
         let sender = std::net::UdpSocket::bind("127.0.0.1:0").unwrap();
         let peer = sender.local_addr().unwrap();
         sender
-            .send_to(b"csqtt-udp-receive", receiver.local_addr().unwrap())
+            .send_to(b"wstt-udp-receive", receiver.local_addr().unwrap())
             .unwrap();
         receiver.readable().await.unwrap();
 
@@ -1618,7 +1618,7 @@ mod tests {
             })
             .unwrap();
         assert!(packet.set_len(received));
-        assert_eq!(packet.as_slice(), b"csqtt-udp-receive");
+        assert_eq!(packet.as_slice(), b"wstt-udp-receive");
         assert_eq!(
             storage_to_socket_addr(&address, header.msg_namelen),
             Some(peer)
@@ -1628,7 +1628,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "requires CAP_NET_ADMIN and a Linux TUN device"]
     async fn tun_sink_accepts_a_valid_ipv4_packet() {
-        let interface = "csqttdiag0";
+        let interface = "wsttdiag0";
         let _ = std::process::Command::new("ip")
             .args(["link", "del", interface])
             .output();
