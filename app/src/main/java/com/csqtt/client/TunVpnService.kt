@@ -57,14 +57,14 @@ class TunVpnService : VpnService() {
     private fun acquireLocks() {
         if (wakeLock?.isHeld != true) {
             val pm = getSystemService(PowerManager::class.java)
-            wakeLock = pm?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "csqtt:tun_vpn_service")?.apply {
+            wakeLock = pm?.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "wstt:tun_vpn_service")?.apply {
                 setReferenceCounted(false)
                 acquire(24 * 60 * 60 * 1000L)
             }
         }
         if (wifiLock?.isHeld != true) {
             val wm = applicationContext.getSystemService(WifiManager::class.java)
-            wifiLock = wm?.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "csqtt:tun_vpn_wifi")?.apply {
+            wifiLock = wm?.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "wstt:tun_vpn_wifi")?.apply {
                 setReferenceCounted(false)
                 acquire()
             }
