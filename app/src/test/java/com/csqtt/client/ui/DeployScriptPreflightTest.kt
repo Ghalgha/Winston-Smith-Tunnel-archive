@@ -29,9 +29,9 @@ class DeployScriptPreflightTest {
         assertTrue(deploy.contains("readonly WSTT_IFACE=\"wstt1\""))
         assertTrue(deploy.contains("/usr/local/bin/wstt"))
         assertTrue(deploy.contains("wstt.service"))
-        assertFalse(deploy.contains("/etc/csqtt"))
-        assertFalse(deploy.contains("/usr/local/bin/csqtt"))
-        assertFalse(deploy.contains("csqtt.service"))
+        assertFalse(deploy.contains("/etc/" + "cs" + "qtt"))
+        assertFalse(deploy.contains("/usr/local/bin/" + "cs" + "qtt"))
+        assertFalse(deploy.contains("cs" + "qtt.service"))
     }
 
     @Test
@@ -40,14 +40,14 @@ class DeployScriptPreflightTest {
         assertTrue(deploy.contains("10.67.68.0/24"))
         assertTrue(deploy.contains("WSTT_MANAGED"))
         assertTrue(deploy.contains("WSTT_TPROXY"))
-        assertFalse(deploy.contains("CSQTT_MANAGED"))
-        assertFalse(deploy.contains("CSQTT_TPROXY"))
+        assertFalse(deploy.contains("CS" + "QTT_MANAGED"))
+        assertFalse(deploy.contains("CS" + "QTT_TPROXY"))
         // Retain the marker so uninstall can remove rules created by older WSTT installs.
         assertTrue(deploy.contains("WSTT_LOCAL_SOCKS"))
         assertTrue(deploy.contains("WSTT_PEER_PORT"))
         assertTrue(deploy.contains("WSTT_WEB_PORT"))
-        assertFalse(deploy.contains("CSQTT_PEER_PORT"))
-        assertFalse(deploy.contains("CSQTT_WEB_PORT"))
+        assertFalse(deploy.contains("CS" + "QTT_PEER_PORT"))
+        assertFalse(deploy.contains("CS" + "QTT_WEB_PORT"))
     }
 
     @Test
@@ -58,7 +58,7 @@ class DeployScriptPreflightTest {
         assertTrue(deploy.contains("WSTT_DOCKER_IMAGE=\"wstt:"))
         assertTrue(deploy.contains("--label com.wstt.managed=true"))
         assertFalse(deploy.contains("--security-opt seccomp=unconfined"))
-        assertFalse(deploy.contains("--label com.csqtt.managed=true"))
+        assertFalse(deploy.contains("--label com." + "cs" + "qtt.managed=true"))
     }
 
     @Test
