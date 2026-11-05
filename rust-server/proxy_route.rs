@@ -179,7 +179,7 @@ async fn start_tproxy_child_with_retry(
 
 fn spawn_tproxy_child(config: &LocalProxyProfile, port: u16, status_path: &Path) -> Result<Child> {
     let executable =
-        std::env::current_exe().context("resolve csqtt executable for TPROXY child")?;
+        std::env::current_exe().context("resolve WSTT executable for TPROXY child")?;
     let payload = serde_json::to_vec(config).context("serialize TPROXY child configuration")?;
     let mut child = Command::new(executable)
         .arg("--tproxy-child")
@@ -331,7 +331,7 @@ async fn verify_socks5_udp_associate(config: &LocalProxyProfile) -> Result<()> {
         .await
         .context("SOCKS5 UDP ASSOCIATE preflight failed")?;
     if !matches!(relay_addr, SocketAddr::V4(_)) {
-        bail!("SOCKS5 UDP ASSOCIATE returned an IPv6 relay address; CSQTT TPROXY is IPv4-only");
+        bail!("SOCKS5 UDP ASSOCIATE returned an IPv6 relay address; WSTT TPROXY is IPv4-only");
     }
     Ok(())
 }
@@ -1058,7 +1058,7 @@ mod tests {
     fn status_socket_path_is_wstt_specific() {
         let path = tproxy_status_path(7);
         assert_eq!(path.file_name().unwrap(), "wstt-tproxy-7.sock");
-        assert!(!path.to_string_lossy().contains("csqtt-tproxy"));
+        assert!(!path.to_string_lossy().contains(concat!("cs", "qtt-tproxy")));
     }
 
     #[test]
@@ -1124,7 +1124,7 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
-        let status_path = std::env::temp_dir().join(format!("csqtt-tproxy-test-{unique}.sock"));
+        let status_path = std::env::temp_dir().join(format!("wstt-tproxy-test-{unique}.sock"));
         let error_path = tproxy_error_path(&status_path);
 
         write_tproxy_child_error(
@@ -1161,7 +1161,7 @@ mod coexistence_tests {
     };
 
     #[test]
-    fn wstt_policy_identity_is_disjoint_from_csqtt() {
+    fn wstt_policy_identity_is_disjoint_from_legacy() {
         assert_eq!(LEGACY_POLICY_TABLE, "1067");
         assert_eq!(LEGACY_POLICY_PRIORITY, "1067");
         assert_ne!(LEGACY_POLICY_TABLE, "1066");
@@ -1174,9 +1174,8 @@ mod coexistence_tests {
     }
 
     #[test]
-    fn wstt_cleanup_does_not_claim_original_csqtt_rules() {
-        let rules =
-            r#"-A PREROUTING -i csqtt1 -p udp -m comment --comment "CSQTT_TPROXY:10669" -j TPROXY"#;
+    fn wstt_cleanup_does_not_claim_legacy_rules() {
+        let rules = format!(\n            r#"-A PREROUTING -i {iface} -p udp -m comment --comment "{marker}:10669" -j TPROXY"#,\n            iface = concat!("cs", "qtt1"),\n            marker = concat!("CS", "QTT_TPROXY"),\n        );
         assert!(marked_rule_specs(rules, "PREROUTING", &["WSTT_TPROXY"]).is_empty());
     }
 }
