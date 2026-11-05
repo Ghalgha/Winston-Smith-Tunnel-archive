@@ -106,7 +106,7 @@ default_exit_code() {
 die() {
     local message="$1" code="${2:-$(default_exit_code)}"
     log_error "$message"
-    printf 'CSQTT_DEPLOY_ERROR|%s|%s\n' "$DEPLOY_PHASE" "$message"
+    printf 'WSTT_DEPLOY_ERROR|%s|%s\n' "$DEPLOY_PHASE" "$message"
     cleanup_deploy_uploads
     exit "$code"
 }
@@ -436,7 +436,7 @@ remove_all_wstt_systemd_units() {
     return 0
 }
 
-prog() { echo "CSQTT_PROGRESS|$1|$2"; }
+prog() { echo "WSTT_PROGRESS|$1|$2"; }
 
 run_timed() {
     local label="$1" started=$SECONDS
@@ -1171,7 +1171,7 @@ release_owned_peer_port() {
             return 24
         fi
 
-        # Validate every listener before signalling any process. Never touch CSQTT
+        # Validate every listener before signalling any process. Never touch unrelated existing tunnel resources
         # or another service if it shares the configured UDP port.
         for pid in \$pids; do
             case "\$pid" in ''|*[!0-9]*)
@@ -2281,7 +2281,7 @@ start_wstt_docker() {
     prog 1.0 "Готово!"
     echo ""
     echo "✓ Деплой успешно завершён"
-    echo "CSQTT_DEPLOY_OK"
+    echo "WSTT_DEPLOY_OK"
     echo "   Режим:      Docker"
     echo "   Бинарник:   /usr/local/bin/wstt"
     echo "   Конфиг:     ${WSTT_CONFIG_DIR}"
@@ -2432,7 +2432,7 @@ start_wstt() {
     echo ""
     echo "══════════════════════════════════════════════════════════════"
     echo "✓ Деплой успешно завершён"
-    echo "CSQTT_DEPLOY_OK"
+    echo "WSTT_DEPLOY_OK"
     echo "   Режим: systemd"
     echo "   Бинарник: /usr/local/bin/wstt"
     echo "   Unit: /etc/systemd/system/wstt.service"
@@ -2486,7 +2486,7 @@ do_uninstall() {
     secure_persistent_state
     rm -f "$WSTT_SYSCTL_FILE" "$WSTT_UDP_SYSCTL_FILE"
     # Do not reload the entire host sysctl configuration or turn forwarding off:
-    # the original CSQTT instance may still depend on the shared forwarding state.
+    # the pre-existing tunnel instance may still depend on the shared forwarding state.
 
     log_info "WSTT удалён. SQLite state и конфигурация сохранены в ${WSTT_CONFIG_DIR}"
 }
@@ -2522,7 +2522,7 @@ handle_unexpected_error() {
     local line="$1" status="$2"
     trap - ERR
     log_error "Неперехваченная ошибка deploy.sh (строка $line, exit=$status)"
-    printf 'CSQTT_DEPLOY_ERROR|%s|Неперехваченная ошибка deploy.sh (строка %s, exit=%s)\n' "$DEPLOY_PHASE" "$line" "$status"
+    printf 'WSTT_DEPLOY_ERROR|%s|Неперехваченная ошибка deploy.sh (строка %s, exit=%s)\n' "$DEPLOY_PHASE" "$line" "$status"
     cleanup_deploy_uploads
     case "$DEPLOY_PHASE" in
         validation) exit "$EXIT_INVALID_ARGUMENT" ;;
