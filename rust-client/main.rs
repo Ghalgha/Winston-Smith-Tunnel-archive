@@ -359,6 +359,8 @@ async fn run(arguments: Arguments) -> Result<i32> {
     let initial_workers = workers;
     let scale_notify = Arc::new(tokio::sync::Notify::new());
     let params_workers = Arc::new(AtomicUsize::new(initial_workers));
+    let desired_workers = Arc::new(AtomicUsize::new(initial_workers));
+    let worker_ceiling = Arc::new(AtomicUsize::new(configured_workers));
     let params = Arc::new(RuntimeParams {
         peer,
         turn_host: (!arguments.turn.is_empty()).then(|| Arc::from(arguments.turn.as_str())),
@@ -375,6 +377,8 @@ async fn run(arguments: Arguments) -> Result<i32> {
         local_port: local_port.clone(),
         password: Arc::from(password.as_str()),
         workers: params_workers.clone(),
+        desired_workers: desired_workers.clone(),
+        worker_ceiling: worker_ceiling.clone(),
         configured_workers,
     });
     print_configuration(
@@ -442,7 +446,9 @@ async fn run(arguments: Arguments) -> Result<i32> {
         dispatcher.clone(),
         stdin,
         params_workers,
+        desired_workers,
         scale_notify,
+        worker_ceiling,
         configured_workers,
     );
     let required_ready_bots = required_js_ready_bots(groups);
@@ -758,8 +764,10 @@ fn start_control_input(
     dispatcher: Arc<Dispatcher>,
     mut stdin: tokio::sync::mpsc::Receiver<StdinLine>,
     worker_count: Arc<AtomicUsize>,
+    desired_workers: Arc<AtomicUsize>,
     scale_notify: Arc<tokio::sync::Notify>,
-    worker_ceiling: usize,
+    worker_ceiling: Arc<AtomicUsize>,
+    configured_workers: usize,
 ) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
         let control_required = events.enabled();
@@ -812,7 +820,10 @@ fn start_control_input(
                     } else if let Some(raw_count) = line.strip_prefix("SET_WORKERS|") {
                         match raw_count.parse::<usize>() {
                             Ok(requested) => {
-                                let target = normalize_worker_count(requested).min(worker_ceiling);
+                                let desired = normalize_worker_count(requested).min(configured_workers);
+                                desired_workers.store(desired, Ordering::Release);
+                                let ceiling = worker_ceiling.load(Ordering::Acquire).max(1);
+                                let target = desired.min(ceiling);
                                 let previous = worker_count.swap(target, Ordering::AcqRel);
                                 if previous != target {
                                     scale_notify.notify_waiters();

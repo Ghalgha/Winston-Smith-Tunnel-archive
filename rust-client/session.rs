@@ -110,6 +110,8 @@ pub struct SessionRuntime {
     pub allocation_ready: Option<oneshot::Sender<()>>,
     pub scale_notify: Option<Arc<tokio::sync::Notify>>,
     pub target_workers: Option<Arc<AtomicUsize>>,
+    pub desired_workers: Option<Arc<AtomicUsize>>,
+    pub worker_ceiling: Option<Arc<AtomicUsize>>,
     pub configured_workers: usize,
 }
 
@@ -127,12 +129,21 @@ fn build_registration_payload(config: &SessionConfig) -> Bytes {
 fn apply_workers_limit(
     agreed: usize,
     target_workers: Option<&Arc<AtomicUsize>>,
+    desired_workers: Option<&Arc<AtomicUsize>>,
+    worker_ceiling: Option<&Arc<AtomicUsize>>,
     scale_notify: Option<&Arc<tokio::sync::Notify>>,
 ) {
     let effective = agreed.max(1);
+    if let Some(ceiling) = worker_ceiling {
+        ceiling.store(effective, Ordering::Release);
+    }
     if let Some(target) = target_workers {
-        let prev = target.swap(effective, Ordering::AcqRel);
-        if prev != effective
+        let desired = desired_workers
+            .map(|workers| workers.load(Ordering::Acquire))
+            .unwrap_or_else(|| target.load(Ordering::Acquire));
+        let next = desired.min(effective);
+        let previous = target.swap(next, Ordering::AcqRel);
+        if previous != next
             && let Some(notify) = scale_notify
         {
             notify.notify_waiters();
@@ -306,6 +317,8 @@ struct ReaderRuntime {
     routing_reassembler: RoutingReassembler,
     scale_notify: Option<Arc<tokio::sync::Notify>>,
     target_workers: Option<Arc<AtomicUsize>>,
+    desired_workers: Option<Arc<AtomicUsize>>,
+    worker_ceiling: Option<Arc<AtomicUsize>>,
     configured_workers: usize,
 }
 
@@ -1102,6 +1115,8 @@ async fn run_allocated_session(
         WorkerScale {
             notify: runtime.scale_notify.as_ref(),
             target: runtime.target_workers.as_ref(),
+            desired: runtime.desired_workers.as_ref(),
+            ceiling: runtime.worker_ceiling.as_ref(),
             configured: runtime.configured_workers,
         },
     )
@@ -1169,6 +1184,8 @@ async fn run_allocated_session(
             routing_reassembler,
             scale_notify: runtime.scale_notify.clone(),
             target_workers: runtime.target_workers.clone(),
+            desired_workers: runtime.desired_workers.clone(),
+            worker_ceiling: runtime.worker_ceiling.clone(),
             configured_workers: runtime.configured_workers,
         },
         session_cancel.clone(),
@@ -1245,6 +1262,8 @@ async fn stop_session_tasks(
 struct WorkerScale<'a> {
     notify: Option<&'a Arc<tokio::sync::Notify>>,
     target: Option<&'a Arc<AtomicUsize>>,
+    desired: Option<&'a Arc<AtomicUsize>>,
+    ceiling: Option<&'a Arc<AtomicUsize>>,
     configured: usize,
 }
 
@@ -1309,7 +1328,7 @@ async fn request_configuration(
                                 server_limit
                             );
                             events.workers(server_limit as u32);
-                            apply_workers_limit(agreed, scale.target, scale.notify);
+                            apply_workers_limit(agreed, scale.target, scale.desired, scale.ceiling, scale.notify);
                         }
                         continue;
                     }
@@ -1334,7 +1353,7 @@ async fn request_configuration(
                                 config.server_stream_repair.store(true, Ordering::Release);
                             }
                             if let Some(agreed) = parse_workers_from_tunconf(&value) {
-                                apply_workers_limit(agreed, scale.target, scale.notify);
+                                apply_workers_limit(agreed, scale.target, scale.desired, scale.ceiling, scale.notify);
                             }
                             if let Some(sender) = &config_tx {
                                 let _ = sender.try_send(value);
@@ -1448,6 +1467,8 @@ async fn reader_loop(
         mut routing_reassembler,
         scale_notify,
         target_workers,
+        desired_workers,
+        worker_ceiling,
         configured_workers,
     } = runtime;
     let mut dropped_non_ip = 0u64;
@@ -1491,7 +1512,7 @@ async fn reader_loop(
         if packet.as_slice().starts_with(b"TUNCONF:") {
             if let Ok(ConfigResponse::Config(config)) = parse_config_response(packet.as_slice()) {
                 if let Some(agreed) = parse_workers_from_tunconf(&config) {
-                    apply_workers_limit(agreed, target_workers.as_ref(), scale_notify.as_ref());
+                    apply_workers_limit(agreed, target_workers.as_ref(), desired_workers.as_ref(), worker_ceiling.as_ref(), scale_notify.as_ref());
                 }
                 let _ = config_tx.try_send(config);
             }
@@ -1515,7 +1536,7 @@ async fn reader_loop(
                     server_limit
                 );
                 events.workers(server_limit as u32);
-                apply_workers_limit(agreed, target_workers.as_ref(), scale_notify.as_ref());
+                apply_workers_limit(agreed, target_workers.as_ref(), desired_workers.as_ref(), worker_ceiling.as_ref(), scale_notify.as_ref());
             }
             continue;
         }
@@ -2388,4 +2409,41 @@ mod tests {
             _ => panic!("expected Config"),
         }
     }
+    #[test]
+    fn server_worker_limit_does_not_override_a_lower_local_target() {
+        let target = Arc::new(AtomicUsize::new(5));
+        let desired = Arc::new(AtomicUsize::new(5));
+        let ceiling = Arc::new(AtomicUsize::new(18));
+
+        apply_workers_limit(18, Some(&target), Some(&desired), Some(&ceiling), None);
+
+        assert_eq!(target.load(Ordering::Acquire), 5);
+        assert_eq!(ceiling.load(Ordering::Acquire), 18);
+    }
+
+    #[test]
+    fn server_worker_limit_caps_target_but_preserves_requested_count() {
+        let target = Arc::new(AtomicUsize::new(18));
+        let desired = Arc::new(AtomicUsize::new(18));
+        let ceiling = Arc::new(AtomicUsize::new(18));
+
+        apply_workers_limit(8, Some(&target), Some(&desired), Some(&ceiling), None);
+
+        assert_eq!(target.load(Ordering::Acquire), 8);
+        assert_eq!(desired.load(Ordering::Acquire), 18);
+        assert_eq!(ceiling.load(Ordering::Acquire), 8);
+    }
+
+    #[test]
+    fn a_later_server_limit_increase_restores_the_requested_target() {
+        let target = Arc::new(AtomicUsize::new(8));
+        let desired = Arc::new(AtomicUsize::new(18));
+        let ceiling = Arc::new(AtomicUsize::new(8));
+
+        apply_workers_limit(18, Some(&target), Some(&desired), Some(&ceiling), None);
+
+        assert_eq!(target.load(Ordering::Acquire), 18);
+        assert_eq!(ceiling.load(Ordering::Acquire), 18);
+    }
+
 }

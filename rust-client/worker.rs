@@ -114,6 +114,8 @@ pub struct RuntimeParams {
     pub local_port: Arc<str>,
     pub password: Arc<str>,
     pub workers: Arc<AtomicUsize>,
+    pub desired_workers: Arc<AtomicUsize>,
+    pub worker_ceiling: Arc<AtomicUsize>,
     pub configured_workers: usize,
 }
 
@@ -875,6 +877,8 @@ async fn worker_loop(
                 allocation_ready: Some(allocation_tx),
                 scale_notify: Some(context.scale_notify.clone()),
                 target_workers: Some(context.params.workers.clone()),
+                desired_workers: Some(context.params.desired_workers.clone()),
+                worker_ceiling: Some(context.params.worker_ceiling.clone()),
                 configured_workers: context.params.configured_workers,
             },
         ));
