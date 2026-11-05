@@ -131,24 +131,45 @@ function Get-BuildInputHash {
     }
     $trackedSet = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     foreach ($trackedPath in $trackedPaths) {
-        [void]$trackedSet.Add(([string]$trackedPath).Replace("\\", "/"))
+        [void]$trackedSet.Add([string]$trackedPath)
     }
 
-    $untrackedInputs = @(
-        Get-ChildItem -LiteralPath (Join-Path $projectRoot "rust-server") -Recurse -Force -File |
-            Where-Object {
-                $relativePath = $_.FullName.Substring($projectRoot.TrimEnd([char[]]@("\\", "/")).Length + 1).Replace("\\", "/")
-                $relativePath -notmatch '^rust-server/(build|target|dist)/' -and
-                    -not $trackedSet.Contains($relativePath)
-            } |
-            ForEach-Object {
-                $_.FullName.Substring($projectRoot.TrimEnd([char[]]@("\\", "/")).Length + 1).Replace("\\", "/")
+    $rootPrefix = $projectRoot.TrimEnd([char[]]@([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)) +
+        [IO.Path]::DirectorySeparatorChar
+    $untrackedInputs = [System.Collections.Generic.List[string]]::new()
+    $pendingDirectories = [System.Collections.Generic.Stack[string]]::new()
+    $pendingDirectories.Push((Join-Path $projectRoot "rust-server"))
+    while ($pendingDirectories.Count -gt 0) {
+        $directory = $pendingDirectories.Pop()
+        foreach ($entry in Get-ChildItem -LiteralPath $directory -Force) {
+            $relativePath = $entry.FullName.Substring($rootPrefix.Length)
+            $relativePath = $relativePath.Replace([IO.Path]::DirectorySeparatorChar, "/")
+                .Replace([IO.Path]::AltDirectorySeparatorChar, "/")
+
+            if ($entry.PSIsContainer) {
+                if (($entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+                    if (-not $trackedSet.Contains($relativePath)) {
+                        $untrackedInputs.Add($relativePath)
+                    }
+                    continue
+                }
+                if ($relativePath -match '^rust-server/(build|target|dist)$' -or $entry.Name -eq ".git") {
+                    continue
+                }
+                $pendingDirectories.Push($entry.FullName)
+                continue
             }
-    )
+
+            if (-not $trackedSet.Contains($relativePath)) {
+                $untrackedInputs.Add($relativePath)
+            }
+        }
+    }
+
     foreach ($singleFile in @("shared/wire_protocol.rs", "scripts/server_asset_provenance.ps1")) {
-        $fullPath = Join-Path $projectRoot ($singleFile.Replace("/", "\\"))
+        $fullPath = Join-Path $projectRoot ($singleFile.Replace("/", [IO.Path]::DirectorySeparatorChar))
         if ((Test-Path -LiteralPath $fullPath -PathType Leaf) -and -not $trackedSet.Contains($singleFile)) {
-            $untrackedInputs += $singleFile
+            $untrackedInputs.Add($singleFile)
         }
     }
     if ($untrackedInputs.Count -gt 0) {
