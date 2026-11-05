@@ -708,7 +708,7 @@ pub fn derive_wrap_key(password: &str) -> Result<[u8; 32]> {
     if password.is_empty() {
         bail!("empty password");
     }
-    let hk = Hkdf::<Sha256>::new(Some(b"CSQTT-WRAP-v1"), password.as_bytes());
+    let hk = Hkdf::<Sha256>::new(Some(b"\x43\x53\x51\x54\x54-WRAP-v1"), password.as_bytes());
     let mut key = [0u8; 32];
     hk.expand(b"rtp-obfs/chacha20poly1305", &mut key)
         .map_err(|_| anyhow::anyhow!("HKDF expansion failed"))?;
@@ -1801,7 +1801,7 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
-        let directory = std::env::temp_dir().join(format!("csqtt-dns-test-{unique}"));
+        let directory = std::env::temp_dir().join(format!("wstt-dns-test-{unique}"));
         let database = Database {
             dns: "9.9.9.9,149.112.112.112".to_owned(),
             dns_provider: "custom".to_owned(),
@@ -1822,7 +1822,7 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
-        let directory = std::env::temp_dir().join(format!("csqtt-vk-token-test-{unique}"));
+        let directory = std::env::temp_dir().join(format!("wstt-vk-token-test-{unique}"));
         let mut database = Database {
             vk_access_token: "vk1.shared-token".to_owned(),
             ..Database::default()
@@ -1849,7 +1849,7 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
-        let directory = std::env::temp_dir().join(format!("csqtt-auto-restart-test-{unique}"));
+        let directory = std::env::temp_dir().join(format!("wstt-auto-restart-test-{unique}"));
 
         let database = Database::default();
         assert_eq!(database.auto_restart_interval_hours(), 0);
@@ -1879,7 +1879,7 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
-        let directory = std::env::temp_dir().join(format!("csqtt-json-import-test-{unique}"));
+        let directory = std::env::temp_dir().join(format!("wstt-json-import-test-{unique}"));
         std::fs::create_dir_all(&directory).unwrap();
         let mut legacy = Database {
             main_password: "legacy-main-pass".to_owned(),
@@ -1921,7 +1921,7 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
-        let directory = std::env::temp_dir().join(format!("csqtt-json-full-import-{unique}"));
+        let directory = std::env::temp_dir().join(format!("wstt-json-full-import-{unique}"));
         std::fs::create_dir_all(&directory).unwrap();
 
         let mut legacy = Database {
@@ -1996,7 +1996,7 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
-        let directory = std::env::temp_dir().join(format!("csqtt-binding-repair-{unique}"));
+        let directory = std::env::temp_dir().join(format!("wstt-binding-repair-{unique}"));
         let mut database = Database {
             main_password: "short".to_owned(),
             ..Database::default()
@@ -2028,7 +2028,7 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
-        let directory = std::env::temp_dir().join(format!("csqtt-json-merge-test-{unique}"));
+        let directory = std::env::temp_dir().join(format!("wstt-json-merge-test-{unique}"));
         let mut sqlite = Database {
             main_password: "sqlite-main-16ch".to_owned(),
             main_up_bytes: 50,
@@ -2085,7 +2085,7 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
-        let directory = std::env::temp_dir().join(format!("csqtt-json-password-conflict-{unique}"));
+        let directory = std::env::temp_dir().join(format!("wstt-json-password-conflict-{unique}"));
         let mut sqlite = Database::default();
         sqlite.passwords.insert(
             "shared-password-".to_owned(),
@@ -2173,7 +2173,7 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
-        let directory = std::env::temp_dir().join(format!("csqtt-persistence-test-{unique}"));
+        let directory = std::env::temp_dir().join(format!("wstt-persistence-test-{unique}"));
         let persistence = DatabasePersistence::new(directory.clone()).unwrap();
         let mut final_revision = 0;
         for mutation in 1..=512 {
@@ -2194,7 +2194,7 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
-        let directory = std::env::temp_dir().join(format!("csqtt-traffic-test-{unique}"));
+        let directory = std::env::temp_dir().join(format!("wstt-traffic-test-{unique}"));
         let mut database = Database {
             main_up_bytes: 1,
             main_down_bytes: 2,
@@ -2246,7 +2246,7 @@ mod tests {
             .unwrap_or_default()
             .as_nanos();
         let directory =
-            std::env::temp_dir().join(format!("csqtt-persistence-stress-test-{unique}"));
+            std::env::temp_dir().join(format!("wstt-persistence-stress-test-{unique}"));
         let persistence = DatabasePersistence::new(directory.clone()).unwrap();
         let database = std::sync::Arc::new(tokio::sync::Mutex::new(Database::default()));
         let final_revision = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
@@ -2280,7 +2280,7 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
-        let directory = std::env::temp_dir().join(format!("csqtt-group-vk-test-{unique}"));
+        let directory = std::env::temp_dir().join(format!("wstt-group-vk-test-{unique}"));
         let persistence = DatabasePersistence::new(directory.clone()).unwrap();
         let mut db = Database::default();
         let group_id = "group-123".to_string();
@@ -2413,7 +2413,7 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
-        let directory = std::env::temp_dir().join(format!("csqtt-pass-ip-test-{unique}"));
+        let directory = std::env::temp_dir().join(format!("wstt-pass-ip-test-{unique}"));
         let persistence = super::DatabasePersistence::new(directory.clone()).unwrap();
         let mut db = super::Database {
             main_password: "owner12345678901".to_string(),
@@ -2446,7 +2446,7 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
-        let directory = std::env::temp_dir().join(format!("csqtt-vladilets-test-{unique}"));
+        let directory = std::env::temp_dir().join(format!("wstt-vladilets-test-{unique}"));
         std::fs::create_dir_all(&directory).unwrap();
 
         let conn = rusqlite::Connection::open(directory.join("wstt.db")).unwrap();
@@ -2500,7 +2500,7 @@ mod coexistence_tests {
     use super::{DEFAULT_LOCAL_PROXY_PORT, Database, OWNER_TUNNEL_IP, get_next_ip};
 
     #[test]
-    fn wstt_client_ip_pool_is_disjoint_from_csqtt() {
+    fn wstt_client_ip_pool_is_disjoint_from_legacy_pool() {
         assert_eq!(OWNER_TUNNEL_IP, "10.67.68.2");
         assert_eq!(DEFAULT_LOCAL_PROXY_PORT, 45100);
         assert_ne!(DEFAULT_LOCAL_PROXY_PORT, 45000);
