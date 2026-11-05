@@ -22,7 +22,7 @@ $cargoTomlPath = Join-Path $projectRoot "rust-server\Cargo.toml"
 $cargoLockPath = Join-Path $projectRoot "rust-server\Cargo.lock"
 $wireProtocolPath = Join-Path $projectRoot "shared\wire_protocol.rs"
 $wireProtocolRevisionPath = Join-Path $projectRoot "rust-server\main.rs"
-$schema = "wstt.server-asset-provenance.v2"
+$schema = "wstt.server-asset-provenance.v3"
 $marker = "WSTT_RUST_SERVER_PRODUCTION_V1"
 $assetSpecs = @(
     [pscustomobject]@{ AssetName = "wstt-linux-amd64"; Target = "x86_64-unknown-linux-musl"; ElfClass = 2; ElfMachine = 62 },
@@ -96,33 +96,41 @@ function Get-WireProtocolRevision {
     return $match.Groups[1].Value
 }
 
-function Get-BuildInputHash {
-    $files = @(
-        (Join-Path $projectRoot "rust-server\build_linux.bat"),
-        (Join-Path $projectRoot "rust-server\build_linux.sh"),
-        $cargoTomlPath,
-        $cargoLockPath,
-        $wireProtocolPath,
-        $PSCommandPath
-    )
-    $files += Get-ChildItem -LiteralPath (Join-Path $projectRoot "rust-server") -File -Filter *.rs |
-        ForEach-Object { $_.FullName }
-    $rootPrefix = $projectRoot.TrimEnd([char[]]@('\', '/')) + [IO.Path]::DirectorySeparatorChar
-    $builder = New-Object Text.StringBuilder
-    foreach ($file in @($files | Sort-Object -Unique)) {
-        Assert-RegularFile -Path $file -Label "Server build input"
-        $fullPath = [IO.Path]::GetFullPath($file)
-        if (-not $fullPath.StartsWith($rootPrefix, [StringComparison]::OrdinalIgnoreCase)) {
-            throw "Server build input escaped project root: $fullPath"
-        }
-        [void]$builder.Append($fullPath.Substring($rootPrefix.Length).Replace("\", "/"))
-        [void]$builder.Append(":")
-        [void]$builder.Append((Get-Sha256 -Path $fullPath))
-        [void]$builder.Append("`n")
+function Get-GitText {
+    param([string[]]$Arguments)
+
+    $output = & git -C $projectRoot @Arguments
+    if ($LASTEXITCODE -ne 0) {
+        throw "Git command failed: git $($Arguments -join ' ')"
     }
+    return (@($output) -join "`n").Trim()
+}
+
+function Get-SourceCommit {
+    return Get-GitText -Arguments @("rev-parse", "HEAD")
+}
+
+function Get-BuildInputHash {
+    $paths = @(
+        "rust-server",
+        "shared/wire_protocol.rs",
+        "scripts/server_asset_provenance.ps1"
+    )
+
+    & git -C $projectRoot diff --quiet HEAD -- @paths
+    if ($LASTEXITCODE -ne 0) {
+        throw "Tracked Rust server build inputs are modified in the working tree"
+    }
+
+    $tree = Get-GitText -Arguments (@("ls-tree", "-r", "--full-tree", "HEAD", "--") + $paths)
+    if ([string]::IsNullOrWhiteSpace($tree)) {
+        throw "Git returned an empty Rust server build-input tree"
+    }
+
     $hash = [Security.Cryptography.SHA256]::Create()
     try {
-        return ([BitConverter]::ToString($hash.ComputeHash([Text.Encoding]::UTF8.GetBytes($builder.ToString())))).Replace("-", "")
+        $bytes = [Text.Encoding]::UTF8.GetBytes($tree + "`n")
+        return ([BitConverter]::ToString($hash.ComputeHash($bytes))).Replace("-", "")
     }
     finally {
         $hash.Dispose()
@@ -161,6 +169,7 @@ function Assert-ServerBinary {
 
 $package = Get-CargoPackage
 $revision = Get-WireProtocolRevision
+$sourceCommit = Get-SourceCommit
 $buildInputHash = Get-BuildInputHash
 
 if ($Mode -eq "Write") {
@@ -174,6 +183,7 @@ if ($Mode -eq "Write") {
         package = $package.Name
         version = $package.Version
         wireProtocolRevision = $revision
+        sourceCommit = $sourceCommit
         buildInputSha256 = $buildInputHash
         cargoTomlSha256 = Get-Sha256 -Path $cargoTomlPath
         cargoLockSha256 = Get-Sha256 -Path $cargoLockPath
@@ -206,7 +216,8 @@ if ($manifest.package -ne $package.Name -or
     $manifest.wireProtocolRevision -ne $revision) {
     throw "Rust server package or wire protocol identity changed after build"
 }
-if ($manifest.cargoTomlSha256 -ne (Get-Sha256 -Path $cargoTomlPath) -or
+if ($manifest.sourceCommit -ne $sourceCommit -or
+    $manifest.cargoTomlSha256 -ne (Get-Sha256 -Path $cargoTomlPath) -or
     $manifest.cargoLockSha256 -ne (Get-Sha256 -Path $cargoLockPath) -or
     $manifest.buildInputSha256 -ne $buildInputHash) {
     throw "Rust server source changed after the production asset build"
