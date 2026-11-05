@@ -134,6 +134,7 @@ build_variant() {
   WSTT_ZIG_TARGET="$zig_target" \
     ZIG_GLOBAL_CACHE_DIR="$ROOT/build/zig-cache/$asset/global" \
     ZIG_LOCAL_CACHE_DIR="$ROOT/build/zig-cache/$asset/local" \
+    CARGO_ZIGBUILD_CACHE_DIR="$ROOT/build/cargo-zigbuild-cache/$asset" \
     CARGO_TARGET_DIR="$target_dir" \
     CARGO_BUILD_JOBS="$BUILD_JOBS_PER_TARGET" \
     cargo +1.97.1 zigbuild --locked --release --target "$target" "${FEATURE_ARGS[@]}"
