@@ -19,11 +19,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up Rust 1.97.1
         run: rustup toolchain install 1.97.1 --profile minimal
       - name: Cache Rust client test dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry
@@ -39,22 +39,36 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Cache build tools and Rust dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             ~/.cargo/bin
-          key: android-build-${{ runner.os }}-rust-1.97.1-${{ hashFiles('rust-server/Cargo.lock') }}
+            ~/.cache/zig-0.15.2
+          key: android-build-${{ runner.os }}-rust-1.97.1-zig-0.15.2-${{ hashFiles('rust-server/Cargo.lock') }}
           restore-keys: |
             android-build-${{ runner.os }}-rust-1.97.1-
       - name: Verify PowerShell for provenance checks
         run: pwsh --version
-      - uses: mlugg/setup-zig@v2
-        with:
-          version: 0.15.2
+      - name: Install Zig 0.15.2 (checksum verified)
+        run: |
+          set -euo pipefail
+          ZIG_VERSION=0.15.2
+          ZIG_HOME="$HOME/.cache/zig-${ZIG_VERSION}"
+          if [ ! -x "$ZIG_HOME/zig" ]; then
+            ARCHIVE="$RUNNER_TEMP/zig-x86_64-linux-${ZIG_VERSION}.tar.xz"
+            mkdir -p "$ZIG_HOME"
+            curl --fail --location --retry 3 \
+              "https://ziglang.org/download/${ZIG_VERSION}/zig-x86_64-linux-${ZIG_VERSION}.tar.xz" \
+              --output "$ARCHIVE"
+            echo "02aa270f183da276e5b5920b1dac44a63f1a49e55050ebde3aecc9eb82f93239  $ARCHIVE" | sha256sum --check
+            tar -xJf "$ARCHIVE" --strip-components=1 -C "$ZIG_HOME"
+          fi
+          echo "$ZIG_HOME" >> "$GITHUB_PATH"
+          "$ZIG_HOME/zig" version
       - name: Set up Rust toolchain and all required targets once
         run: |
           rustup toolchain install 1.97.1 --profile minimal --component rustfmt --component clippy
@@ -137,7 +151,7 @@ jobs:
             test -s "app/src/main/assets/$asset"
           done
       - name: Upload verified Linux server assets
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: wstt-linux-server-assets-${{ github.sha }}
           path: |
@@ -152,9 +166,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Cache Android native Rust dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry
@@ -170,7 +184,7 @@ jobs:
           rustup default 1.97.1
           rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
           echo "WSTT_RUST_TOOLCHAIN_READY=1" >> "$GITHUB_ENV"
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v4
         with:
           packages: platform-tools
       - name: Install Android NDK
@@ -180,7 +194,7 @@ jobs:
           chmod +x scripts/build_android_native.sh
           scripts/build_android_native.sh
       - name: Upload verified Android native libraries
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: wstt-android-native-${{ github.sha }}
           path: |
@@ -194,14 +208,14 @@ jobs:
     timeout-minutes: 30
     needs: [linux-server, android-native]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Download verified Linux server assets
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: wstt-linux-server-assets-${{ github.sha }}
           path: app/src/main/assets
       - name: Download verified Android native libraries
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: wstt-android-native-${{ github.sha }}
           path: app/src/main
@@ -215,11 +229,11 @@ jobs:
           for abi in arm64-v8a armeabi-v7a x86_64; do
             test -s "app/src/main/jniLibs/$abi/libclient.so"
           done
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v4
         with:
           packages: platform-tools
       - name: Install Android platform and build tools
@@ -230,7 +244,7 @@ jobs:
             ln -s android-37.0 "$SDK_ROOT/platforms/android-37"
           fi
           test -d "$SDK_ROOT/platforms/android-37"
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
       - name: Build debug APK and run Android unit tests
         run: |
           chmod +x ./gradlew
@@ -248,7 +262,7 @@ jobs:
               exit 1
             fi
           done
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: WSTT-${{ github.sha }}-CI-debug
           path: app/build/outputs/apk/debug/*.apk
