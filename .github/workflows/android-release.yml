@@ -85,7 +85,7 @@ jobs:
           cargo install cargo-zigbuild --locked
           chmod +x rust-server/build_linux.sh
           rust-server/build_linux.sh --tests
-          for asset in csqtt-linux-amd64 csqtt-linux-arm64 csqtt-linux-armv7; do
+          for asset in wstt-linux-amd64 wstt-linux-arm64 wstt-linux-armv7; do
             test -s "app/src/main/assets/$asset"
           done
       - name: Run Android unit tests
