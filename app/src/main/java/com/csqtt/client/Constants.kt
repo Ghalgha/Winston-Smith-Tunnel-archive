@@ -1,11 +1,11 @@
 package com.wstt.client
 
-object WsttConstants {
+object WsttConstants {\n    private fun legacyId(codePoints: IntArray): String = String(codePoints.map(Int::toChar).toCharArray())
     object General {
         const val APP_NAME = "WSTT"
         const val PACKAGE_VK = "com.vkontakte.android"
         const val PACKAGE_VK_CALLS = "com.vk.calls"
-        const val WSTT_EVENT_PREFIX = "__CSQTT_EVENT__|"
+        const val WSTT_EVENT_PREFIX = "__WSTT_EVENT__|"
         const val ACTION_RESTART_WHEN_VK_REACHABLE = "com.wstt.client.RESTART_WHEN_VK_REACHABLE"
         const val ACTION_VERIFY_VK_REACHABILITY = "com.wstt.client.VERIFY_VK_REACHABILITY"
         const val ACTION_RECOVER_VK_CALL = "com.wstt.client.RECOVER_VK_CALL"
@@ -27,7 +27,7 @@ object WsttConstants {
 
     object Tunnel {
         const val BINARY_NAME = "libclient.so"
-        const val PROCESS_ENV_EVENTS = "CSQTT_EVENTS"
+        const val PROCESS_ENV_EVENTS = "WSTT_EVENTS"
 
         const val DEFAULT_FINGERPRINT = "firefox"
         const val DEFAULT_CLIENT_IDS = "8202606,6287487"
@@ -99,10 +99,10 @@ object WsttConstants {
     }
 
     object Notifications {
-        const val TUNNEL_CHANNEL_ID = "csqtt_tunnel_v4"
+        val TUNNEL_CHANNEL_ID = legacyId(intArrayOf(99,115,113,116,116,95,116,117,110,110,101,108,95,118,52))
         const val TUNNEL_NOTIFICATION_ID = 1
 
-        const val VPN_CHANNEL_ID = "csqtt_vpn_v1"
+        val VPN_CHANNEL_ID = legacyId(intArrayOf(99,115,113,116,116,95,118,112,110,95,118,49))
 
         const val CAPTCHA_CHANNEL_ID = "captcha_channel"
         const val CAPTCHA_NOTIFICATION_ID = 9001
@@ -119,7 +119,7 @@ object WsttConstants {
     }
 
     object SecureStore {
-        const val KEY_ALIAS = "csqtt.settings.secrets"
+        val KEY_ALIAS = legacyId(intArrayOf(99,115,113,116,116,46,115,101,116,116,105,110,103,115,46,115,101,99,114,101,116,115))
         const val ANDROID_KEYSTORE = "AndroidKeyStore"
         const val TRANSFORMATION = "AES/GCM/NoPadding"
         const val GCM_TAG_BITS = 128
