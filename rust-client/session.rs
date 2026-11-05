@@ -1595,7 +1595,7 @@ async fn reader_loop(
         if is_control_response(packet.as_slice()) {
             continue;
         }
-        if packet.as_slice().first().copied() == Some(crate::wire_protocol::CSQTT_FRAG_MAGIC) {
+        if packet.as_slice().first().copied() == Some(crate::wire_protocol::WSTT_FRAG_MAGIC) {
             dispatcher.handle_incoming_fragment(packet.as_slice());
             continue;
         }
@@ -2084,16 +2084,16 @@ mod tests {
     #[test]
     #[ignore = "explicit deterministic stability soak"]
     fn deterministic_replay_chaos_soak() {
-        let seconds = std::env::var("CSQTT_SOAK_SECONDS")
+        let seconds = std::env::var("WSTT_SOAK_SECONDS")
             .ok()
             .and_then(|value| value.parse::<u64>().ok())
             .unwrap_or(120)
             .max(1);
-        let first_seed = std::env::var("CSQTT_SOAK_SEED")
+        let first_seed = std::env::var("WSTT_SOAK_SEED")
             .ok()
             .and_then(|value| value.parse::<u64>().ok())
             .unwrap_or(0);
-        let counters_per_seed = std::env::var("CSQTT_REPLAY_SOAK_COUNTERS")
+        let counters_per_seed = std::env::var("WSTT_REPLAY_SOAK_COUNTERS")
             .ok()
             .and_then(|value| value.parse::<usize>().ok())
             .unwrap_or(4_096)
