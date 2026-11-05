@@ -81,6 +81,8 @@ struct SettingsRequest {
     #[serde(default)]
     dns_provider: Option<String>,
     #[serde(default)]
+    dns_value: Option<String>,
+    #[serde(default)]
     dns_primary: Option<String>,
     #[serde(default)]
     dns_secondary: Option<String>,
@@ -191,6 +193,17 @@ fn provider_dns(provider: DnsProvider) -> String {
 
 pub(crate) fn provider_dns_by_id(id: &str) -> Option<String> {
     dns_provider_by_id(id).map(provider_dns)
+}
+
+fn manual_dns_combined(value: &str) -> Result<String, &'static str> {
+    let addresses: Vec<&str> = value.split(',').map(str::trim).collect();
+    if addresses.is_empty()
+        || addresses.len() > 2
+        || addresses.iter().any(|address| address.is_empty())
+    {
+        return Err("enter one or two IPv4 DNS addresses separated by a comma");
+    }
+    manual_dns(Some(addresses[0]), addresses.get(1).copied())
 }
 
 fn manual_dns(primary: Option<&str>, secondary: Option<&str>) -> Result<String, &'static str> {
@@ -1294,6 +1307,7 @@ async fn settings_get(State(state): State<WebState>) -> impl IntoResponse {
     Json(serde_json::json!({
         "main_password": db.main_password,
         "dns_provider": provider,
+        "dns_value": dns,
         "dns_primary": primary,
         "dns_secondary": secondary,
         "auto_restart_interval_hours": db.auto_restart_interval_hours(),
@@ -1319,6 +1333,15 @@ async fn settings_post(
             .into_response();
     }
     let dns = match request.dns_provider.as_deref() {
+        Some("custom") | None if request.dns_value.is_some() => {
+            match manual_dns_combined(request.dns_value.as_deref().unwrap_or_default()) {
+                Ok(dns) => {
+                    let provider = dns_provider_id(&dns).unwrap_or("custom").to_owned();
+                    Some((dns, provider))
+                }
+                Err(message) => return (StatusCode::BAD_REQUEST, message).into_response(),
+            }
+        }
         Some("custom") | None
             if request.dns_primary.is_some() || request.dns_secondary.is_some() =>
         {
@@ -2396,6 +2419,8 @@ struct ApiDnsRequest {
     #[serde(default)]
     dns_provider: Option<String>,
     #[serde(default)]
+    dns_value: Option<String>,
+    #[serde(default)]
     dns_primary: Option<String>,
     #[serde(default)]
     dns_secondary: Option<String>,
@@ -2406,6 +2431,15 @@ async fn api_settings_dns(
     Json(request): Json<ApiDnsRequest>,
 ) -> Response {
     let dns = match request.dns_provider.as_deref() {
+        Some("custom") | None if request.dns_value.is_some() => {
+            match manual_dns_combined(request.dns_value.as_deref().unwrap_or_default()) {
+                Ok(dns) => {
+                    let provider = dns_provider_id(&dns).unwrap_or("custom").to_owned();
+                    (dns, provider)
+                }
+                Err(message) => return (StatusCode::BAD_REQUEST, message).into_response(),
+            }
+        }
         Some("custom") | None
             if request.dns_primary.is_some() || request.dns_secondary.is_some() =>
         {
@@ -3388,8 +3422,10 @@ async fn api_clients_batch_toggle(
             None
         }
     };
-    if let Some(rev) = revision {
-        let _ = wait_for_persistence(&state, rev).await;
+    if let Some(rev) = revision
+        && let Err(response) = wait_for_persistence(&state, rev).await
+    {
+        return response;
     }
     for pwd in &passwords_to_disconnect {
         crate::protocol::drop_password_sessions(&state.app, pwd);
@@ -3439,8 +3475,10 @@ async fn api_clients_batch_extend(
             None
         }
     };
-    if let Some(rev) = revision {
-        let _ = wait_for_persistence(&state, rev).await;
+    if let Some(rev) = revision
+        && let Err(response) = wait_for_persistence(&state, rev).await
+    {
+        return response;
     }
     (
         StatusCode::OK,
@@ -3478,8 +3516,10 @@ async fn api_clients_batch_reset_traffic(
             None
         }
     };
-    if let Some(rev) = revision {
-        let _ = wait_for_persistence(&state, rev).await;
+    if let Some(rev) = revision
+        && let Err(response) = wait_for_persistence(&state, rev).await
+    {
+        return response;
     }
     for pwd in &req.passwords {
         for s in state.app.sessions.iter() {
@@ -3515,8 +3555,10 @@ async fn api_clients_batch_delete(
             None
         }
     };
-    if let Some(rev) = revision {
-        let _ = wait_for_persistence(&state, rev).await;
+    if let Some(rev) = revision
+        && let Err(response) = wait_for_persistence(&state, rev).await
+    {
+        return response;
     }
     for pwd in &req.passwords {
         crate::protocol::drop_password_sessions(&state.app, pwd);
@@ -3560,8 +3602,10 @@ async fn api_clients_batch_group(
             None
         }
     };
-    if let Some(rev) = revision {
-        let _ = wait_for_persistence(&state, rev).await;
+    if let Some(rev) = revision
+        && let Err(response) = wait_for_persistence(&state, rev).await
+    {
+        return response;
     }
     (
         StatusCode::OK,
@@ -7207,7 +7251,7 @@ const GROUP_ADMIN_HTML: &str = r##"<!DOCTYPE html>
                             <span class="client-card-value">${c.active_sessions || 0}</span>
                         </div>
                         ${c.sub_uuid ? `
-                        <button class="btn btn-ghost client-sub-btn" onclick="event.stopPropagation(); copyClientSubLink(${esc(JSON.stringify(c.sub_uuid))}, this)" title="Скопировать ссылку подписки">
+                        <button class="btn btn-ghost client-sub-btn" data-client-sub-uuid="${esc(c.sub_uuid)}" title="Скопировать ссылку подписки">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                             <span>Скопировать ссылку подписки</span>
                         </button>
@@ -8221,11 +8265,7 @@ const PANEL_HTML: &str = r##"
         @media (max-width: 1024px) { .settings-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
         @media (max-width: 600px) { .settings-grid { grid-template-columns: minmax(0, 1fr); } }
         .setting-card { padding: 24px; }
-        .dns-selection { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
-        .dns-selection.is-custom { grid-template-columns: minmax(0, 1fr); }
-        .dns-selection .dns-manual-input { display: none; }
-        .dns-selection.is-custom .dns-manual-input { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-        @media (max-width: 600px) { .dns-selection.is-custom .dns-manual-input { grid-template-columns: minmax(0, 1fr); } }
+        .dns-selection { display: block; }
         .settings-actions-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; }
         .settings-action-btn {
             width: 100%; min-width: 0; padding: 10px 8px; border: 0; background: transparent;
@@ -9286,25 +9326,24 @@ const PANEL_HTML: &str = r##"
                     </div>
                     <div class="glass-panel setting-card" style="display: flex; flex-direction: column; justify-content: space-between;">
                         <div class="input-group" style="margin-bottom: 0;">
-                            <label for="dns_provider">DNS Адреса</label>
-                            <div id="dns_selection" class="dns-selection">
-                            <select id="dns_provider">
-                                <option value="custom">Ручной DNS</option>
-                                <option value="yandex" selected>Yandex DNS</option>
-                                <option value="cloudflare">Cloudflare DNS</option>
-                                <option value="google">Google DNS</option>
-                                <option value="adguard">AdGuard DNS</option>
-                                <option value="xbox">Xbox DNS</option>
-                                <option value="comms">Comms DNS</option>
-                                <option value="geohide">Geohide DNS</option>
-                                <option value="quad9">Quad9 DNS</option>
-                                <option value="opendns">OpenDNS</option>
-                                <option value="rostelecom">Rostelecom DNS</option>
-                                <option value="nextdns">NextDNS</option>
-                                <option value="bizone">BI.ZONE DNS</option>
-                                <option value="nsdi">НСДИ DNS</option>
-                            </select>
-                            <div class="dns-manual-input"><input id="dns_primary" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="Основной IPv4 DNS" aria-label="Основной DNS"><input id="dns_secondary" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="Дополнительный IPv4 DNS (необязательно)" aria-label="Дополнительный DNS"></div>
+                            <label for="dns_manual">DNS Адреса</label>
+                            <div class="dns-selection">
+                                <input id="dns_manual" list="dns_presets" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="Выберите DNS или введите один-два IPv4 через запятую" aria-label="DNS-адреса">
+                                <datalist id="dns_presets">
+                                    <option value="77.88.8.8,77.88.8.1" label="Yandex DNS"></option>
+                                    <option value="1.1.1.1,1.0.0.1" label="Cloudflare DNS"></option>
+                                    <option value="8.8.8.8,8.8.4.4" label="Google DNS"></option>
+                                    <option value="94.140.14.14,94.140.15.14" label="AdGuard DNS"></option>
+                                    <option value="111.88.96.54,111.88.96.55" label="Xbox DNS"></option>
+                                    <option value="83.220.169.155,212.109.195.93" label="Comms DNS"></option>
+                                    <option value="193.233.112.67,193.233.112.88" label="Geohide DNS"></option>
+                                    <option value="9.9.9.9,149.112.112.112" label="Quad9 DNS"></option>
+                                    <option value="208.67.222.222,208.67.220.220" label="OpenDNS"></option>
+                                    <option value="95.189.32.74,195.208.5.1" label="Rostelecom DNS"></option>
+                                    <option value="45.90.28.181,45.90.30.181" label="NextDNS"></option>
+                                    <option value="195.208.6.1,195.208.7.1" label="BI.ZONE DNS"></option>
+                                    <option value="195.208.4.1,195.208.5.1" label="НСДИ DNS"></option>
+                                </datalist>
                             </div>
                         </div>
                         <button id="saveDnsBtn" class="btn btn-primary" style="width: 100%; margin-top: 22px;" onclick="saveDnsSettings()" disabled>Применить DNS</button>
@@ -10456,7 +10495,7 @@ const PANEL_HTML: &str = r##"
                     <span class="api-desc">Быстрая смена DNS</span>
                 </div>
                 <div class="api-card-body">
-                    <pre class="api-code-block"><code>{ "dns_provider": "cloudflare", "dns_primary": "1.1.1.1", "dns_secondary": "1.0.0.1" }</code></pre>
+                    <pre class="api-code-block"><code>{ "dns_value": "1.1.1.1,1.0.0.1" }</code></pre>
                 </div>
             </div>
 
@@ -10778,7 +10817,6 @@ async function copyText(text, btn) {
         }
 
         let savedMainPassword = '';
-        let savedDnsProvider = 'yandex';
         let savedManualDns = '';
         let savedAutoRestartInterval = 0;
         let sharedVkToken = '';
@@ -10788,15 +10826,9 @@ async function copyText(text, btn) {
             document.getElementById('restartRequiredBanner')?.classList.toggle('visible', Boolean(required));
         }
 
-        function syncDnsControls() {
-            const provider = document.getElementById('dns_provider')?.value;
-            document.getElementById('dns_selection')?.classList.toggle('is-custom', provider === 'custom');
-        }
-
         function updateSettingsDirtyState() {
             const mainPassword = document.getElementById('mainpass')?.value ?? '';
-            const dnsProvider = document.getElementById('dns_provider')?.value ?? '';
-            const manualDns = [document.getElementById('dns_primary')?.value ?? '', document.getElementById('dns_secondary')?.value ?? ''].join(',');
+            const manualDns = document.getElementById('dns_manual')?.value.trim() ?? '';
             const autoRestartInterval = Number(document.getElementById('auto_restart_interval')?.value ?? 0);
             const mainButton = document.getElementById('saveMainPasswordBtn');
             const dnsButton = document.getElementById('saveDnsBtn');
@@ -10805,8 +10837,7 @@ async function copyText(text, btn) {
                 mainButton.disabled = mainPassword === savedMainPassword;
             }
             if (dnsButton && !dnsButton.classList.contains('saving')) {
-                dnsButton.disabled = dnsProvider === savedDnsProvider
-                    && (dnsProvider !== 'custom' || manualDns === savedManualDns);
+                dnsButton.disabled = manualDns === savedManualDns;
             }
             if (autoRestartButton && !autoRestartButton.classList.contains('saving')) {
                 autoRestartButton.disabled = autoRestartInterval === savedAutoRestartInterval;
@@ -10816,19 +10847,15 @@ async function copyText(text, btn) {
         async function loadSettings() {
             let r = await api("/api/settings"); if(!r.ok) return; let x = await r.json();
             savedMainPassword = x.main_password || '';
-            savedDnsProvider = x.dns_provider || 'custom';
-            savedManualDns = [x.dns_primary, x.dns_secondary].filter(Boolean).join(',');
+            savedManualDns = x.dns_value || [x.dns_primary, x.dns_secondary].filter(Boolean).join(',');
             savedAutoRestartInterval = [0, 12, 24, 48, 72].includes(Number(x.auto_restart_interval_hours))
                 ? Number(x.auto_restart_interval_hours)
                 : 0;
             sharedVkToken = x.vk_token || '';
             sharedVkHashes = x.vk_hashes || '';
             document.getElementById('mainpass').value = savedMainPassword;
-            document.getElementById('dns_provider').value = savedDnsProvider;
-            document.getElementById('dns_primary').value = x.dns_primary || '';
-            document.getElementById('dns_secondary').value = x.dns_secondary || '';
+            document.getElementById('dns_manual').value = savedManualDns;
             document.getElementById('auto_restart_interval').value = String(savedAutoRestartInterval);
-            syncDnsControls();
             setRestartRequired(x.restart_required);
             updateSettingsDirtyState();
             loadLocalProxy();
@@ -11058,7 +11085,7 @@ async function copyText(text, btn) {
             const isMain = x.name === "Главный пароль";
             const expiryStr = isMain ? "—" : (x.expires ? new Date(x.expires * 1000).toLocaleDateString() : "∞ Бессрочно");
             return `
-            <div class="client-card" onclick="openEditClientDlgByPassword(${esc(JSON.stringify(x.password))})">
+            <div class="client-card" data-client-password="${esc(x.password)}">
                 <div class="client-card-header">
                     <div class="client-card-title">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary); flex-shrink: 0;"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
@@ -11084,7 +11111,7 @@ async function copyText(text, btn) {
                         <span class="client-card-value">${x.active_sessions}</span>
                     </div>
                     ${x.sub_uuid ? `
-                    <button class="btn btn-ghost client-sub-btn" onclick="event.stopPropagation(); copyClientSubLink(${esc(JSON.stringify(x.sub_uuid))}, this)" title="Скопировать ссылку подписки">
+                    <button class="btn btn-ghost client-sub-btn" data-client-sub-uuid="${esc(x.sub_uuid)}" title="Скопировать ссылку подписки">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                         <span>Скопировать ссылку подписки</span>
                     </button>
@@ -11097,7 +11124,7 @@ async function copyText(text, btn) {
         function renderGroupCard(g, st) {
             const stats = st || { count: 0, up: 0, down: 0, active_sessions: 0 };
             return `
-            <div class="client-card group-card" onclick="openGroupDlg(${esc(JSON.stringify(g.id))})">
+            <div class="client-card group-card" data-group-id="${esc(g.id)}">
                 <div class="client-card-header">
                     <div class="client-card-title">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary); flex-shrink: 0;"><circle cx="12" cy="7" r="3.5"></circle><path d="M6 21v-2a4 4 0 0 1 8 0v2"></path><path d="M5.5 10a3 3 0 0 1 0-6"></path><path d="M2 21v-1.5a3.5 3.5 0 0 1 3-3.4"></path><path d="M18.5 4a3 3 0 0 1 0 6"></path><path d="M19 16.1a3.5 3.5 0 0 1 3 3.4V21"></path></svg>
@@ -11123,7 +11150,7 @@ async function copyText(text, btn) {
                         <span class="client-card-value">${stats.active_sessions}</span>
                     </div>
                     ${g.sub_uuid ? `
-                    <button class="btn btn-ghost" style="width: 100%; margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; padding: 7px 10px; border: 1px solid var(--primary); color: var(--primary); border-radius: 8px; font-weight: 500;" onclick="event.stopPropagation(); copyGroupSubLink(${esc(JSON.stringify(g.sub_uuid))}, this)" title="Скопировать ссылку подписки">
+                    <button class="btn btn-ghost group-sub-btn" style="width: 100%; margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; padding: 7px 10px; border: 1px solid var(--primary); color: var(--primary); border-radius: 8px; font-weight: 500;" data-group-sub-uuid="${esc(g.sub_uuid)}" title="Скопировать ссылку подписки">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                         <span>Скопировать ссылку подписки</span>
                     </button>
@@ -12891,30 +12918,21 @@ async function copyText(text, btn) {
 
         async function saveDnsSettings() {
             const button = document.getElementById('saveDnsBtn');
-            const provider = document.getElementById('dns_provider')?.value || '';
             if (!button || button.disabled) return;
-            let payload;
-            if (provider === 'custom') {
-                const primary = document.getElementById('dns_primary')?.value.trim() || '';
-                const secondary = document.getElementById('dns_secondary')?.value.trim() || '';
-                const isIpv4 = address => {
-                    const octets = address.split('.');
-                    return octets.length === 4
-                        && octets.every(octet => /^[0-9]{1,3}$/.test(octet) && Number(octet) <= 255);
-                };
-                const valid = isIpv4(primary) && (!secondary || isIpv4(secondary));
-                if (!valid) {
-                    showToast('Укажите корректный основной IPv4 DNS. Дополнительный адрес необязателен.', 'error');
-                    return;
-                }
-                payload = {
-                    dns_provider: 'custom',
-                    dns_primary: primary,
-                    dns_secondary: secondary
-                };
-            } else {
-                payload = { dns_provider: provider };
+            const value = document.getElementById('dns_manual')?.value.trim() || '';
+            const addresses = value.split(',').map(address => address.trim());
+            const isIpv4 = address => {
+                const octets = address.split('.');
+                return octets.length === 4
+                    && octets.every(octet => /^[0-9]{1,3}$/.test(octet) && Number(octet) <= 255);
+            };
+            const valid = (addresses.length === 1 || addresses.length === 2)
+                && addresses.every(isIpv4);
+            if (!valid) {
+                showToast('Укажите один или два корректных IPv4 DNS через запятую.', 'error');
+                return;
             }
+            const payload = { dns_value: addresses.join(',') };
             button.classList.add('saving'); button.disabled = true;
             const response = await api('/api/settings', {
                 method: 'POST', body: JSON.stringify(payload)
@@ -12926,13 +12944,11 @@ async function copyText(text, btn) {
                 return;
             }
             const result = await response.json();
-            savedDnsProvider = provider;
-            savedManualDns = provider === 'custom'
-                ? [payload.dns_primary, payload.dns_secondary].filter(Boolean).join(',')
-                : savedManualDns;
+            savedManualDns = payload.dns_value;
             setRestartRequired(result.restart_required);
             await animateSavedButton(button, 'Применить DNS');
         }
+
         async function saveAutoRestartInterval() {
             const button = document.getElementById('saveAutoRestartIntervalBtn');
             if (!button || button.disabled) return;
@@ -13013,14 +13029,33 @@ async function copyText(text, btn) {
             startUpdateInterval(ms);
         }
 
-        document.getElementById('mainpass')?.addEventListener('input', updateSettingsDirtyState);
-        const dnsProviderSelect = document.getElementById('dns_provider');
-        dnsProviderSelect?.addEventListener('change', () => {
-            syncDnsControls();
-            updateSettingsDirtyState();
+        document.addEventListener('click', event => {
+            const target = event.target instanceof Element ? event.target : null;
+            const subButton = target?.closest('.client-sub-btn[data-client-sub-uuid]');
+            if (subButton) {
+                event.stopPropagation();
+                copyClientSubLink(subButton.dataset.clientSubUuid || '', subButton);
+                return;
+            }
+            const groupSubButton = target?.closest('.group-sub-btn[data-group-sub-uuid]');
+            if (groupSubButton) {
+                event.stopPropagation();
+                copyGroupSubLink(groupSubButton.dataset.groupSubUuid || '', groupSubButton);
+                return;
+            }
+            const clientCard = target?.closest('.client-card[data-client-password]');
+            if (clientCard) {
+                openEditClientDlgByPassword(clientCard.dataset.clientPassword || '');
+                return;
+            }
+            const groupCard = target?.closest('.group-card[data-group-id]');
+            if (groupCard) {
+                openGroupDlg(groupCard.dataset.groupId || '');
+            }
         });
-        document.getElementById('dns_primary')?.addEventListener('input', updateSettingsDirtyState);
-        document.getElementById('dns_secondary')?.addEventListener('input', updateSettingsDirtyState);
+
+        document.getElementById('mainpass')?.addEventListener('input', updateSettingsDirtyState);
+        document.getElementById('dns_manual')?.addEventListener('input', updateSettingsDirtyState);
         document.getElementById('auto_restart_interval')?.addEventListener('change', updateSettingsDirtyState);
         const dlBtn = document.getElementById('downloadLogBtn');
         if (dlBtn) dlBtn.href = (basePath || '') + '/api/logs/download';
@@ -13132,9 +13167,10 @@ mod tests {
         DNS_PROVIDERS, LOGIN_HTML, MAX_CLIENT_NAME_BYTES, PANEL_HTML, PWA_ICON_192_PNG,
         PWA_ICON_512_PNG, PWA_MANIFEST, PWA_SERVICE_WORKER, count_active_sessions,
         decrypt_csqtt_link, deploy_dns_profile_or_yandex, dns_provider_by_id, dns_provider_id,
-        encrypt_csqtt_link, make_client_link, manual_dns, normalize_client_vk_hashes,
-        normalize_vk_access_token, process_memory, process_memory_rollup, provider_dns,
-        validate_client_name, validate_proxy_profile_name, validate_workers,
+        encrypt_csqtt_link, make_client_link, manual_dns, manual_dns_combined,
+        normalize_client_vk_hashes, normalize_vk_access_token, process_memory,
+        process_memory_rollup, provider_dns, validate_client_name, validate_proxy_profile_name,
+        validate_workers,
     };
 
     #[test]
@@ -13186,6 +13222,18 @@ mod tests {
     }
 
     #[test]
+    fn manual_dns_combined_accepts_one_or_two_addresses() {
+        assert_eq!(manual_dns_combined("1.1.1.1").unwrap(), "1.1.1.1");
+        assert_eq!(
+            manual_dns_combined(" 1.1.1.1, 1.0.0.1 ").unwrap(),
+            "1.1.1.1,1.0.0.1"
+        );
+        assert!(manual_dns_combined("1.1.1.1,").is_err());
+        assert!(manual_dns_combined("1.1.1.1,1.0.0.1,8.8.8.8").is_err());
+        assert!(manual_dns_combined("1.1.1.256").is_err());
+    }
+
+    #[test]
     fn manual_dns_rejects_empty_primary_and_invalid_ipv4() {
         assert!(manual_dns(None, None).is_err());
         assert!(manual_dns(Some(""), None).is_err());
@@ -13194,25 +13242,29 @@ mod tests {
     }
 
     #[test]
-    fn panel_uses_the_complete_dns_provider_list_without_network_checks() {
+    fn panel_uses_the_complete_editable_dns_provider_list_without_network_checks() {
         assert!(PANEL_HTML.contains("DNS Адреса"));
-        assert!(PANEL_HTML.contains("id=\"dns_provider\""));
-        assert!(PANEL_HTML.contains("<option value=\"custom\">Ручной DNS</option>"));
-        assert!(PANEL_HTML.contains("id=\"dns_primary\""));
-        assert!(PANEL_HTML.contains("id=\"dns_secondary\""));
-        assert!(PANEL_HTML.contains("placeholder=\"Основной IPv4 DNS\""));
-        assert!(PANEL_HTML.contains("Дополнительный IPv4 DNS (необязательно)"));
+        assert!(PANEL_HTML.contains("id=\"dns_manual\""));
+        assert!(PANEL_HTML.contains("list=\"dns_presets\""));
+        assert!(PANEL_HTML.contains("id=\"dns_presets\""));
         assert!(PANEL_HTML.contains("Yandex DNS"));
+        assert!(PANEL_HTML.contains("Cloudflare DNS"));
+        assert!(PANEL_HTML.contains("Google DNS"));
+        assert!(PANEL_HTML.contains("AdGuard DNS"));
+        assert!(PANEL_HTML.contains("Xbox DNS"));
+        assert!(PANEL_HTML.contains("Comms DNS"));
+        assert!(PANEL_HTML.contains("Geohide DNS"));
+        assert!(PANEL_HTML.contains("Quad9 DNS"));
+        assert!(PANEL_HTML.contains("OpenDNS"));
         assert!(PANEL_HTML.contains("Rostelecom DNS"));
         assert!(PANEL_HTML.contains("NextDNS"));
         assert!(PANEL_HTML.contains("BI.ZONE DNS"));
         assert!(PANEL_HTML.contains("НСДИ DNS"));
-        assert!(PANEL_HTML.contains("dns_provider: provider"));
+        assert!(PANEL_HTML.contains("dns_value: addresses.join(',')"));
+        assert!(!PANEL_HTML.contains("id=\"dns_provider\""));
         assert!(!PANEL_HTML.contains("/api/dns-providers"));
         assert!(!PANEL_HTML.contains("dns_provider_health"));
         assert!(!PANEL_HTML.contains("refreshDnsProviderPings"));
-        assert!(PANEL_HTML.contains("dns_provider: 'custom'"));
-        assert!(PANEL_HTML.contains("syncDnsControls"));
     }
 
     #[test]
@@ -13306,6 +13358,10 @@ mod tests {
     #[test]
     fn participant_cards_contain_ip_info() {
         assert!(PANEL_HTML.contains("IP:"));
+        assert!(PANEL_HTML.contains("data-client-sub-uuid"));
+        assert!(PANEL_HTML.contains("data-group-sub-uuid"));
+        assert!(!PANEL_HTML.contains("copyClientSubLink('${x.sub_uuid}'"));
+        assert!(!PANEL_HTML.contains("copyGroupSubLink('${g.sub_uuid}'"));
     }
 
     #[test]
