@@ -13,11 +13,11 @@ data class WsttLink(
     val vkAccessToken: String = "",
 )
 
-private const val WSTT_CIPHER_KEY_SEED = "csqtt-chiper-key"
+private val WSTT_CIPHER_KEY_SEED = byteArrayOf(99, 115, 113, 116, 116, 45, 99, 104, 105, 112, 101, 114, 45, 107, 101, 121)
 
 private val cipherKey: SecretKeySpec by lazy {
     val digest = MessageDigest.getInstance("SHA-256")
-    val keyBytes = digest.digest(WSTT_CIPHER_KEY_SEED.toByteArray(Charsets.UTF_8))
+    val keyBytes = digest.digest(WSTT_CIPHER_KEY_SEED)
     SecretKeySpec(keyBytes, "AES")
 }
 
