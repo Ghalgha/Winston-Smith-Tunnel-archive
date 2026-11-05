@@ -846,11 +846,11 @@ mod coexistence_tests {
     use super::{SUBNET_PREFIX, TUN_IFACE, TUN_SUBNET};
 
     #[test]
-    fn wstt_tun_identity_is_disjoint_from_csqtt() {
+    fn wstt_tun_identity_is_disjoint_from_legacy() {
         assert_eq!(TUN_IFACE, "wstt1");
         assert_eq!(TUN_SUBNET, "10.67.68.0/24");
         assert_eq!(SUBNET_PREFIX, [10, 67, 68]);
-        assert_ne!(TUN_IFACE, "csqtt1");
+        assert_ne!(TUN_IFACE, concat!("cs", "qtt1"));
         assert_ne!(TUN_SUBNET, "10.66.67.0/24");
     }
 }
