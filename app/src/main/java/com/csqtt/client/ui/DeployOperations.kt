@@ -161,9 +161,9 @@ internal enum class ServerArchitecture(
     val assetName: String,
     val displayName: String,
 ) {
-    AMD64("csqtt-linux-amd64", "amd64"),
-    ARM64("csqtt-linux-arm64", "ARM64"),
-    ARMV7("csqtt-linux-armv7", "ARM32"),
+    AMD64("wstt-linux-amd64", "amd64"),
+    ARM64("wstt-linux-arm64", "ARM64"),
+    ARMV7("wstt-linux-armv7", "ARM32"),
 }
 
 internal fun serverArchitectureForMachine(output: String): ServerArchitecture {
@@ -182,11 +182,11 @@ internal fun serverArchitectureForMachine(output: String): ServerArchitecture {
 
 private fun deployAssetLabel(fileName: String): String = when (fileName) {
     "deploy.sh" -> "скрипт установки"
-    "csqtt-linux-amd64" -> "сервер WSTT (amd64)"
-    "csqtt-linux-arm64" -> "сервер WSTT (ARM64)"
-    "csqtt-linux-armv7" -> "сервер WSTT (ARM32)"
-    "csqtt.env" -> "настройки веб-панели"
-    "csqtt-deploy.json" -> "настройки доступа"
+    "wstt-linux-amd64" -> "сервер WSTT (amd64)"
+    "wstt-linux-arm64" -> "сервер WSTT (ARM64)"
+    "wstt-linux-armv7" -> "сервер WSTT (ARM32)"
+    "wstt.env" -> "настройки веб-панели"
+    "wstt-deploy.json" -> "настройки доступа"
     "hev-socks5-tunnel" -> "C-движок туннеля"
     else -> fileName
 }
@@ -607,7 +607,7 @@ internal suspend fun performDeploy(
 
         val scriptFile = extractAsset("deploy.sh")
         val serverFile = extractAsset(serverArchitecture.assetName)
-        val environmentFile = File(workingDir, "csqtt.env").apply {
+        val environmentFile = File(workingDir, "wstt.env").apply {
             writeText(
                 buildString {
                     appendLine("WSTT_WEB_USER=${deployEnvironmentValue(webLogin, installInDocker)}")
@@ -619,7 +619,7 @@ internal suspend fun performDeploy(
                 }
             )
         }
-        val overridesFile = File(workingDir, "csqtt-deploy.json").apply {
+        val overridesFile = File(workingDir, "wstt-deploy.json").apply {
             writeText(
                 JSONObject()
                     .put("main_password", mainPass)
@@ -724,7 +724,7 @@ internal suspend fun performUninstall(
 
         onProgress(0.15f, "Подготовка штатного удаления...")
         TunnelManager.addDeployInfoLog("Загрузка штатного установщика WSTT")
-        uninstallScript = File(context.cacheDir, "csqtt-uninstall-${System.nanoTime()}.sh")
+        uninstallScript = File(context.cacheDir, "wstt-uninstall-${System.nanoTime()}.sh")
         context.assets.open("deploy.sh").use { input ->
             FileOutputStream(uninstallScript).use { output -> input.copyTo(output) }
         }
