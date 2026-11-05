@@ -138,6 +138,8 @@ jobs:
           for path in Path(".").rglob("*"):
               if not path.is_file() or path.suffix.lower() not in source_extensions:
                   continue
+              if any(part in {".git", "build", "target", ".gradle", "node_modules"} for part in path.parts):
+                  continue
               relative = path.as_posix()
               content = path.read_text(encoding="utf-8", errors="replace")
               legacy = "cs" + "qtt"
