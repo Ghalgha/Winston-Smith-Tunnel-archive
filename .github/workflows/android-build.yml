@@ -255,9 +255,7 @@ jobs:
           java-version: '17'
       - uses: android-actions/setup-android@v4
         with:
-          packages: |
-            emulator
-            platform-tools
+          packages: 'emulator platform-tools'
       - name: Enable KVM access for the Android emulator
         run: |
           set -euo pipefail
