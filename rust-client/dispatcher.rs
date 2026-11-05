@@ -328,6 +328,19 @@ impl UplinkState {
         Self::default()
     }
 
+    fn sync_worker_set(&mut self, signature: &[(usize, u64)], now: std::time::Instant) {
+        if self.worker_signature.as_slice() == signature {
+            return;
+        }
+        self.worker_signature = signature.to_vec();
+        self.tokens = vec![TB_CAPACITY_BYTES; signature.len()];
+        self.rates = vec![RateController::new(); signature.len()];
+        self.last_update = Some(now);
+        self.cursor = 0;
+        self.flows.clear();
+        self.flow_evict_counter = 0;
+    }
+
     pub fn update_tokens(&mut self, count: usize, now: std::time::Instant) {
         if count <= 1 {
             return;
@@ -337,8 +350,7 @@ impl UplinkState {
             self.tokens.resize(count, TB_CAPACITY_BYTES);
             self.rates.resize_with(count, RateController::new);
             self.last_update = Some(now);
-            // Индексы воркеров сдвинулись — старые flowlet-привязки больше не
-            // действительны.
+            // Количество worker'ов изменилось; старые привязки больше не действительны.
             self.flows.clear();
             self.flow_evict_counter = 0;
         }
