@@ -328,7 +328,18 @@ impl UplinkState {
         Self::default()
     }
 
-    fn sync_worker_set(&mut self, signature: &[(usize, u64)], now: std::time::Instant) {
+    fn worker_set_matches(&self, workers: &[WorkerEntry]) -> bool {
+        self.worker_signature.len() == workers.len()
+            && self
+                .worker_signature
+                .iter()
+                .zip(workers)
+                .all(|(&(id, incarnation_id), worker)| {
+                    id == worker.channels.id && incarnation_id == worker.channels.incarnation_id
+                })
+    }
+
+    fn sync_worker_signature(&mut self, signature: &[(usize, u64)], now: std::time::Instant) {
         if self.worker_signature.as_slice() == signature {
             return;
         }
@@ -447,11 +458,13 @@ impl UplinkState {
         flow: Option<FlowKey>,
         now: std::time::Instant,
     ) -> Option<usize> {
-        let signature: Vec<_> = workers
-            .iter()
-            .map(|worker| (worker.channels.id, worker.channels.incarnation_id))
-            .collect();
-        self.sync_worker_set(&signature, now);
+        if !self.worker_set_matches(workers) {
+            let signature: Vec<_> = workers
+                .iter()
+                .map(|worker| (worker.channels.id, worker.channels.incarnation_id))
+                .collect();
+            self.sync_worker_signature(&signature, now);
+        }
 
         let count = workers.len();
         if count == 0 {
@@ -1962,7 +1975,7 @@ mod tests {
     fn worker_set_reorder_resets_token_and_flow_bindings() {
         let mut state = UplinkState::new();
         let now = std::time::Instant::now();
-        state.sync_worker_set(&[(1, 10), (2, 20)], now);
+        state.sync_worker_signature(&[(1, 10), (2, 20)], now);
         state.tokens = vec![1.0, 2.0];
         state.rates = vec![RateController::new(), RateController::new()];
         state.cursor = 1;
@@ -1983,7 +1996,7 @@ mod tests {
             },
         );
 
-        state.sync_worker_set(&[(2, 20), (1, 10)], now + Duration::from_millis(1));
+        state.sync_worker_signature(&[(2, 20), (1, 10)], now + Duration::from_millis(1));
 
         assert_eq!(state.tokens, vec![TB_CAPACITY_BYTES; 2]);
         assert_eq!(state.cursor, 0);
