@@ -268,7 +268,7 @@ impl Logger {
         let shared = Arc::new(Shared::new(protocol_capacity, diagnostic_capacity));
         let writer_shared = shared.clone();
         let handle = thread::Builder::new()
-            .name("csqtt-log-writer".to_string())
+            .name("wstt-log-writer".to_string())
             .spawn(move || {
                 let result = catch_unwind(AssertUnwindSafe(|| {
                     writer_loop(writer_shared.clone(), Sink::new(stdout), Sink::new(stderr));
