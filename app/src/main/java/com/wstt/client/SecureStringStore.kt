@@ -14,7 +14,7 @@ class SecureStringStore(context: Context) {
     private val appContext = context.applicationContext
 
     companion object {
-        private const val KEY_ALIAS = WsttConstants.SecureStore.KEY_ALIAS
+        private val KEY_ALIAS = WsttConstants.SecureStore.KEY_ALIAS
         private const val ANDROID_KEYSTORE = WsttConstants.SecureStore.ANDROID_KEYSTORE
         private const val TRANSFORMATION = WsttConstants.SecureStore.TRANSFORMATION
         private const val GCM_TAG_BITS = WsttConstants.SecureStore.GCM_TAG_BITS
