@@ -47,7 +47,6 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             ~/.cargo/bin
-            rust-client/target
           key: android-build-${ runner.os }-rust-1.97.1-${ hashFiles('rust-server/Cargo.lock', 'rust-client/Cargo.lock') }
           restore-keys: |
             android-build-${ runner.os }-rust-1.97.1-
