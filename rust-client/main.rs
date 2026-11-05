@@ -474,7 +474,7 @@ async fn run(arguments: Arguments) -> Result<i32> {
         worker_ceiling,
         configured_workers,
     );
-    let required_ready_bots = required_js_ready_bots(groups);
+    let required_ready_bots = required_js_ready_bots_for_worker_ceiling(configured_workers);
     if js_auth_mode {
         crate::log_error!("[VK JS] Создатель удерживает звонок");
     }
@@ -581,6 +581,10 @@ async fn wait_for_js_credential_readiness(
 
 fn required_js_ready_bots(groups: usize) -> usize {
     groups.div_ceil(GROUPS_PER_CREDENTIAL).clamp(1, 2)
+}
+
+fn required_js_ready_bots_for_worker_ceiling(configured_workers: usize) -> usize {
+    required_js_ready_bots(configured_workers.div_ceil(WORKERS_PER_GROUP))
 }
 
 fn normalize_worker_count(requested: usize) -> usize {
@@ -1017,6 +1021,13 @@ mod worker_count_tests {
         assert!(should_leave_js_creator(true, true));
         assert!(!should_leave_js_creator(false, false));
         assert!(!should_leave_js_creator(false, true));
+    }
+
+    #[test]
+    fn auto_js_keeps_enough_credentials_ready_for_live_scale_up() {
+        assert_eq!(required_js_ready_bots_for_worker_ceiling(5), 1);
+        assert_eq!(required_js_ready_bots_for_worker_ceiling(18), 2);
+        assert_eq!(required_js_ready_bots_for_worker_ceiling(100), 2);
     }
 
     #[test]
