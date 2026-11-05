@@ -159,7 +159,7 @@ pub(crate) fn reconcile_worker_target(
     target: &AtomicUsize,
     desired: &AtomicUsize,
     ceiling: &AtomicUsize,
-    scale_notify: Option<&tokio::sync::Notify>,
+    scale_notify: Option<&Arc<tokio::sync::Notify>>,
 ) {
     loop {
         let requested = desired.load(Ordering::Acquire);
