@@ -30,7 +30,7 @@ if (-not $AssetsDir) {
 }
 New-Item -ItemType Directory -Force -Path $AssetsDir | Out-Null
 
-$shimDir = Join-Path ([System.IO.Path]::GetTempPath()) "csqtt-py3-shim"
+$shimDir = Join-Path ([System.IO.Path]::GetTempPath()) "wstt-py3-shim"
 New-Item -ItemType Directory -Force -Path $shimDir | Out-Null
 Set-Content -Path (Join-Path $shimDir "python3.cmd") -Value "@exit /b 1"
 $env:PATH = "$shimDir;$env:PATH"
@@ -44,13 +44,13 @@ if (-not $zig -and $env:LOCALAPPDATA) {
 }
 
 $cargo = (Get-Command cargo.exe -ErrorAction Stop).Source
-$logsDir = Join-Path $ProjectRoot "build\csqtt-uring-linux-logs"
+$logsDir = Join-Path $ProjectRoot "build\wstt-uring-linux-logs"
 New-Item -ItemType Directory -Force -Path $logsDir | Out-Null
 
 $variants = @(
-    @{ Name = 'amd64'; Target = 'x86_64-unknown-linux-musl'; Asset = 'csqtt-linux-amd64' },
-    @{ Name = 'arm64'; Target = 'aarch64-unknown-linux-musl'; Asset = 'csqtt-linux-arm64' },
-    @{ Name = 'armv7'; Target = 'armv7-unknown-linux-musleabihf'; Asset = 'csqtt-linux-armv7' }
+    @{ Name = 'amd64'; Target = 'x86_64-unknown-linux-musl'; Asset = 'wstt-linux-amd64' },
+    @{ Name = 'arm64'; Target = 'aarch64-unknown-linux-musl'; Asset = 'wstt-linux-arm64' },
+    @{ Name = 'armv7'; Target = 'armv7-unknown-linux-musleabihf'; Asset = 'wstt-linux-armv7' }
 )
 
 Write-Host "========================================================================" -ForegroundColor Cyan
@@ -61,7 +61,7 @@ Write-Host "====================================================================
 $tasks = @()
 
 foreach ($variant in $variants) {
-    $targetDir = Join-Path $ProjectRoot "build\csqtt-uring-linux-$($variant.Asset)"
+    $targetDir = Join-Path $ProjectRoot "build\wstt-uring-linux-$($variant.Asset)"
     New-Item -ItemType Directory -Force -Path $targetDir | Out-Null
     $logFile = Join-Path $logsDir "$($variant.Name).log"
     if (Test-Path -LiteralPath $logFile) {
@@ -247,9 +247,9 @@ foreach ($item in $tasks) {
     $warns = if ($item.WarningCount -gt 0) { " ($($item.WarningCount) warnings)" } else { "" }
 
     if ($item.ExitCode -eq 0) {
-        $srcBinary = Join-Path $item.TargetDir "$($item.Target)\release\csqtt"
+        $srcBinary = Join-Path $item.TargetDir "$($item.Target)\release\wstt"
         if (-not (Test-Path -LiteralPath $srcBinary)) {
-            $srcBinary = Join-Path $item.TargetDir "release\csqtt"
+            $srcBinary = Join-Path $item.TargetDir "release\wstt"
         }
         $destBinary = Join-Path $AssetsDir $item.Asset
 
