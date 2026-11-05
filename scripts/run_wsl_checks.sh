@@ -17,14 +17,16 @@ pass() { echo "[PASS] $*"; }
 if [ "$RUNTIME_ONLY" -eq 0 ]; then
   command -v cargo >/dev/null || fail "cargo is not on PATH"
   command -v rustup >/dev/null || fail "rustup is not on PATH"
-  rustup target add x86_64-unknown-linux-gnu --toolchain 1.97.1
+  if ! rustup target list --installed --toolchain 1.97.1 | grep -Fxq x86_64-unknown-linux-gnu; then
+    rustup target add x86_64-unknown-linux-gnu --toolchain 1.97.1
+  fi
   cargo +1.97.1 test --locked --target x86_64-unknown-linux-gnu --manifest-path "$PROJECT_ROOT/rust-server/Cargo.toml" --all-targets
   pass "Rust server tests"
   cargo +1.97.1 build --locked --target x86_64-unknown-linux-gnu --manifest-path "$PROJECT_ROOT/rust-server/Cargo.toml"
-  SERVER_BIN="$PROJECT_ROOT/rust-server/target/x86_64-unknown-linux-gnu/debug/csqtt"
+  SERVER_BIN="$PROJECT_ROOT/rust-server/target/x86_64-unknown-linux-gnu/debug/wstt"
 else
   SERVER_BIN="$(printenv WSTT_SERVER_BIN || true)"
-  [ -n "$SERVER_BIN" ] || SERVER_BIN="$PROJECT_ROOT/rust-server/target/x86_64-unknown-linux-gnu/debug/csqtt"
+  [ -n "$SERVER_BIN" ] || SERVER_BIN="$PROJECT_ROOT/rust-server/target/x86_64-unknown-linux-gnu/debug/wstt"
 fi
 [ -x "$SERVER_BIN" ] || fail "Missing executable server binary: $SERVER_BIN"
 
@@ -96,8 +98,8 @@ PY
 }
 ready() {
   local port="$1" code=000
-  for n in $(seq 1 40); do
-    code="$(ip netns exec "$NS" curl -kfsS --connect-timeout 1 --max-time 2 -o /dev/null -w '%{http_code}' "https://127.0.0.1:$port/" 2>/dev/null || true)"
+  for n in $(seq 1 30); do
+    code="$(ip netns exec "$NS" curl -kfsS --connect-timeout 0.5 --max-time 1 -o /dev/null -w '%{http_code}' "https://127.0.0.1:$port/" 2>/dev/null || true)"
     [ "$code" = 200 ] && return 0
     sleep .25
   done
