@@ -287,7 +287,6 @@ jobs:
         with:
           api-level: 36
           arch: x86_64
-          profile: Pixel_2
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: ./gradlew --no-daemon :app:connectedDebugAndroidTest
