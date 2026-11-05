@@ -54,8 +54,10 @@ jobs:
           restore-keys: |
             linux-server-${{ runner.os }}-rust-1.97.1-zig-0.15.2-
             android-build-${{ runner.os }}-rust-1.97.1-
-      - name: Verify PowerShell for provenance checks
-        run: pwsh --version
+      - name: Verify PowerShell syntax for build and WSL scripts
+        run: |
+          pwsh --version
+          pwsh -NoProfile -Command '$files = @("scripts/test_wsl_unified.ps1", "rust-server/build_linux_variants.ps1", "scripts/server_asset_provenance.ps1", "scripts/native_client_provenance.ps1", "scripts/build_both_parallel.ps1"); foreach ($file in $files) { $tokens = $null; $errors = $null; [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file), [ref]$tokens, [ref]$errors); if ($errors.Count) { $errors | ForEach-Object { Write-Error $_ }; exit 1 } }'
       - name: Install Zig 0.15.2 (checksum verified)
         run: |
           set -euo pipefail
@@ -90,6 +92,7 @@ jobs:
           fi
           chmod +x rust-server/build_linux.sh
           bash -n app/src/main/assets/deploy.sh
+          bash -n scripts/run_wsl_checks.sh
           if grep -REq 'mitigations=off|net\.ipv4\.conf\.(all|default)\.rp_filter|/proc/sys/net/ipv4/conf/(all|default)/rp_filter|sysctl --system' app/src/main/assets/deploy.sh rust-server --include='*.rs'; then
             echo 'WSTT installer changes host-wide security or routing policy' >&2
             exit 1
@@ -122,6 +125,29 @@ jobs:
           fi
           grep -Fq 'android:scheme="wstt"' app/src/main/AndroidManifest.xml
           grep -Fq 'android:scheme="csqtt"' app/src/main/AndroidManifest.xml
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          import sys
+
+          source_extensions = {
+              ".rs", ".kt", ".kts", ".xml", ".toml", ".ps1", ".psm1",
+              ".sh", ".bat", ".yml", ".yaml", ".properties", ".gradle",
+          }
+          violations = []
+          for path in Path(".").rglob("*"):
+              if not path.is_file() or path.suffix.lower() not in source_extensions:
+                  continue
+              relative = path.as_posix()
+              content = path.read_text(encoding="utf-8", errors="replace")
+              content = re.sub(r"(?i)csqtt://", "", content)
+              content = re.sub(r'''(?i)android:scheme\\s*=\\s*["']csqtt["']''', "", content)
+              if re.search(r"(?i)csqtt", relative) or re.search(r"(?i)csqtt", content):
+                  violations.append(relative)
+          if violations:
+              print("Legacy identifier found outside URI-scheme compatibility:", *violations, sep="\\n", file=sys.stderr)
+              sys.exit(1)
+          PY
           python3 - <<'PY'
           import pathlib, re, sys
           source = pathlib.Path("rust-server/web_panel.rs").read_text()

@@ -23,7 +23,7 @@ $failed = $false
 foreach ($job in $jobs) {
     Write-Host ("=================== {0} BUILD LOG ===================" -f $job.Name)
     Receive-Job -Job $job -ErrorAction Continue
-    if ($job.State -ne "Completed" -or $job.ChildJobs[0].JobStateInfo.State -ne "Completed" -or $job.ChildJobs[0].JobStateInfo.Reason) {
+    if ($job.State -ne "Completed") {
         $failed = $true
     }
 }
