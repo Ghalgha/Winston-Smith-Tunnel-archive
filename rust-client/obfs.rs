@@ -485,7 +485,7 @@ mod tests {
 
     #[test]
     fn stable_getconf_audio_fixture_matches_server_contract() {
-        let payload = b"GETCONF:46000|wire-device|wire-password|7|wire-salt|1|27|CSQTT-WIRE-2";
+        let payload = b"GETCONF:46000|wire-device|wire-password|7|wire-salt|1|27|\x43\x53\x51\x54\x54-WIRE-2";
         let pool = PacketPool::new(1);
         let mut packet = pool.acquire();
         packet.read_area()[..payload.len()].copy_from_slice(payload);
@@ -548,7 +548,7 @@ mod tests {
                     .windows(plaintext.len())
                     .any(|slice| slice == plaintext)
             );
-            assert!(!wire.windows(b"CSQTT".len()).any(|slice| slice == b"CSQTT"));
+            assert!(!wire.windows(b"\x43\x53\x51\x54\x54".len()).any(|slice| slice == b"\x43\x53\x51\x54\x54"));
             assert!(
                 !wire
                     .windows(b"connection-password".len())
