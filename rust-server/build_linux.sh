@@ -111,7 +111,6 @@ export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_MUSLEABIHF_LINKER="$CC_WRAPPER"
 export WSTT_ZIG_TARGET=x86_64-linux-musl
 if [[ "$RUN_CHECKS" == 1 ]]; then
   cargo +1.97.1 fmt --all -- --check
-  cargo +1.97.1 zigbuild --all-targets --target x86_64-unknown-linux-musl "${FEATURE_ARGS[@]}"
   CARGO_TARGET_DIR="$ROOT/build/linux-musl-check" cargo +1.97.1 clippy --release --target x86_64-unknown-linux-musl "${FEATURE_ARGS[@]}" --all-targets -- -D warnings
   if [[ "$HOST" == *linux* ]]; then
     echo "Running Linux musl tests..."
