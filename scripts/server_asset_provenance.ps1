@@ -113,6 +113,7 @@ function Get-SourceCommit {
 function Get-BuildInputHash {
     $paths = @(
         "rust-server",
+        "shared/dtls.rs",
         "shared/wire_protocol.rs",
         "scripts/server_asset_provenance.ps1"
     )
@@ -129,7 +130,7 @@ function Get-BuildInputHash {
     if ($LASTEXITCODE -ne 0) {
         throw "Unable to enumerate tracked Rust server build inputs"
     }
-    $trackedSet = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    $trackedSet = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
     foreach ($trackedPath in $trackedPaths) {
         [void]$trackedSet.Add([string]$trackedPath)
     }
@@ -143,8 +144,7 @@ function Get-BuildInputHash {
         $directory = $pendingDirectories.Pop()
         foreach ($entry in Get-ChildItem -LiteralPath $directory -Force) {
             $relativePath = $entry.FullName.Substring($rootPrefix.Length)
-            $relativePath = $relativePath.Replace([IO.Path]::DirectorySeparatorChar, "/")
-                .Replace([IO.Path]::AltDirectorySeparatorChar, "/")
+            $relativePath = $relativePath.Replace([IO.Path]::DirectorySeparatorChar, "/").Replace([IO.Path]::AltDirectorySeparatorChar, "/")
 
             if ($entry.PSIsContainer) {
                 if (($entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
@@ -166,7 +166,7 @@ function Get-BuildInputHash {
         }
     }
 
-    foreach ($singleFile in @("shared/wire_protocol.rs", "scripts/server_asset_provenance.ps1")) {
+    foreach ($singleFile in @("shared/dtls.rs", "shared/wire_protocol.rs", "scripts/server_asset_provenance.ps1")) {
         $fullPath = Join-Path $projectRoot ($singleFile.Replace("/", [IO.Path]::DirectorySeparatorChar))
         if ((Test-Path -LiteralPath $fullPath -PathType Leaf) -and -not $trackedSet.Contains($singleFile)) {
             $untrackedInputs.Add($singleFile)
