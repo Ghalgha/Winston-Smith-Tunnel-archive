@@ -96,7 +96,7 @@ internal object VkAuthWebViewManager {
                 else -> null
             } ?: return@setOnKeyListener false
 
-            view.evaluateJavascript("window.__csqttTvInput && window.__csqttTvInput('$command');", null)
+            view.evaluateJavascript("window.__wsttTvInput && window.__wsttTvInput('$command');", null)
             true
         }
         view.post { view.requestFocus() }
@@ -104,8 +104,8 @@ internal object VkAuthWebViewManager {
 
     private const val TV_FOCUS_FIRST_ELEMENT_JS = """
         (function() {
-          if (window.__csqttTvInput) {
-            window.__csqttTvInput('ensure-focus');
+          if (window.__wsttTvInput) {
+            window.__wsttTvInput('ensure-focus');
             return;
           }
           var selector = 'a[href],button,input:not([type=hidden]),select,textarea,[role=button],[tabindex]:not([tabindex="-1"])';
@@ -121,7 +121,7 @@ internal object VkAuthWebViewManager {
             node.scrollIntoView({block: 'center', inline: 'nearest'});
             return true;
           }
-          window.__csqttTvInput = function(command) {
+          window.__wsttTvInput = function(command) {
             var items = elements();
             var active = document.activeElement;
             var index = items.indexOf(active);
@@ -147,7 +147,7 @@ internal object VkAuthWebViewManager {
             }
             return false;
           };
-          window.__csqttTvInput('ensure-focus');
+          window.__wsttTvInput('ensure-focus');
         })();
     """
 }
@@ -477,8 +477,8 @@ internal class VkAuthSession(
     companion object {
         private const val TV_FOCUS_FIRST_ELEMENT_JS = """
             (function() {
-              if (window.__csqttTvInput) {
-                window.__csqttTvInput('ensure-focus');
+              if (window.__wsttTvInput) {
+                window.__wsttTvInput('ensure-focus');
                 return;
               }
               var selector = 'a[href],button,input:not([type=hidden]),select,textarea,[role=button],[tabindex]:not([tabindex="-1"])';
@@ -494,7 +494,7 @@ internal class VkAuthSession(
                 node.scrollIntoView({block: 'center', inline: 'nearest'});
                 return true;
               }
-              window.__csqttTvInput = function(command) {
+              window.__wsttTvInput = function(command) {
                 var items = elements();
                 var active = document.activeElement;
                 var index = items.indexOf(active);
@@ -516,7 +516,7 @@ internal class VkAuthSession(
                 }
                 return false;
               };
-              window.__csqttTvInput('ensure-focus');
+              window.__wsttTvInput('ensure-focus');
             })();
         """
 
@@ -553,11 +553,11 @@ internal class VkAuthSession(
                         margin: 0 4px;
                         border-radius: 50%;
                         background: #2787f5;
-                        animation: csqtt-blink 1.2s infinite ease-in-out;
+                        animation: wstt-blink 1.2s infinite ease-in-out;
                     }
                     .dots span:nth-child(2) { animation-delay: .2s; }
                     .dots span:nth-child(3) { animation-delay: .4s; }
-                    @keyframes csqtt-blink {
+                    @keyframes wstt-blink {
                         0%, 80%, 100% { opacity: .25; transform: scale(.85); }
                         40% { opacity: 1; transform: scale(1); }
                     }
