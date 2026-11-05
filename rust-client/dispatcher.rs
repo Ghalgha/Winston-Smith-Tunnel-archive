@@ -1962,6 +1962,7 @@ mod tests {
     fn worker_set_reorder_resets_token_and_flow_bindings() {
         let mut state = UplinkState::new();
         let now = std::time::Instant::now();
+        state.sync_worker_set(&[(1, 10), (2, 20)], now);
         state.tokens = vec![1.0, 2.0];
         state.rates = vec![RateController::new(), RateController::new()];
         state.cursor = 1;
@@ -1981,9 +1982,6 @@ mod tests {
                 last_seen: now,
             },
         );
-        state.sync_worker_set(&[(1, 10), (2, 20)], now);
-        state.tokens[0] = 100.0;
-        state.cursor = 1;
 
         state.sync_worker_set(&[(2, 20), (1, 10)], now + Duration::from_millis(1));
 
