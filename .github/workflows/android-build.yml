@@ -286,8 +286,9 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 36
+          target: aosp_atd
           arch: x86_64
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          emulator-options: -no-window -gpu off -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: ./gradlew --no-daemon :app:connectedDebugAndroidTest
       - uses: actions/upload-artifact@v7
