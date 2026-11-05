@@ -485,6 +485,8 @@ async fn authenticated_flow_survives_pool_deficit_and_keeps_channel_data_zero_co
     let server_address = server.local_addr().unwrap();
     let peer: SocketAddr = "127.0.0.1:39001".parse().unwrap();
     let relay: SocketAddr = "127.0.0.1:49001".parse().unwrap();
+    let (outbound_seen_tx, outbound_seen_rx) = oneshot::channel();
+    let (allow_inbound_tx, allow_inbound_rx) = oneshot::channel();
     let server_task = tokio::spawn({
         let server = server.clone();
         async move {
@@ -514,6 +516,8 @@ async fn authenticated_flow_survives_pool_deficit_and_keeps_channel_data_zero_co
             let (outbound, outbound_client) = recv_datagram(&server).await;
             assert_eq!(outbound_client, client);
             assert_eq!(outbound, channel_data(channel, b"outbound"));
+            outbound_seen_tx.send(()).unwrap();
+            allow_inbound_rx.await.unwrap();
 
             let wrong_channel = if channel == 0x7fff {
                 channel - 1
@@ -565,6 +569,18 @@ async fn authenticated_flow_survives_pool_deficit_and_keeps_channel_data_zero_co
     held.read_area()[..8].copy_from_slice(b"outbound");
     held.set_read_len(8).unwrap();
     allocation.send(held).await.unwrap();
+    tokio::time::timeout(Duration::from_secs(3), outbound_seen_rx)
+        .await
+        .unwrap()
+        .unwrap();
+    tokio::time::timeout(Duration::from_secs(1), async {
+        while pool.available() == 0 {
+            tokio::time::sleep(Duration::from_millis(1)).await;
+        }
+    })
+    .await
+    .expect("outbound packet lease was not returned to the pool");
+    allow_inbound_tx.send(()).unwrap();
 
     let mut inbound = tokio::time::timeout(Duration::from_secs(3), receiver.recv())
         .await
