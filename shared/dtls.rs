@@ -450,7 +450,7 @@ pub fn derive_dtls_srtp_deterministic(wrap_key: &[u8; 32]) -> DtlsSrtpKeys {
     let mut server_random = [0u8; 32];
     tls12_prf(
         wrap_key,
-        b"csqtt-dtls-random",
+        b"\x63\x73\x71\x74\x74-dtls-random",
         b"server-random",
         &mut server_random,
     );
