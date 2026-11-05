@@ -24,7 +24,7 @@ use std::{
     net::SocketAddr,
     sync::{
         Arc, Mutex, OnceLock,
-        atomic::{AtomicBool, AtomicU16, AtomicU64, Ordering},
+        atomic::{AtomicBool, AtomicU16, AtomicU64, AtomicUsize, Ordering},
     },
     time::{Duration, Instant},
 };
@@ -51,7 +51,6 @@ const UDP_TRANSIENT_ERROR_LIMIT: u32 = 16;
 const UDP_TRANSIENT_ERROR_WINDOW: Duration = Duration::from_secs(5);
 const OUTBOUND_QUEUE_CAPACITY: usize = 8;
 const OUTBOUND_IDLE_POLL: Duration = Duration::from_millis(20);
-const OUTBOUND_FLUSH_WAIT: Duration = Duration::from_millis(250);
 
 #[inline]
 fn is_retryable_maintenance(method: u32) -> bool {
@@ -224,6 +223,47 @@ struct OutboundQueue {
     space: Notify,
     shared: Arc<DriverShared>,
     socket: Arc<UdpSocket>,
+    // High bit closes admission; remaining bits count accepted packets whose
+    // socket send attempt has not completed.
+    pending: AtomicUsize,
+}
+
+const OUTBOUND_CLOSED_BIT: usize = 1usize << (usize::BITS - 1);
+const OUTBOUND_PENDING_MASK: usize = !OUTBOUND_CLOSED_BIT;
+
+impl OutboundQueue {
+    fn reserve(&self) -> bool {
+        let mut state = self.pending.load(Ordering::Acquire);
+        loop {
+            if state & OUTBOUND_CLOSED_BIT != 0
+                || state & OUTBOUND_PENDING_MASK == OUTBOUND_PENDING_MASK
+            {
+                return false;
+            }
+            match self.pending.compare_exchange_weak(
+                state,
+                state + 1,
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            ) {
+                Ok(_) => return true,
+                Err(actual) => state = actual,
+            }
+        }
+    }
+
+    fn complete(&self) {
+        self.pending.fetch_sub(1, Ordering::AcqRel);
+        self.space.notify_waiters();
+    }
+
+    fn close(&self) {
+        self.pending.fetch_or(OUTBOUND_CLOSED_BIT, Ordering::AcqRel);
+    }
+
+    fn pending_count(&self) -> usize {
+        self.pending.load(Ordering::Acquire) & OUTBOUND_PENDING_MASK
+    }
 }
 
 async fn outbound_writer_loop(queue: Arc<OutboundQueue>) {
@@ -232,6 +272,7 @@ async fn outbound_writer_loop(queue: Arc<OutboundQueue>) {
             queue.space.notify_one();
             if queue.shared.closing.load(Ordering::Acquire) {
                 drop(packet);
+                queue.complete();
                 continue;
             }
             let channel = queue.shared.channel.load(Ordering::Acquire);
@@ -241,6 +282,7 @@ async fn outbound_writer_loop(queue: Arc<OutboundQueue>) {
                     .outbound_queue_full_drops
                     .fetch_add(1, Ordering::Relaxed);
                 drop(packet);
+                queue.complete();
                 continue;
             }
             match queue.socket.try_send(packet.as_slice()) {
@@ -279,6 +321,9 @@ async fn outbound_writer_loop(queue: Arc<OutboundQueue>) {
                 }
             }
             drop(packet);
+            // A queue pop is not a completed send. Release the reservation
+            // only after try_send (including WouldBlock retries) has finished.
+            queue.complete();
         }
         if queue.shared.closing.load(Ordering::Acquire) {
             return;
@@ -396,6 +441,7 @@ impl TurnAllocation {
                     waiter: Notify::new(),
                     space: Notify::new(),
                     shared: shared.clone(),
+                    pending: AtomicUsize::new(0),
                     socket: socket.clone(),
                 });
                 let writer_task = tokio::spawn(outbound_writer_loop(queue.clone()));
@@ -541,12 +587,16 @@ impl TurnAllocation {
             return Some(packet);
         }
         let mut packet = packet;
+        if !queue.reserve() {
+            return Some(packet);
+        }
         match queue.queue.push(packet) {
             Ok(()) => {
                 queue.waiter.notify_one();
                 None
             }
             Err(returned) => {
+                queue.complete();
                 packet = returned;
                 Some(packet)
             }
@@ -567,12 +617,16 @@ impl TurnAllocation {
                     .context("TURN UDP outbound queue missing")?;
                 let mut packet = packet;
                 loop {
+                    if !queue.reserve() {
+                        bail!("TURN outbound queue is closing");
+                    }
                     match queue.queue.push(packet) {
                         Ok(()) => {
                             queue.waiter.notify_one();
                             return Ok(());
                         }
                         Err(returned) => {
+                            queue.complete();
                             packet = returned;
                         }
                     }
@@ -586,15 +640,6 @@ impl TurnAllocation {
                         return Ok(());
                     }
                     let space = queue.space.notified();
-                    match queue.queue.push(packet) {
-                        Ok(()) => {
-                            queue.waiter.notify_one();
-                            return Ok(());
-                        }
-                        Err(returned) => {
-                            packet = returned;
-                        }
-                    }
                     let _ = tokio::time::timeout(OUTBOUND_IDLE_POLL, space).await;
                 }
             }
@@ -611,15 +656,22 @@ impl TurnAllocation {
             return;
         }
         if let Some(queue) = &self.outbound_queue {
+            // Stop accepting new packets, then wait for every accepted packet
+            // to finish its socket send. Queue emptiness alone is insufficient:
+            // the writer removes a packet before sending it.
+            queue.close();
             queue.waiter.notify_one();
-            let flush_deadline = Instant::now() + OUTBOUND_FLUSH_WAIT;
-            while !queue.queue.is_empty() && Instant::now() < flush_deadline {
+            let flush_deadline = Instant::now() + CLEANUP_TIMEOUT;
+            while queue.pending_count() != 0 && Instant::now() < flush_deadline {
                 let remaining = flush_deadline.saturating_duration_since(Instant::now());
-                let space = queue.space.notified();
-                if queue.queue.is_empty() {
+                let completed = queue.space.notified();
+                if queue.pending_count() == 0 {
                     break;
                 }
-                let _ = tokio::time::timeout(remaining, space).await;
+                // Periodic recheck also covers a completion racing with the
+                // Notify registration.
+                let wait = remaining.min(OUTBOUND_IDLE_POLL);
+                let _ = tokio::time::timeout(wait, completed).await;
             }
         }
         self.shared.request_cleanup();

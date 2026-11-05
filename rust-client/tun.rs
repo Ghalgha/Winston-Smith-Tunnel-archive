@@ -138,7 +138,6 @@ impl FdReceiver {
                                         }
                                     }
                                 }
-                                drop(message);
                                 drop(slices);
                                 if control_truncated || byte_count != 1 || data[0] != 1 {
                                     break 'conn;

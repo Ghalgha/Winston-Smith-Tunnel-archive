@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
@@ -46,7 +46,7 @@ class VpnWidgetToggleReceiver : BroadcastReceiver() {
     }
 
     companion object {
-        const val ACTION = CsqttConstants.Widget.ACTION_TOGGLE
+        const val ACTION = WsttConstants.Widget.ACTION_TOGGLE
         private const val TAG = "VpnWidget"
     }
 }

@@ -1,4 +1,4 @@
-package com.csqtt.client.ui.dialogs
+package com.wstt.client.ui.dialogs
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -44,10 +44,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.csqtt.client.ui.appSectionCardBorderColor
-import com.csqtt.client.ui.appSectionCardColor
-import com.csqtt.client.ui.design.CsqttShapes
-import com.csqtt.client.ui.design.CsqttSizes
+import com.wstt.client.ui.appSectionCardBorderColor
+import com.wstt.client.ui.appSectionCardColor
+import com.wstt.client.ui.design.WsttShapes
+import com.wstt.client.ui.design.WsttSizes
 
 private const val PRIVATE_KEY_PLACEHOLDER =
     "-----BEGIN OPENSSH PRIVATE KEY-----\n...\n-----END OPENSSH PRIVATE KEY-----"
@@ -116,7 +116,7 @@ internal fun SshKeysDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         Surface(
-            shape = CsqttShapes.Dialog,
+            shape = WsttShapes.Dialog,
             color = appSectionCardColor(),
             contentColor = MaterialTheme.colorScheme.onSurface,
             border = BorderStroke(1.dp, appSectionCardBorderColor()),
@@ -239,8 +239,8 @@ internal fun SshKeysDialog(
                             onSave(privateKey.trim(), passphrase.trim(), certificate.trim())
                         }
                     },
-                    modifier = Modifier.fillMaxWidth().height(CsqttSizes.ControlHeight),
-                    shape = CsqttShapes.Pill,
+                    modifier = Modifier.fillMaxWidth().height(WsttSizes.ControlHeight),
+                    shape = WsttShapes.Pill,
                     colors = ButtonDefaults.buttonColors(contentColor = MaterialTheme.colorScheme.onPrimary),
                 ) {
                     Text("Сохранить", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)

@@ -1,4 +1,4 @@
-package com.csqtt.client.ui
+package com.wstt.client.ui
 
 import android.content.Intent
 import android.net.VpnService
@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -42,23 +43,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.csqtt.client.ConnectionSource
-import com.csqtt.client.ConnectionStartBlocker
-import com.csqtt.client.ConnectionStartPolicy
-import com.csqtt.client.CsqttConstants
-import com.csqtt.client.R
-import com.csqtt.client.SettingsStore
-import com.csqtt.client.StoredSecretState
-import com.csqtt.client.TunnelAuthSnapshot
-import com.csqtt.client.TunnelManager
-import com.csqtt.client.TunnelService
-import com.csqtt.client.VkHashValidationCodec
-import com.csqtt.client.newTunnelSessionId
-import com.csqtt.client.resolveConnectionSource
-import com.csqtt.client.showRaisedToast
-import com.csqtt.client.ui.components.CsqttScreen
-import com.csqtt.client.ui.design.CsqttShapes
-import com.csqtt.client.ui.utils.parseCsqttLink
+import com.wstt.client.ConnectionSource
+import com.wstt.client.ConnectionStartBlocker
+import com.wstt.client.ConnectionStartPolicy
+import com.wstt.client.WsttConstants
+import com.wstt.client.R
+import com.wstt.client.SettingsStore
+import com.wstt.client.StoredSecretState
+import com.wstt.client.TunnelAuthSnapshot
+import com.wstt.client.TunnelManager
+import com.wstt.client.TunnelService
+import com.wstt.client.VkHashValidationCodec
+import com.wstt.client.newTunnelSessionId
+import com.wstt.client.resolveConnectionSource
+import com.wstt.client.showRaisedToast
+import com.wstt.client.ui.components.WsttScreen
+import com.wstt.client.ui.design.WsttShapes
+import com.wstt.client.ui.utils.parseWsttLink
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -78,33 +79,35 @@ internal fun ConnectionTab(
     val autoPausedForWifi by TunnelManager.autoPausedForWifi.collectAsStateWithLifecycle()
     val cooldownActive by TunnelManager.cooldownActive.collectAsStateWithLifecycle()
 
-    val csqttLinkMode = tunnelAuthSettings.csqttLinkMode
-    val csqttLink = tunnelAuthSettings.csqttLink
+    val wsttLinkMode = tunnelAuthSettings.wsttLinkMode
+    val wsttLink = tunnelAuthSettings.wsttLink
     val peer by settingsStore.peer.collectAsStateWithLifecycle(initialValue = "")
     val vkHashes by settingsStore.vkHashes.collectAsStateWithLifecycle(initialValue = "")
     val vkHashCheckResultsJson by settingsStore.vkHashCheckResults.collectAsStateWithLifecycle(initialValue = "{}")
     val workersPerHash by settingsStore.workersPerHash.collectAsStateWithLifecycle(initialValue = 18)
+    val configuredWorkersPerHash by settingsStore.configuredWorkersPerHash.collectAsStateWithLifecycle(initialValue = 18)
+    val powerSaverEnabled by settingsStore.powerSaverEnabled.collectAsStateWithLifecycle(initialValue = false)
     val sni by settingsStore.sni.collectAsStateWithLifecycle(initialValue = "")
-    val turnTransport by settingsStore.turnTransport.collectAsStateWithLifecycle(initialValue = CsqttConstants.Tunnel.DEFAULT_TURN_TRANSPORT)
-    val srtpMode by settingsStore.srtpMode.collectAsStateWithLifecycle(initialValue = SettingsStore.cachedSrtpMode ?: CsqttConstants.SrtpMode.DEFAULT)
+    val turnTransport by settingsStore.turnTransport.collectAsStateWithLifecycle(initialValue = WsttConstants.Tunnel.DEFAULT_TURN_TRANSPORT)
+    val srtpMode by settingsStore.srtpMode.collectAsStateWithLifecycle(initialValue = SettingsStore.cachedSrtpMode ?: WsttConstants.SrtpMode.DEFAULT)
     val customTurnIps by settingsStore.customTurnIps.collectAsStateWithLifecycle(initialValue = "")
     val manualPortsEnabled by settingsStore.manualPortsEnabled.collectAsStateWithLifecycle(initialValue = false)
     val serverPeerPort by settingsStore.serverPeerPort.collectAsStateWithLifecycle(
-        initialValue = CsqttConstants.Network.DEFAULT_SERVER_PEER_PORT,
+        initialValue = WsttConstants.Network.DEFAULT_SERVER_PEER_PORT,
     )
-    val vkAuthMode by settingsStore.vkAuthMode.collectAsStateWithLifecycle(initialValue = CsqttConstants.VkAuth.MODE_CALLS)
+    val vkAuthMode by settingsStore.vkAuthMode.collectAsStateWithLifecycle(initialValue = WsttConstants.VkAuth.MODE_CALLS)
     val captchaMode by settingsStore.captchaMode.collectAsStateWithLifecycle(initialValue = "auto")
     val captchaSolveMethod by settingsStore.captchaSolveMethod.collectAsStateWithLifecycle(initialValue = "auto")
-    val activeFingerprint by settingsStore.selectedFingerprint.collectAsStateWithLifecycle(initialValue = CsqttConstants.Tunnel.DEFAULT_FINGERPRINT)
-    val activeClientIds by settingsStore.activeClientIds.collectAsStateWithLifecycle(initialValue = CsqttConstants.Tunnel.DEFAULT_CLIENT_IDS)
+    val activeFingerprint by settingsStore.selectedFingerprint.collectAsStateWithLifecycle(initialValue = WsttConstants.Tunnel.DEFAULT_FINGERPRINT)
+    val activeClientIds by settingsStore.activeClientIds.collectAsStateWithLifecycle(initialValue = WsttConstants.Tunnel.DEFAULT_CLIENT_IDS)
     val savedHashMode by settingsStore.vkHashMode.collectAsStateWithLifecycle(initialValue = SettingsStore.cachedVkHashMode)
     val savedVkAccessToken by settingsStore.vkAccessToken.collectAsStateWithLifecycle(initialValue = SettingsStore.cachedVkAccessToken)
 
     var pendingStartAfterVpnPermission by remember { mutableStateOf(false) }
 
-    val parsedLink = remember(csqttLink) { parseCsqttLink(csqttLink) }
+    val parsedLink = remember(wsttLink) { parseWsttLink(wsttLink) }
     val linkHashes = parsedLink?.hashes.orEmpty()
-    val linkTokenActive = csqttLinkMode && parsedLink?.vkAccessToken?.isNotEmpty() == true
+    val linkTokenActive = wsttLinkMode && parsedLink?.vkAccessToken?.isNotEmpty() == true
     val rawManualHashes = remember(vkHashes) {
         vkHashes.split(Regex("[,\\s\\n]+"))
             .map(String::trim)
@@ -118,14 +121,14 @@ internal fun ConnectionTab(
         )
     }
     val manualHashes = if (activeManualHashes.isNotEmpty()) activeManualHashes else rawManualHashes
-    val accountAutoJsMode = vkAuthMode == CsqttConstants.VkAuth.MODE_AUTO_JS
+    val accountAutoJsMode = vkAuthMode == WsttConstants.VkAuth.MODE_AUTO_JS
     val hashSettingsLoaded = savedHashMode != null && savedVkAccessToken != null
     val autoHashMode = accountAutoJsMode || (
-        savedHashMode != null && savedHashMode != CsqttConstants.VkAutoHash.MODE_MANUAL
+        savedHashMode != null && savedHashMode != WsttConstants.VkAutoHash.MODE_MANUAL
     )
     val vkTokenActive = savedVkAccessToken?.isNotBlank() == true
     val hashesReady = hashSettingsLoaded && ConnectionStartPolicy.hasReadyVkCredentials(
-        linkMode = csqttLinkMode,
+        linkMode = wsttLinkMode,
         linkHashCount = linkHashes.size,
         linkTokenPresent = linkTokenActive,
         autoHashMode = autoHashMode,
@@ -136,7 +139,7 @@ internal fun ConnectionTab(
     val trimmedPeer = peer.trim()
     val isLocalOrUnspecifiedPeer = trimmedPeer == "0.0.0.0" || trimmedPeer == "127.0.0.1" || trimmedPeer.equals("localhost", ignoreCase = true) || trimmedPeer == "::1"
     val startBlocker = ConnectionStartPolicy.blocker(
-        linkMode = csqttLinkMode,
+        linkMode = wsttLinkMode,
         linkValid = parsedLink != null,
         peerValid = trimmedPeer.isNotBlank() && !trimmedPeer.contains(":") && !isLocalOrUnspecifiedPeer,
         peerPortValid = peerPortValid,
@@ -155,6 +158,7 @@ internal fun ConnectionTab(
             putExtra("vk_access_token", source.vkAccessToken)
             putExtra("vk_token_from_link", source.tokenFromLink)
             putExtra("workers_per_hash", workersPerHash)
+            putExtra("max_workers_per_hash", configuredWorkersPerHash)
             putExtra("port", 0)
             putExtra("sni", sni)
             putExtra("connection_password", source.password)
@@ -163,7 +167,7 @@ internal fun ConnectionTab(
             putExtra("captcha_solve_method", captchaSolveMethod)
             putExtra("fingerprint", activeFingerprint)
             putExtra("client_ids", activeClientIds)
-            putExtra("obfs_mode", CsqttConstants.Tunnel.DEFAULT_OBFS_MODE)
+            putExtra("obfs_mode", WsttConstants.Tunnel.DEFAULT_OBFS_MODE)
             putExtra("turn_transport", turnTransport)
             putExtra("srtp_mode", srtpMode)
             putExtra("custom_turn_ips", customTurnIps)
@@ -249,7 +253,7 @@ internal fun ConnectionTab(
         }
     }
 
-    CsqttScreen {
+    WsttScreen {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -265,6 +269,8 @@ internal fun ConnectionTab(
                 autoPausedForWifi = autoPausedForWifi,
                 cooldownActive = cooldownActive,
                 configurationValid = isValid,
+                powerSaverEnabled = powerSaverEnabled,
+                onPowerSaverChange = { enabled -> scope.launch { settingsStore.savePowerSaverEnabled(enabled) } },
                 onToggleTunnel = { toggleTunnel() },
             )
         }
@@ -279,6 +285,8 @@ private fun TunnelConnectionPanel(
     autoPausedForWifi: Boolean,
     cooldownActive: Boolean,
     configurationValid: Boolean,
+    powerSaverEnabled: Boolean,
+    onPowerSaverChange: (Boolean) -> Unit,
     onToggleTunnel: () -> Unit,
 ) {
     val isStarting = tunnelStarting && !tunnelRunning && !tunnelStopping
@@ -320,7 +328,7 @@ private fun TunnelConnectionPanel(
                 },
                 modifier = Modifier
                     .size(172.dp)
-                    .clip(CsqttShapes.Pill)
+                    .clip(WsttShapes.Pill)
                     .clickable(
                         enabled = canToggle,
                         onClick = onToggleTunnel,
@@ -337,6 +345,26 @@ private fun TunnelConnectionPanel(
                     else -> 0.34f
                 },
             )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = "Энергосберегающий режим",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = "Сокращает число активных потоков без переподключения",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(checked = powerSaverEnabled, onCheckedChange = onPowerSaverChange)
+            }
 
             Text(
                 text = statusText,

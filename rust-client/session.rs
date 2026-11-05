@@ -1123,7 +1123,6 @@ async fn run_allocated_session(
     };
     if let Some(target) = &runtime.target_workers
         && config.id > target.load(Ordering::Acquire)
-        && config.id > runtime.configured_workers
     {
         return Ok(false);
     }
@@ -1191,7 +1190,7 @@ async fn run_allocated_session(
                     tokio::pin!(notified);
                     notified.as_mut().enable();
                     let current_target = target.load(Ordering::Acquire);
-                    if config.id > current_target && config.id > runtime.configured_workers {
+                    if config.id > current_target {
                         break;
                     }
                     notified.await;

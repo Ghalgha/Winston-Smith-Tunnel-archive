@@ -46,12 +46,9 @@ const ADAPTIVE_DECREASE_FACTOR: f64 = 0.85;
 const ADAPTIVE_INCREASE_BYTES_PER_SEC: f64 = 5_000.0;
 const ADAPTIVE_ADJUST_INTERVAL: Duration = Duration::from_millis(100);
 
-const FLOW_BURST_BYTES: usize = 16 * 1024;
 const FLOW_TABLE_MAX: usize = 1024;
 const FLOW_EVICT_EVERY: u32 = 1024;
 const FLOW_IDLE_TTL: Duration = Duration::from_secs(30);
-const SMALL_UDP_MAX_LEN: usize = 300;
-const SMALL_UDP_STICKY: Duration = Duration::from_secs(1);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 enum FlowKey {
@@ -59,6 +56,7 @@ enum FlowKey {
         src: [u8; 4],
         dst: [u8; 4],
         proto: u8,
+        fragment_id: Option<u16>,
         sport: u16,
         dport: u16,
     },
@@ -66,6 +64,7 @@ enum FlowKey {
         src: [u8; 16],
         dst: [u8; 16],
         proto: u8,
+        fragment_id: Option<u32>,
         sport: u16,
         dport: u16,
     },
@@ -74,9 +73,22 @@ enum FlowKey {
 #[derive(Clone, Copy, Debug)]
 struct FlowState {
     idx: usize,
+    worker_id: usize,
+    incarnation_id: u64,
     last_seen: std::time::Instant,
-    burst_left: usize,
-    sticky_until: Option<std::time::Instant>,
+}
+
+fn flow_binding_matches(
+    state: &FlowState,
+    worker_idx: usize,
+    worker_id: usize,
+    incarnation_id: u64,
+    sendable: bool,
+) -> bool {
+    state.idx == worker_idx
+        && state.worker_id == worker_id
+        && state.incarnation_id == incarnation_id
+        && sendable
 }
 
 fn transport_ports(packet: &[u8], offset: usize, proto: u8) -> (u16, u16) {
@@ -101,19 +113,29 @@ fn flow_key(packet: &[u8]) -> Option<FlowKey> {
             if ihl < 20 || packet.len() < ihl {
                 return None;
             }
+            let total_len = u16::from_be_bytes([packet[2], packet[3]]) as usize;
+            if total_len < ihl || total_len > packet.len() {
+                return None;
+            }
             let proto = packet[9];
             let src = [packet[12], packet[13], packet[14], packet[15]];
             let dst = [packet[16], packet[17], packet[18], packet[19]];
-            let fragment_offset = u16::from_be_bytes([packet[6], packet[7]]) & 0x1fff;
-            let (sport, dport) = if fragment_offset == 0 {
-                transport_ports(packet, ihl, proto)
-            } else {
+            let fragment = u16::from_be_bytes([packet[6], packet[7]]);
+            let fragment_offset = fragment & 0x1fff;
+            let more_fragments = fragment & 0x2000 != 0;
+            let is_fragmented = fragment_offset != 0 || more_fragments;
+            let fragment_id = is_fragmented
+                .then(|| u16::from_be_bytes([packet[4], packet[5]]));
+            let (sport, dport) = if is_fragmented {
                 (0, 0)
+            } else {
+                transport_ports(&packet[..total_len], ihl, proto)
             };
             Some(FlowKey::V4 {
                 src,
                 dst,
                 proto,
+                fragment_id,
                 sport,
                 dport,
             })
@@ -122,30 +144,92 @@ fn flow_key(packet: &[u8]) -> Option<FlowKey> {
             if packet.len() < 40 {
                 return None;
             }
-            let proto = packet[6];
+            let payload_len = u16::from_be_bytes([packet[4], packet[5]]) as usize;
+            let packet_end = 40usize.checked_add(payload_len)?;
+            if packet_end > packet.len() {
+                return None;
+            }
             let src: [u8; 16] = packet[8..24].try_into().ok()?;
             let dst: [u8; 16] = packet[24..40].try_into().ok()?;
-            let (sport, dport) = transport_ports(packet, 40, proto);
-            Some(FlowKey::V6 {
-                src,
-                dst,
-                proto,
-                sport,
-                dport,
-            })
+            let mut next_header = packet[6];
+            let mut offset = 40usize;
+
+            // Walk the bounded IPv6 extension-header chain. A non-initial
+            // fragment cannot expose the transport header, so all fragments
+            // are keyed by the Fragment header's identification and next-header.
+            for _ in 0..8 {
+                match next_header {
+                    0 | 43 | 60 | 135 | 139 | 140 => {
+                        if offset + 2 > packet_end {
+                            return None;
+                        }
+                        let following = packet[offset];
+                        let header_len = (usize::from(packet[offset + 1]) + 1).checked_mul(8)?;
+                        if offset + header_len > packet_end {
+                            return None;
+                        }
+                        next_header = following;
+                        offset += header_len;
+                    }
+                    51 => {
+                        if offset + 2 > packet_end {
+                            return None;
+                        }
+                        let following = packet[offset];
+                        let header_len = (usize::from(packet[offset + 1]) + 2).checked_mul(4)?;
+                        if offset + header_len > packet_end {
+                            return None;
+                        }
+                        next_header = following;
+                        offset += header_len;
+                    }
+                    44 => {
+                        if offset + 8 > packet_end {
+                            return None;
+                        }
+                        let following = packet[offset];
+                        let fragment_field =
+                            u16::from_be_bytes([packet[offset + 2], packet[offset + 3]]);
+                        let fragment_offset = (fragment_field & 0xfff8) >> 3;
+                        let more_fragments = fragment_field & 1 != 0;
+                        let id = u32::from_be_bytes([
+                            packet[offset + 4],
+                            packet[offset + 5],
+                            packet[offset + 6],
+                            packet[offset + 7],
+                        ]);
+                        if fragment_offset != 0 || more_fragments {
+                            return Some(FlowKey::V6 {
+                                src,
+                                dst,
+                                proto: following,
+                                fragment_id: Some(id),
+                                sport: 0,
+                                dport: 0,
+                            });
+                        }
+                        next_header = following;
+                        offset += 8;
+                    }
+                    _ => {
+                        let (sport, dport) =
+                            transport_ports(&packet[..packet_end], offset, next_header);
+                        return Some(FlowKey::V6 {
+                            src,
+                            dst,
+                            proto: next_header,
+                            fragment_id: None,
+                            sport,
+                            dport,
+                        });
+                    }
+                }
+            }
+            None
         }
         _ => None,
     }
 }
-
-fn is_small_udp(key: &FlowKey, packet_len: usize) -> bool {
-    packet_len <= SMALL_UDP_MAX_LEN
-        && matches!(
-            key,
-            FlowKey::V4 { proto: 17, .. } | FlowKey::V6 { proto: 17, .. }
-        )
-}
-
 #[cfg(unix)]
 const TUN_REPLACEMENT_TIMEOUT: Duration = Duration::from_secs(20);
 #[cfg(unix)]
@@ -204,12 +288,37 @@ impl RateController {
     }
 }
 
+fn choose_best_sendable<F>(
+    tokens: &[f64],
+    cursor: usize,
+    mut is_sendable: F,
+) -> Option<usize>
+where
+    F: FnMut(usize) -> bool,
+{
+    if tokens.is_empty() {
+        return None;
+    }
+    let start = cursor.min(tokens.len() - 1);
+    let mut best_idx = None;
+    let mut best_tokens = f64::NEG_INFINITY;
+    for offset in 0..tokens.len() {
+        let idx = (start + offset) % tokens.len();
+        if is_sendable(idx) && tokens[idx] > best_tokens {
+            best_tokens = tokens[idx];
+            best_idx = Some(idx);
+        }
+    }
+    best_idx
+}
+
 #[derive(Default)]
 pub struct UplinkState {
     pub last_update: Option<std::time::Instant>,
     pub tokens: Vec<f64>,
     rates: Vec<RateController>,
     pub cursor: usize,
+    worker_signature: Vec<(usize, u64)>,
     flows: HashMap<FlowKey, FlowState>,
     flow_evict_counter: u32,
 }
@@ -217,6 +326,30 @@ pub struct UplinkState {
 impl UplinkState {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    fn worker_set_matches(&self, workers: &[WorkerEntry]) -> bool {
+        self.worker_signature.len() == workers.len()
+            && self
+                .worker_signature
+                .iter()
+                .zip(workers)
+                .all(|(&(id, incarnation_id), worker)| {
+                    id == worker.channels.id && incarnation_id == worker.channels.incarnation_id
+                })
+    }
+
+    fn sync_worker_signature(&mut self, signature: &[(usize, u64)], now: std::time::Instant) {
+        if self.worker_signature.as_slice() == signature {
+            return;
+        }
+        self.worker_signature = signature.to_vec();
+        self.tokens = vec![TB_CAPACITY_BYTES; signature.len()];
+        self.rates = vec![RateController::new(); signature.len()];
+        self.last_update = Some(now);
+        self.cursor = 0;
+        self.flows.clear();
+        self.flow_evict_counter = 0;
     }
 
     pub fn update_tokens(&mut self, count: usize, now: std::time::Instant) {
@@ -228,8 +361,7 @@ impl UplinkState {
             self.tokens.resize(count, TB_CAPACITY_BYTES);
             self.rates.resize_with(count, RateController::new);
             self.last_update = Some(now);
-            // Индексы воркеров сдвинулись — старые flowlet-привязки больше не
-            // действительны.
+            // Количество worker'ов изменилось; старые привязки больше не действительны.
             self.flows.clear();
             self.flow_evict_counter = 0;
         }
@@ -283,114 +415,116 @@ impl UplinkState {
         }
         self.flows
             .retain(|_, state| now.saturating_duration_since(state.last_seen) < FLOW_IDLE_TTL);
-        if self.flows.len() >= FLOW_TABLE_MAX {
-            self.flows.clear();
+        if self.flows.len() >= FLOW_TABLE_MAX
+            && let Some(oldest_key) = self
+                .flows
+                .iter()
+                .min_by_key(|(_, state)| state.last_seen)
+                .map(|(key, _)| *key)
+        {
+            self.flows.remove(&oldest_key);
         }
     }
 
     /// Выбираем здоровый поток с наибольшим запасом токенов, обходя список
     /// начиная с `cursor`. Токены здесь не списываются.
     fn choose_stream(&mut self, workers: &[WorkerEntry]) -> Option<usize> {
-        let count = workers.len();
-        if count == 0 {
-            return None;
-        }
-        let start = self.cursor.min(count - 1);
-        let mut best_idx = None;
-        let mut best_tokens = f64::NEG_INFINITY;
-        for offset in 0..count {
-            let idx = (start + offset) % count;
+        let rates = &mut self.rates;
+        let idx = choose_best_sendable(&self.tokens, self.cursor, |idx| {
             let allocation = &workers[idx].channels.allocation;
-            if !allocation.is_sendable() {
-                if allocation.is_alive()
-                    && let Some(controller) = self.rates.get_mut(idx)
-                {
-                    controller.mark_congested();
-                }
-                continue;
+            let sendable = allocation.is_sendable();
+            if !sendable
+                && allocation.is_alive()
+                && let Some(controller) = rates.get_mut(idx)
+            {
+                controller.mark_congested();
             }
-            if self.tokens[idx] > best_tokens {
-                best_tokens = self.tokens[idx];
-                best_idx = Some(idx);
-            }
+            sendable
+        });
+        if let Some(idx) = idx {
+            self.cursor = (idx + 1) % workers.len();
         }
-        if let Some(idx) = best_idx {
-            self.cursor = (idx + 1) % count;
-        }
-        best_idx
+        idx
     }
 
-    /// Равномерное размазывание по здоровым потокам с per-flow порядком:
-    /// маленькие UDP-потоки (игры/голос) закрепляются за одним воркером, а
-    /// TCP/крупный UDP идёт берстами по 16 КБ и переезжает на другой воркер
-    /// только на границе берста. Внутри берста порядок пакетов сохраняется,
-    /// поэтому TCP не видит per-packet reordering, как в старом водопаде.
+    /// Распределение по здоровым worker'ам с постоянной привязкой каждого
+    /// распознанного потока. Перенос потока допускается только при недоступности
+    /// прежнего worker'а или смене его incarnation_id.
     fn select_deficit_waterfall(
         &mut self,
         workers: &[WorkerEntry],
         total_len: usize,
-        packet_len: usize,
+        _packet_len: usize,
         flow: Option<FlowKey>,
         now: std::time::Instant,
-    ) -> usize {
+    ) -> Option<usize> {
+        if !self.worker_set_matches(workers) {
+            let signature: Vec<_> = workers
+                .iter()
+                .map(|worker| (worker.channels.id, worker.channels.incarnation_id))
+                .collect();
+            self.sync_worker_signature(&signature, now);
+        }
+
         let count = workers.len();
-        if count <= 1 {
-            return 0;
+        if count == 0 {
+            return None;
+        }
+        if count == 1 {
+            return workers[0]
+                .channels
+                .allocation
+                .is_sendable()
+                .then_some(0);
         }
         self.update_tokens(count, now);
         let len_f = total_len as f64;
 
         let Some(key) = flow else {
-            let Some(idx) = self.choose_stream(workers) else {
-                return 0;
-            };
+            let idx = self.choose_stream(workers)?;
             self.tokens[idx] = (self.tokens[idx] - len_f).max(MAX_DEFICIT);
-            return idx;
+            return Some(idx);
         };
 
         self.evict_flows(now);
-        let small_udp = is_small_udp(&key, packet_len);
-
         if let Some(mut state) = self.flows.get(&key).copied() {
             state.last_seen = now;
-            if small_udp {
-                state.sticky_until = Some(now + SMALL_UDP_STICKY);
-            }
-            let sticky = state.sticky_until.is_some_and(|until| now < until);
-            let assigned_ok =
-                state.idx < count && workers[state.idx].channels.allocation.is_sendable();
-            if assigned_ok && (sticky || state.burst_left >= total_len) {
+            let assigned_ok = state.idx < count
+                && flow_binding_matches(
+                    &state,
+                    state.idx,
+                    workers[state.idx].channels.id,
+                    workers[state.idx].channels.incarnation_id,
+                    workers[state.idx].channels.allocation.is_sendable(),
+                );
+            if assigned_ok {
                 let idx = state.idx;
-                state.burst_left = state.burst_left.saturating_sub(total_len);
                 self.flows.insert(key, state);
                 self.tokens[idx] = (self.tokens[idx] - len_f).max(MAX_DEFICIT);
-                return idx;
+                return Some(idx);
             }
 
-            let Some(idx) = self.choose_stream(workers) else {
-                return 0;
-            };
+            let idx = self.choose_stream(workers)?;
             state.idx = idx;
-            state.burst_left = FLOW_BURST_BYTES.saturating_sub(total_len);
+            state.worker_id = workers[idx].channels.id;
+            state.incarnation_id = workers[idx].channels.incarnation_id;
             self.flows.insert(key, state);
             self.tokens[idx] = (self.tokens[idx] - len_f).max(MAX_DEFICIT);
-            return idx;
+            return Some(idx);
         }
 
-        let Some(idx) = self.choose_stream(workers) else {
-            return 0;
-        };
+        let idx = self.choose_stream(workers)?;
         self.flows.insert(
             key,
             FlowState {
                 idx,
+                worker_id: workers[idx].channels.id,
+                incarnation_id: workers[idx].channels.incarnation_id,
                 last_seen: now,
-                burst_left: FLOW_BURST_BYTES.saturating_sub(total_len),
-                sticky_until: small_udp.then(|| now + SMALL_UDP_STICKY),
             },
         );
         self.tokens[idx] = (self.tokens[idx] - len_f).max(MAX_DEFICIT);
-        idx
+        Some(idx)
     }
 
     #[cfg_attr(not(test), allow(dead_code))]
@@ -1333,6 +1467,9 @@ impl Dispatcher {
             )
         };
 
+        let Some(selected_idx) = selected_idx else {
+            return;
+        };
         let target = &workers[selected_idx];
         let wrapped = target.channels.cipher.wrap(
             &mut packet,
@@ -1387,6 +1524,9 @@ impl Dispatcher {
             )
         };
 
+        let Some(selected_idx) = selected_idx else {
+            return;
+        };
         let target = &workers[selected_idx];
         let mut failed = false;
         for mut frag in fragments {
@@ -1832,9 +1972,176 @@ mod tests {
     }
 
     #[test]
+    fn worker_set_reorder_resets_token_and_flow_bindings() {
+        let mut state = UplinkState::new();
+        let now = std::time::Instant::now();
+        state.sync_worker_signature(&[(1, 10), (2, 20)], now);
+        state.tokens = vec![1.0, 2.0];
+        state.rates = vec![RateController::new(), RateController::new()];
+        state.cursor = 1;
+        state.flows.insert(
+            FlowKey::V4 {
+                src: [10, 0, 0, 1],
+                dst: [10, 0, 0, 2],
+                proto: 6,
+                fragment_id: None,
+                sport: 12345,
+                dport: 443,
+            },
+            FlowState {
+                idx: 0,
+                worker_id: 1,
+                incarnation_id: 10,
+                last_seen: now,
+            },
+        );
+
+        state.sync_worker_signature(&[(2, 20), (1, 10)], now + Duration::from_millis(1));
+
+        assert_eq!(state.tokens, vec![TB_CAPACITY_BYTES; 2]);
+        assert_eq!(state.cursor, 0);
+        assert!(state.flows.is_empty());
+    }
+
+    #[test]
+    fn flow_binding_invalidates_replaced_worker_incarnation() {
+        let now = std::time::Instant::now();
+        let state = FlowState {
+            idx: 1,
+            worker_id: 7,
+            incarnation_id: 100,
+            last_seen: now,
+        };
+
+        assert!(flow_binding_matches(&state, 1, 7, 100, true));
+        assert!(!flow_binding_matches(&state, 1, 7, 101, true));
+        assert!(!flow_binding_matches(&state, 1, 7, 100, false));
+        assert!(!flow_binding_matches(&state, 0, 7, 100, true));
+    }
+
+    #[test]
+    fn scheduler_returns_none_when_no_worker_is_sendable() {
+        let tokens = [100.0, 200.0, 300.0];
+        assert_eq!(choose_best_sendable(&tokens, 1, |_| false), None);
+    }
+
+    #[test]
+    fn scheduler_chooses_best_sendable_worker_from_cursor() {
+        let tokens = [100.0, 300.0, 200.0];
+        assert_eq!(
+            choose_best_sendable(&tokens, 2, |idx| idx != 1),
+            Some(2)
+        );
+        assert_eq!(
+            choose_best_sendable(&tokens, 1, |_| true),
+            Some(1)
+        );
+    }
+
+    #[test]
+    fn full_flow_table_evicts_one_old_entry_not_all_active_flows() {
+        let mut state = UplinkState::new();
+        let now = std::time::Instant::now();
+        for i in 0..FLOW_TABLE_MAX {
+            let key = FlowKey::V4 {
+                src: [10, 0, (i >> 8) as u8, i as u8],
+                dst: [10, 66, 67, 2],
+                proto: 17,
+                fragment_id: None,
+                sport: i as u16,
+                dport: 443,
+            };
+            state.flows.insert(
+                key,
+                FlowState {
+                    idx: 0,
+                    worker_id: 1,
+                    incarnation_id: 1,
+                    last_seen: now + Duration::from_millis(i as u64),
+                },
+            );
+        }
+
+        let newest = FlowKey::V4 {
+            src: [10, 0, 3, 255],
+            dst: [10, 66, 67, 2],
+            proto: 17,
+            fragment_id: None,
+            sport: (FLOW_TABLE_MAX - 1) as u16,
+            dport: 443,
+        };
+        state.evict_flows(now + Duration::from_secs(1));
+
+        assert_eq!(state.flows.len(), FLOW_TABLE_MAX - 1);
+        assert!(state.flows.contains_key(&newest));
+    }
+
+    #[test]
+    fn ipv4_fragments_share_one_flow_key() {
+        let mut first = ipv4_packet(17, 12000, 443, 28);
+        first[4..6].copy_from_slice(&0x1234u16.to_be_bytes());
+        first[6..8].copy_from_slice(&0x2000u16.to_be_bytes()); // MF, offset 0
+
+        let mut later = ipv4_packet(17, 0, 0, 28);
+        later[4..6].copy_from_slice(&0x1234u16.to_be_bytes());
+        later[6..8].copy_from_slice(&1u16.to_be_bytes()); // offset 1
+
+        assert_eq!(flow_key(&first), flow_key(&later));
+        assert!(matches!(
+            flow_key(&first),
+            Some(FlowKey::V4 { fragment_id: Some(0x1234), sport: 0, dport: 0, .. })
+        ));
+    }
+
+    #[test]
+    fn ipv6_hop_by_hop_extension_is_walked_before_transport() {
+        let mut packet = vec![0u8; 56];
+        packet[0] = 0x60;
+        packet[4..6].copy_from_slice(&16u16.to_be_bytes());
+        packet[6] = 0; // Hop-by-Hop Options
+        packet[8..24].copy_from_slice(&[0x20, 1, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
+        packet[24..40].copy_from_slice(&[0x20, 1, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2]);
+        packet[40] = 17; // UDP follows
+        packet[41] = 0; // 8-byte extension header
+        packet[48..50].copy_from_slice(&27015u16.to_be_bytes());
+        packet[50..52].copy_from_slice(&443u16.to_be_bytes());
+
+        assert!(matches!(
+            flow_key(&packet),
+            Some(FlowKey::V6 { proto: 17, sport: 27015, dport: 443, fragment_id: None, .. })
+        ));
+    }
+
+    #[test]
+    fn ipv6_fragments_share_one_flow_key() {
+        let mut first = vec![0u8; 56];
+        first[0] = 0x60;
+        first[4..6].copy_from_slice(&16u16.to_be_bytes());
+        first[6] = 44;
+        first[8..24].copy_from_slice(&[0x20, 1, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
+        first[24..40].copy_from_slice(&[0x20, 1, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2]);
+        first[40] = 17;
+        first[42..44].copy_from_slice(&1u16.to_be_bytes()); // first fragment, M=1
+        first[44..48].copy_from_slice(&0x12345678u32.to_be_bytes());
+        first[48..50].copy_from_slice(&27015u16.to_be_bytes());
+        first[50..52].copy_from_slice(&443u16.to_be_bytes());
+
+        let mut later = first.clone();
+        later[42..44].copy_from_slice(&8u16.to_be_bytes()); // offset 1, M=0
+        later[48..56].fill(0);
+
+        assert_eq!(flow_key(&first), flow_key(&later));
+        assert!(matches!(
+            flow_key(&first),
+            Some(FlowKey::V6 { proto: 17, fragment_id: Some(0x12345678), sport: 0, dport: 0, .. })
+        ));
+    }
+
+    #[test]
     fn flow_key_parses_ipv6_transport_ports() {
         let mut packet = vec![0u8; 60];
         packet[0] = 0x60;
+        packet[4..6].copy_from_slice(&20u16.to_be_bytes());
         packet[6] = 17;
         packet[8..24]
             .copy_from_slice(&[0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
@@ -1851,16 +2158,6 @@ mod tests {
                 ..
             })
         ));
-    }
-
-    #[test]
-    fn small_udp_detection_keeps_games_sticky() {
-        let game = ipv4_packet(17, 27015, 27015, 180);
-        let bulk = ipv4_packet(17, 27015, 27015, 400);
-        let tcp = ipv4_packet(6, 27015, 27015, 180);
-        assert!(is_small_udp(&flow_key(&game).unwrap(), game.len()));
-        assert!(!is_small_udp(&flow_key(&bulk).unwrap(), bulk.len()));
-        assert!(!is_small_udp(&flow_key(&tcp).unwrap(), tcp.len()));
     }
 
     #[test]

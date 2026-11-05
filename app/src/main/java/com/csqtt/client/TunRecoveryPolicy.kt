@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 internal object TunRecoveryPolicy {
     fun shouldReuse(

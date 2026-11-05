@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -155,11 +155,11 @@ class TunnelEventParserTest {
 
     @Test
     fun deterministicProtocolPipeChaosNeverThrowsOrCreatesNegativeState() {
-        val cases = System.getenv("CSQTT_ANDROID_PARSER_CASES")
+        val cases = System.getenv("WSTT_ANDROID_PARSER_CASES")
             ?.toIntOrNull()
             ?.coerceAtLeast(1)
             ?: 50_000
-        var random = (System.getenv("CSQTT_SOAK_SEED")?.toLongOrNull() ?: 104_729L) xor
+        var random = (System.getenv("WSTT_SOAK_SEED")?.toLongOrNull() ?: 104_729L) xor
             0x6a09e667f3bcc909L
         val types = arrayOf("READY", "STOPPED", "ERROR", "STATS", "CONFIG", "CAPTCHA_DONE", "UNKNOWN")
         val covered = BooleanArray(4)

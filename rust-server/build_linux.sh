@@ -33,8 +33,10 @@ command -v cargo >/dev/null
 command -v rustup >/dev/null
 command -v zig >/dev/null
 cargo zigbuild --help >/dev/null
-rustup toolchain install 1.97.1 --profile minimal --component rustfmt --component clippy
-rustup target add x86_64-unknown-linux-musl aarch64-unknown-linux-musl armv7-unknown-linux-musleabihf --toolchain 1.97.1
+if [[ "${WSTT_RUST_TOOLCHAIN_READY:-0}" != "1" ]]; then
+  rustup toolchain install 1.97.1 --profile minimal --component rustfmt --component clippy
+  rustup target add x86_64-unknown-linux-musl aarch64-unknown-linux-musl armv7-unknown-linux-musleabihf --toolchain 1.97.1
+fi
 rustc +1.97.1 --version
 zig version
 WRAP="$ROOT/build/zig-wrappers"
@@ -121,19 +123,41 @@ if [[ "$RUN_CHECKS" == 1 ]]; then
 fi
 build_variant() {
   local target="$1" zig_target="$2" asset="$3"
+  local target_dir="$ROOT/build/linux-musl-$asset"
   CSQTT_ZIG_TARGET="$zig_target" \
     ZIG_GLOBAL_CACHE_DIR="$ROOT/build/zig-cache/$asset/global" \
     ZIG_LOCAL_CACHE_DIR="$ROOT/build/zig-cache/$asset/local" \
-    CARGO_TARGET_DIR="$ROOT/build/linux-musl" \
+    CARGO_TARGET_DIR="$target_dir" \
+    CARGO_BUILD_JOBS="${WSTT_BUILD_JOBS_PER_TARGET:-1}" \
     cargo +1.97.1 zigbuild --release --target "$target" "${FEATURE_ARGS[@]}"
   mkdir -p "$ROOT/dist" "$ROOT/../app/src/main/assets"
-  cp "$ROOT/build/linux-musl/$target/release/csqtt" "$ROOT/dist/$asset"
-  cp "$ROOT/build/linux-musl/$target/release/csqtt" "$ROOT/../app/src/main/assets/$asset"
+  cp "$target_dir/$target/release/csqtt" "$ROOT/dist/$asset"
+  cp "$target_dir/$target/release/csqtt" "$ROOT/../app/src/main/assets/$asset"
   ls -lh "$ROOT/dist/$asset"
 }
-build_variant x86_64-unknown-linux-musl x86_64-linux-musl csqtt-linux-amd64
-build_variant aarch64-unknown-linux-musl aarch64-linux-musl csqtt-linux-arm64
-build_variant armv7-unknown-linux-musleabihf arm-linux-musleabihf csqtt-linux-armv7
+
+mkdir -p "$ROOT/build"
+build_variant x86_64-unknown-linux-musl x86_64-linux-musl csqtt-linux-amd64 > "$ROOT/build/csqtt-linux-amd64.log" 2>&1 &
+amd64_pid=$!
+build_variant aarch64-unknown-linux-musl aarch64-linux-musl csqtt-linux-arm64 > "$ROOT/build/csqtt-linux-arm64.log" 2>&1 &
+arm64_pid=$!
+build_variant armv7-unknown-linux-musleabihf arm-linux-musleabihf csqtt-linux-armv7 > "$ROOT/build/csqtt-linux-armv7.log" 2>&1 &
+armv7_pid=$!
+
+build_status=0
+for pid in "$amd64_pid" "$arm64_pid" "$armv7_pid"; do
+  if ! wait "$pid"; then
+    build_status=1
+  fi
+done
+for asset in csqtt-linux-amd64 csqtt-linux-arm64 csqtt-linux-armv7; do
+  echo "===== $asset build log ====="
+  cat "$ROOT/build/$asset.log"
+done
+if [[ "$build_status" != 0 ]]; then
+  echo "At least one Linux architecture build failed" >&2
+  exit 1
+fi
 rm -f "$ROOT/../app/src/main/assets/csqtt"
 if command -v pwsh >/dev/null; then
   pwsh -NoProfile -File "$ROOT/../scripts/server_asset_provenance.ps1" -Mode Write

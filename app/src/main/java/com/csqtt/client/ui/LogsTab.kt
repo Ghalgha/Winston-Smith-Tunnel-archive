@@ -1,6 +1,6 @@
-package com.csqtt.client.ui
+package com.wstt.client.ui
 
-import com.csqtt.client.showRaisedToast
+import com.wstt.client.showRaisedToast
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -40,17 +40,17 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.csqtt.client.DeployManager
-import com.csqtt.client.LogEntry
-import com.csqtt.client.R
-import com.csqtt.client.SettingsStore
-import com.csqtt.client.TunnelManager
-import com.csqtt.client.ui.components.CsqttEmptyState
-import com.csqtt.client.ui.components.CsqttScreen
-import com.csqtt.client.ui.components.CsqttSettingRow
-import com.csqtt.client.ui.design.CsqttShapes
-import com.csqtt.client.ui.design.CsqttSpacing
-import com.csqtt.client.ui.design.CsqttTheme
+import com.wstt.client.DeployManager
+import com.wstt.client.LogEntry
+import com.wstt.client.R
+import com.wstt.client.SettingsStore
+import com.wstt.client.TunnelManager
+import com.wstt.client.ui.components.WsttEmptyState
+import com.wstt.client.ui.components.WsttScreen
+import com.wstt.client.ui.components.WsttSettingRow
+import com.wstt.client.ui.design.WsttShapes
+import com.wstt.client.ui.design.WsttSpacing
+import com.wstt.client.ui.design.WsttTheme
 import kotlinx.coroutines.launch
 
 import androidx.compose.foundation.BorderStroke
@@ -60,12 +60,12 @@ fun LogsTab(settingsStore: SettingsStore) {
     val loggingEnabled by settingsStore.loggingEnabled.collectAsStateWithLifecycle(initialValue = true)
     val scope = rememberCoroutineScope()
 
-    CsqttScreen {
+    WsttScreen {
         AppSectionCard(
-            contentPadding = PaddingValues(horizontal = CsqttSpacing.Md, vertical = CsqttSpacing.Xs),
-            verticalArrangement = Arrangement.spacedBy(CsqttSpacing.None),
+            contentPadding = PaddingValues(horizontal = WsttSpacing.Md, vertical = WsttSpacing.Xs),
+            verticalArrangement = Arrangement.spacedBy(WsttSpacing.None),
         ) {
-            CsqttSettingRow(
+            WsttSettingRow(
                 title = stringResource(R.string.logs_enabled),
                 checked = loggingEnabled,
                 onCheckedChange = { enabled ->
@@ -81,9 +81,9 @@ fun LogsTab(settingsStore: SettingsStore) {
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
-            shape = CsqttShapes.Card,
-            color = CsqttTheme.extendedColors.terminalBackground,
-            contentColor = CsqttTheme.extendedColors.terminalText,
+            shape = WsttShapes.Card,
+            color = WsttTheme.extendedColors.terminalBackground,
+            contentColor = WsttTheme.extendedColors.terminalText,
         ) {
             LogsTerminal()
         }
@@ -108,20 +108,20 @@ private fun LogsTerminal() {
     Box(modifier = Modifier.fillMaxSize()) {
         if (currentLogs.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CsqttEmptyState(
+                WsttEmptyState(
                     title = stringResource(R.string.logs_empty_title),
                     icon = Icons.Outlined.Terminal,
-                    modifier = Modifier.padding(CsqttSpacing.Md),
-                    contentColor = CsqttTheme.extendedColors.terminalText,
-                    secondaryContentColor = CsqttTheme.extendedColors.terminalMuted,
+                    modifier = Modifier.padding(WsttSpacing.Md),
+                    contentColor = WsttTheme.extendedColors.terminalText,
+                    secondaryContentColor = WsttTheme.extendedColors.terminalMuted,
                 )
             }
         } else {
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = CsqttSpacing.Md, top = CsqttSpacing.Md, end = CsqttSpacing.Md, bottom = 64.dp),
-                verticalArrangement = Arrangement.spacedBy(CsqttSpacing.Xs),
+                contentPadding = PaddingValues(start = WsttSpacing.Md, top = WsttSpacing.Md, end = WsttSpacing.Md, bottom = 64.dp),
+                verticalArrangement = Arrangement.spacedBy(WsttSpacing.Xs),
             ) {
                 items(
                     items = currentLogs,
@@ -144,7 +144,7 @@ private fun LogsTerminal() {
                 onClick = {
                     val text = currentLogs.joinToString("\n") { "${it.message} (x${it.count})" }
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.setPrimaryClip(ClipData.newPlainText("CSQTT Logs", text))
+                    clipboard.setPrimaryClip(ClipData.newPlainText("WSTT Logs", text))
                     context.showRaisedToast(copiedMessage, Toast.LENGTH_SHORT)
                 },
                 enabled = currentLogs.isNotEmpty(),

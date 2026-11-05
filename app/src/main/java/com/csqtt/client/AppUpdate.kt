@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
@@ -8,20 +8,20 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
-const val UPDATE_CHECK_NEVER = CsqttConstants.Update.CHECK_NEVER
-const val DEFAULT_UPDATE_CHECK_INTERVAL_HOURS = CsqttConstants.Update.DEFAULT_CHECK_INTERVAL_HOURS
-const val UPDATE_DIALOG_ACTION_POSTPONED = CsqttConstants.Update.ACTION_POSTPONED
-const val UPDATE_DIALOG_ACTION_UPDATE = CsqttConstants.Update.ACTION_UPDATE
+const val UPDATE_CHECK_NEVER = WsttConstants.Update.CHECK_NEVER
+const val DEFAULT_UPDATE_CHECK_INTERVAL_HOURS = WsttConstants.Update.DEFAULT_CHECK_INTERVAL_HOURS
+const val UPDATE_DIALOG_ACTION_POSTPONED = WsttConstants.Update.ACTION_POSTPONED
+const val UPDATE_DIALOG_ACTION_UPDATE = WsttConstants.Update.ACTION_UPDATE
 
-private const val UPDATE_LOG_TAG = CsqttConstants.General.APP_NAME
-private const val GITHUB_RELEASES_URL = CsqttConstants.Update.GITHUB_RELEASES_URL
-private const val GITHUB_LATEST_RELEASE_URL = CsqttConstants.Update.GITHUB_LATEST_RELEASE_URL
-private const val GITHUB_LATEST_RELEASE_WEB_URL = CsqttConstants.Update.GITHUB_LATEST_RELEASE_WEB_URL
-private const val GITHUB_RELEASE_TAG_URL_PREFIX = CsqttConstants.Update.GITHUB_RELEASE_TAG_URL_PREFIX
-private const val GITHUB_TAGS_URL = CsqttConstants.Update.GITHUB_TAGS_URL
-private const val GITHUB_TAG_TREE_URL_PREFIX = CsqttConstants.Update.GITHUB_TAG_TREE_URL_PREFIX
-private const val GITHUB_API_RATE_LIMIT_FALLBACK_MS = CsqttConstants.Timeouts.UPDATE_RATE_LIMIT_COOLDOWN_MS
-private val VERSION_NUMBER_REGEX = CsqttConstants.Patterns.VERSION_NUMBER
+private const val UPDATE_LOG_TAG = WsttConstants.General.APP_NAME
+private const val GITHUB_RELEASES_URL = WsttConstants.Update.GITHUB_RELEASES_URL
+private const val GITHUB_LATEST_RELEASE_URL = WsttConstants.Update.GITHUB_LATEST_RELEASE_URL
+private const val GITHUB_LATEST_RELEASE_WEB_URL = WsttConstants.Update.GITHUB_LATEST_RELEASE_WEB_URL
+private const val GITHUB_RELEASE_TAG_URL_PREFIX = WsttConstants.Update.GITHUB_RELEASE_TAG_URL_PREFIX
+private const val GITHUB_TAGS_URL = WsttConstants.Update.GITHUB_TAGS_URL
+private const val GITHUB_TAG_TREE_URL_PREFIX = WsttConstants.Update.GITHUB_TAG_TREE_URL_PREFIX
+private const val GITHUB_API_RATE_LIMIT_FALLBACK_MS = WsttConstants.Timeouts.UPDATE_RATE_LIMIT_COOLDOWN_MS
+private val VERSION_NUMBER_REGEX = WsttConstants.Patterns.VERSION_NUMBER
 
 @Volatile
 private var githubApiCooldownUntilMs = 0L

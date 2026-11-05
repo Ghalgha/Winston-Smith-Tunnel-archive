@@ -16,10 +16,16 @@ if [[ ! -d "$ANDROID_NDK_HOME" ]]; then
   exit 1
 fi
 
-rustup toolchain install 1.97.1 --profile minimal
-rustup default 1.97.1
-rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
-cargo install cargo-ndk --locked
+if [[ "${WSTT_RUST_TOOLCHAIN_READY:-0}" != "1" ]]; then
+  rustup toolchain install 1.97.1 --profile minimal
+  rustup default 1.97.1
+  rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
+fi
+if ! command -v cargo-ndk >/dev/null 2>&1; then
+  cargo install cargo-ndk --locked
+else
+  echo "Using cached cargo-ndk: $(cargo ndk --version)"
+fi
 
 cd "$ROOT/rust-client"
 cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -P 26 build --release

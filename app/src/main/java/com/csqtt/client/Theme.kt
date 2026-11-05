@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 import android.os.Build
 import android.app.Activity
@@ -22,13 +22,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
-import com.csqtt.client.CsqttConstants
-import com.csqtt.client.ui.design.CsqttDarkExtendedColors
-import com.csqtt.client.ui.design.CsqttLightExtendedColors
-import com.csqtt.client.ui.design.CsqttMaterialShapes
-import com.csqtt.client.ui.design.LocalCsqttExtendedColors
+import com.wstt.client.WsttConstants
+import com.wstt.client.ui.design.WsttDarkExtendedColors
+import com.wstt.client.ui.design.WsttLightExtendedColors
+import com.wstt.client.ui.design.WsttMaterialShapes
+import com.wstt.client.ui.design.LocalWsttExtendedColors
 
-val CSQTTTypography = Typography(
+val WSTTTypography = Typography(
     displayLarge = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.Bold, fontSize = 57.sp, lineHeight = 64.sp),
     displayMedium = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.Bold, fontSize = 45.sp, lineHeight = 52.sp),
     displaySmall = TextStyle(fontFamily = FontFamily.Default, fontWeight = FontWeight.Bold, fontSize = 36.sp, lineHeight = 44.sp),
@@ -235,7 +235,7 @@ private val BrandDarkColorScheme = darkColorScheme(
 private fun getAppColorScheme(isDark: Boolean): androidx.compose.material3.ColorScheme =
     if (isDark) BrandDarkColorScheme else BrandLightColorScheme
 
-object CSQTTColors {
+object WSTTColors {
     val connected = Color(0xFF4CAF50)
     val brand = Color(0xFF00E5C0)
     val brandDeep = Color(0xFF00B8A3)
@@ -256,13 +256,13 @@ object CSQTTColors {
 }
 
 @Composable
-fun CSQTTTheme(
+fun WSTTTheme(
     themeMode: String = "system",
     content: @Composable () -> Unit
 ) {
     val darkTheme = when (themeMode) {
-        CsqttConstants.Theme.MODE_DARK -> true
-        CsqttConstants.Theme.MODE_LIGHT -> false
+        WsttConstants.Theme.MODE_DARK -> true
+        WsttConstants.Theme.MODE_LIGHT -> false
         else -> isSystemInDarkTheme()
     }
 
@@ -299,13 +299,13 @@ fun CSQTTTheme(
     }
 
     CompositionLocalProvider(
-        LocalCsqttExtendedColors provides if (darkTheme) CsqttDarkExtendedColors else CsqttLightExtendedColors,
+        LocalWsttExtendedColors provides if (darkTheme) WsttDarkExtendedColors else WsttLightExtendedColors,
         LocalDensity provides fixedDensity,
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
-            typography = CSQTTTypography,
-            shapes = CsqttMaterialShapes,
+            typography = WSTTTypography,
+            shapes = WsttMaterialShapes,
             content = content,
         )
     }

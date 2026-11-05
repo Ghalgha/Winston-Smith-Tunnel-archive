@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 internal fun vkProbeRetryDelayMs(failures: Int): Long = when (failures.coerceAtLeast(1)) {
     in 1..15 -> 1_000L

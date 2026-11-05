@@ -1,7 +1,7 @@
-package com.csqtt.client
+package com.wstt.client
 
 internal enum class ConnectionStartBlocker(val message: String) {
-    Link("нужна корректная ссылка CSQTT"),
+    Link("нужна корректная ссылка WSTT"),
     Server("не указан корректный адрес сервера"),
     Port("указан некорректный порт сервера"),
     Password("не указан пароль подключения"),

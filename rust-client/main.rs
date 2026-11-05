@@ -97,6 +97,8 @@ struct Arguments {
     peer: String,
     #[arg(short = 'n', long, default_value_t = 18)]
     workers: usize,
+    #[arg(long = "max-workers", default_value_t = 0)]
+    max_workers: usize,
     #[arg(long, default_value_t = 0)]
     runtime_threads: usize,
     #[arg(long, default_value = "vkcalls")]
@@ -272,6 +274,11 @@ async fn run(arguments: Arguments) -> Result<i32> {
     } else {
         normalize_worker_count(arguments.workers)
     };
+    let configured_workers = if arguments.max_workers == 0 {
+        workers
+    } else {
+        normalize_worker_count(arguments.max_workers).max(workers)
+    };
     let groups = workers.div_ceil(WORKERS_PER_GROUP);
     let cancel = CancellationToken::new();
     let captcha = CaptchaSolver::new(&arguments.captcha_mode, cancel.clone());
@@ -339,15 +346,6 @@ async fn run(arguments: Arguments) -> Result<i32> {
             return Err(error);
         }
     };
-    let control_task = start_control_input(
-        cancel.clone(),
-        paused.clone(),
-        captcha,
-        events.clone(),
-        finish_js_calls.clone(),
-        dispatcher.clone(),
-        stdin,
-    );
     let local_port: Arc<str> = Arc::from(local_port);
     let raw_turn_ips = if !arguments.custom_turn_ips.is_empty() {
         &arguments.custom_turn_ips
@@ -376,8 +374,8 @@ async fn run(arguments: Arguments) -> Result<i32> {
         salt: Arc::from(arguments.salt.as_str()),
         local_port: local_port.clone(),
         password: Arc::from(password.as_str()),
-        workers: params_workers,
-        configured_workers: workers,
+        workers: params_workers.clone(),
+        configured_workers,
     });
     print_configuration(
         &arguments,
@@ -422,7 +420,7 @@ async fn run(arguments: Arguments) -> Result<i32> {
         pool,
         stats,
         events: events.clone(),
-        paused,
+        paused: paused.clone(),
         config_tx,
         start_pacer: Arc::new(WorkerStartPacer::new(WORKER_START_INTERVAL)),
         credential_pacer: Arc::new(tokio::sync::Mutex::new(())),
@@ -433,8 +431,20 @@ async fn run(arguments: Arguments) -> Result<i32> {
         repair,
         shutdown: Arc::new(ShutdownCoordinator::new()),
         cancel: cancel.clone(),
-        scale_notify,
+        scale_notify: scale_notify.clone(),
     });
+    let control_task = start_control_input(
+        cancel.clone(),
+        paused.clone(),
+        captcha,
+        events.clone(),
+        finish_js_calls.clone(),
+        dispatcher.clone(),
+        stdin,
+        params_workers,
+        scale_notify,
+        configured_workers,
+    );
     let required_ready_bots = required_js_ready_bots(groups);
     if js_auth_mode {
         crate::log_error!("[VK JS] Создатель удерживает звонок");
@@ -590,6 +600,7 @@ fn normalize_cli_argument(argument: String) -> String {
         "direct-ips",
         "runtime-threads",
         "workers",
+        "max-workers",
         "exact-workers",
     ];
     let Some(rest) = argument.strip_prefix('-') else {
@@ -746,6 +757,9 @@ fn start_control_input(
     finish_js_calls: Arc<AtomicBool>,
     dispatcher: Arc<Dispatcher>,
     mut stdin: tokio::sync::mpsc::Receiver<StdinLine>,
+    worker_count: Arc<AtomicUsize>,
+    scale_notify: Arc<tokio::sync::Notify>,
+    worker_ceiling: usize,
 ) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
         let control_required = events.enabled();
@@ -795,6 +809,20 @@ fn start_control_input(
                         }
                     } else if let Some(payload) = line.strip_prefix("UPDATE_DOMAINS|") {
                         dispatcher.update_domain_routing(payload);
+                    } else if let Some(raw_count) = line.strip_prefix("SET_WORKERS|") {
+                        match raw_count.parse::<usize>() {
+                            Ok(requested) => {
+                                let target = normalize_worker_count(requested).min(worker_ceiling);
+                                let previous = worker_count.swap(target, Ordering::AcqRel);
+                                if previous != target {
+                                    scale_notify.notify_waiters();
+                                    crate::log_error!(
+                                        "[ПОТОКИ] Динамическое изменение числа потоков: {previous} -> {target}"
+                                    );
+                                }
+                            }
+                            Err(_) => crate::log_error!("[ПОТОКИ] Некорректная команда SET_WORKERS"),
+                        }
                     }
                 }
             }

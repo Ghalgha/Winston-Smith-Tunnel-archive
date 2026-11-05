@@ -1,14 +1,14 @@
-package com.csqtt.client
+package com.wstt.client
 
-object CsqttConstants {
+object WsttConstants {
     object General {
         const val APP_NAME = "WSTT"
         const val PACKAGE_VK = "com.vkontakte.android"
         const val PACKAGE_VK_CALLS = "com.vk.calls"
-        const val CSQTT_EVENT_PREFIX = "__CSQTT_EVENT__|"
-        const val ACTION_RESTART_WHEN_VK_REACHABLE = "com.csqtt.client.RESTART_WHEN_VK_REACHABLE"
-        const val ACTION_VERIFY_VK_REACHABILITY = "com.csqtt.client.VERIFY_VK_REACHABILITY"
-        const val ACTION_RECOVER_VK_CALL = "com.csqtt.client.RECOVER_VK_CALL"
+        const val WSTT_EVENT_PREFIX = "__CSQTT_EVENT__|"
+        const val ACTION_RESTART_WHEN_VK_REACHABLE = "com.wstt.client.RESTART_WHEN_VK_REACHABLE"
+        const val ACTION_VERIFY_VK_REACHABILITY = "com.wstt.client.VERIFY_VK_REACHABILITY"
+        const val ACTION_RECOVER_VK_CALL = "com.wstt.client.RECOVER_VK_CALL"
         const val EXTRA_UNAVAILABLE_VK_HASH = "unavailable_vk_hash"
     }
 
@@ -109,7 +109,7 @@ object CsqttConstants {
     }
 
     object Widget {
-        const val ACTION_TOGGLE = "com.csqtt.client.ACTION_WIDGET_TOGGLE"
+        const val ACTION_TOGGLE = "com.wstt.client.ACTION_WIDGET_TOGGLE"
     }
 
     object Captcha {

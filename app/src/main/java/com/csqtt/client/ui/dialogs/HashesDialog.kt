@@ -1,9 +1,9 @@
-package com.csqtt.client.ui.dialogs
+package com.wstt.client.ui.dialogs
 
 import android.content.ClipboardManager
 import androidx.compose.foundation.BorderStroke
-import com.csqtt.client.ui.appSectionCardBorderColor
-import com.csqtt.client.ui.appSectionCardColor
+import com.wstt.client.ui.appSectionCardBorderColor
+import com.wstt.client.ui.appSectionCardColor
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -26,11 +26,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.csqtt.client.VkHashValidationCodec
-import com.csqtt.client.VkHashValidationStatus
-import com.csqtt.client.ui.utils.stripVkUrlStatic
-import com.csqtt.client.ui.design.CsqttShapes
-import com.csqtt.client.ui.design.CsqttSizes
+import com.wstt.client.VkHashValidationCodec
+import com.wstt.client.VkHashValidationStatus
+import com.wstt.client.ui.utils.stripVkUrlStatic
+import com.wstt.client.ui.design.WsttShapes
+import com.wstt.client.ui.design.WsttSizes
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -95,7 +95,7 @@ fun HashesDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         Surface(
-            shape = CsqttShapes.Dialog,
+            shape = WsttShapes.Dialog,
             color = appSectionCardColor(),
             contentColor = MaterialTheme.colorScheme.onSurface,
             border = BorderStroke(1.dp, appSectionCardBorderColor()),
@@ -223,7 +223,7 @@ fun HashesDialog(
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = CsqttShapes.Control,
+                        shape = WsttShapes.Control,
                         colors = fieldColors,
                     )
                 }
@@ -242,9 +242,9 @@ fun HashesDialog(
                             isChecking = false
                         }
                     },
-                    modifier = Modifier.fillMaxWidth().height(CsqttSizes.ControlHeight),
+                    modifier = Modifier.fillMaxWidth().height(WsttSizes.ControlHeight),
                     enabled = !isChecking && hashes.any { it.isNotBlank() },
-                    shape = CsqttShapes.Pill,
+                    shape = WsttShapes.Pill,
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
                 ) {
@@ -268,8 +268,8 @@ fun HashesDialog(
                     onClick = {
                         onSave(h1, h2, h3, h4, h5, h6)
                     },
-                    modifier = Modifier.fillMaxWidth().height(CsqttSizes.ControlHeight),
-                    shape = CsqttShapes.Pill,
+                    modifier = Modifier.fillMaxWidth().height(WsttSizes.ControlHeight),
+                    shape = WsttShapes.Pill,
                     colors = ButtonDefaults.buttonColors(contentColor = MaterialTheme.colorScheme.onPrimary),
                 ) {
                     Text("Сохранить", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)

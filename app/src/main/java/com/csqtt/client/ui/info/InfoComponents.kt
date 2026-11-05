@@ -1,4 +1,4 @@
-package com.csqtt.client.ui
+package com.wstt.client.ui
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
@@ -45,10 +45,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.csqtt.client.CSQTTColors
-import com.csqtt.client.R
-import com.csqtt.client.ui.design.CsqttShapes
-import com.csqtt.client.ui.design.CsqttSpacing
+import com.wstt.client.WSTTColors
+import com.wstt.client.R
+import com.wstt.client.ui.design.WsttShapes
+import com.wstt.client.ui.design.WsttSpacing
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -94,9 +94,9 @@ internal fun InfoHeroCard(
             Button(
                 onClick = onTelegramClick,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
-                shape = CsqttShapes.Pill,
+                shape = WsttShapes.Pill,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = CSQTTColors.telegram,
+                    containerColor = WSTTColors.telegram,
                     contentColor = Color.White,
                 ),
                 contentPadding = PaddingValues(horizontal = 16.dp)
@@ -123,7 +123,7 @@ internal fun InfoHeroCard(
             Button(
                 onClick = onCryptoClick,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
-                shape = CsqttShapes.Pill,
+                shape = WsttShapes.Pill,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFF1E293B),
                     contentColor = Color.White,
@@ -161,13 +161,13 @@ internal fun ExpandableSectionCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(CsqttShapes.Control)
+                .clip(WsttShapes.Control)
                 .clickable(onClick = onToggle)
                 .padding(vertical = 2.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Surface(shape = CsqttShapes.Pill, color = MaterialTheme.colorScheme.primaryContainer) {
+            Surface(shape = WsttShapes.Pill, color = MaterialTheme.colorScheme.primaryContainer) {
                 Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) { icon() }
             }
             Text(
@@ -206,17 +206,17 @@ internal fun WideActionTile(
     icon: @Composable () -> Unit,
 ) {
     Surface(
-        shape = CsqttShapes.Card,
+        shape = WsttShapes.Card,
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.70f),
         contentColor = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.fillMaxWidth().clip(CsqttShapes.Card).clickable(onClick = onClick),
+        modifier = Modifier.fillMaxWidth().clip(WsttShapes.Card).clickable(onClick = onClick),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 15.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Surface(shape = CsqttShapes.Pill, color = MaterialTheme.colorScheme.primaryContainer) {
+            Surface(shape = WsttShapes.Pill, color = MaterialTheme.colorScheme.primaryContainer) {
                 Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) { icon() }
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -246,17 +246,17 @@ internal fun ProjectLinkRow(
     icon: @Composable () -> Unit,
 ) {
     Surface(
-        shape = CsqttShapes.Card,
+        shape = WsttShapes.Card,
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.64f),
         contentColor = MaterialTheme.colorScheme.onSurface,
-        modifier = Modifier.fillMaxWidth().clip(CsqttShapes.Card).clickable(onClick = onClick),
+        modifier = Modifier.fillMaxWidth().clip(WsttShapes.Card).clickable(onClick = onClick),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Surface(shape = CsqttShapes.Pill, color = MaterialTheme.colorScheme.primaryContainer) {
+            Surface(shape = WsttShapes.Pill, color = MaterialTheme.colorScheme.primaryContainer) {
                 Box(
                     modifier = Modifier.defaultMinSize(minWidth = 40.dp, minHeight = 40.dp),
                     contentAlignment = Alignment.Center,

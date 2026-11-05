@@ -1,14 +1,14 @@
-package com.csqtt.client
+package com.wstt.client
 
 internal object WorkerCountPolicy {
     fun normalize(
         requested: Int,
-        maximum: Int = CsqttConstants.Tunnel.MAX_WORKERS,
+        maximum: Int = WsttConstants.Tunnel.MAX_WORKERS,
     ): Int {
         if (requested <= 5) {
             return 5
         }
-        val group = CsqttConstants.Tunnel.WORKERS_PER_GROUP
+        val group = WsttConstants.Tunnel.WORKERS_PER_GROUP
         val normalizedMaximum = (maximum.coerceAtLeast(group) / group) * group
         val clamped = requested.coerceIn(5, normalizedMaximum)
         val rounded = (clamped / group) * group
@@ -16,8 +16,8 @@ internal object WorkerCountPolicy {
     }
 
     fun maximumForHashes(hashCount: Int): Int {
-        val count = hashCount.coerceIn(1, CsqttConstants.Tunnel.MAX_VK_HASHES)
-        return (count * CsqttConstants.Tunnel.WORKERS_PER_GROUP).coerceIn(5, CsqttConstants.Tunnel.MAX_WORKERS)
+        val count = hashCount.coerceIn(1, WsttConstants.Tunnel.MAX_VK_HASHES)
+        return (count * WsttConstants.Tunnel.WORKERS_PER_GROUP).coerceIn(5, WsttConstants.Tunnel.MAX_WORKERS)
     }
 
     fun maximumForSources(
@@ -25,9 +25,9 @@ internal object WorkerCountPolicy {
         linkHashCount: Int,
         autoHashMode: Boolean,
         manualHashCount: Int,
-    ): Int = CsqttConstants.Tunnel.MAX_WORKERS
+    ): Int = WsttConstants.Tunnel.MAX_WORKERS
 
-    fun defaultMaximum(extraWorkers: Boolean = false): Int = CsqttConstants.Tunnel.MAX_WORKERS
+    fun defaultMaximum(extraWorkers: Boolean = false): Int = WsttConstants.Tunnel.MAX_WORKERS
 
     fun normalizeForHashes(requested: Int, hashCount: Int): Int =
         normalize(requested, maximumForHashes(hashCount))
@@ -37,7 +37,7 @@ internal object WorkerCountPolicy {
         hashes: Iterable<String>,
         allowRedistribution: Boolean = false,
     ): Int {
-        return normalize(requested, CsqttConstants.Tunnel.MAX_WORKERS)
+        return normalize(requested, WsttConstants.Tunnel.MAX_WORKERS)
     }
 
 }

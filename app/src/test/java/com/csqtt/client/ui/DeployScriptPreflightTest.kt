@@ -1,4 +1,4 @@
-package com.csqtt.client.ui
+package com.wstt.client.ui
 
 import java.io.File
 import org.junit.Assert.assertFalse
@@ -42,7 +42,8 @@ class DeployScriptPreflightTest {
         assertTrue(deploy.contains("WSTT_TPROXY"))
         assertFalse(deploy.contains("CSQTT_MANAGED"))
         assertFalse(deploy.contains("CSQTT_TPROXY"))
-        assertFalse(deploy.contains("CSQTT_LOCAL_SOCKS"))
+        // Retain the marker so uninstall can remove rules created by older WSTT installs.
+        assertTrue(deploy.contains("WSTT_LOCAL_SOCKS"))
         assertTrue(deploy.contains("WSTT_PEER_PORT"))
         assertTrue(deploy.contains("WSTT_WEB_PORT"))
         assertFalse(deploy.contains("CSQTT_PEER_PORT"))
@@ -150,7 +151,7 @@ class DeployScriptPreflightTest {
     }
 
     @Test
-    fun `Android app identity differs from CSQTT`() {
+    fun `Android app identity differs from WSTT`() {
         val candidates = listOf(File("app/build.gradle.kts"), File("build.gradle.kts"))
         val gradle = candidates.first(File::isFile).readText()
         assertTrue(gradle.contains("applicationId = \"com.wstunnel.client\""))

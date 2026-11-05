@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 import android.content.Context
 import kotlinx.coroutines.Dispatchers
@@ -71,7 +71,7 @@ object VkHashValidator {
         if (hashes.isEmpty()) return@withContext emptyMap()
         val binary = File(
             context.applicationInfo.nativeLibraryDir,
-            CsqttConstants.Tunnel.BINARY_NAME,
+            WsttConstants.Tunnel.BINARY_NAME,
         )
         if (!binary.isFile) return@withContext emptyMap()
         val command = buildCommand(binary.absolutePath, hashes, fingerprint, clientIds)

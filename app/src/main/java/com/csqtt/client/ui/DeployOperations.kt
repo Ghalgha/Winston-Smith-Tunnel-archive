@@ -1,10 +1,10 @@
-package com.csqtt.client.ui
+package com.wstt.client.ui
 
 import android.content.Context
-import com.csqtt.client.CsqttConstants
-import com.csqtt.client.DeployManager
-import com.csqtt.client.SshHostKeyStore
-import com.csqtt.client.TunnelManager
+import com.wstt.client.WsttConstants
+import com.wstt.client.DeployManager
+import com.wstt.client.SshHostKeyStore
+import com.wstt.client.TunnelManager
 import net.schmizz.sshj.SSHClient as SshjClient
 import net.schmizz.sshj.xfer.FileSystemFile
 import net.schmizz.sshj.userauth.UserAuthException
@@ -25,7 +25,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
-private const val CMD_TIMEOUT = CsqttConstants.Timeouts.DEPLOY_CMD_TIMEOUT_MS
+private const val CMD_TIMEOUT = WsttConstants.Timeouts.DEPLOY_CMD_TIMEOUT_MS
 private const val SFTP_UPLOAD_ATTEMPTS = 2
 private const val UPLOAD_RECONNECT_ATTEMPTS = 1
 
@@ -33,12 +33,12 @@ internal fun sanitizeSshPassword(value: String): String =
     value.replace("\r", "").replace("\n", "")
 
 internal fun isSuccessfulDeployResult(exitStatus: Int, output: String): Boolean =
-    exitStatus == 0 && output.lineSequence().any { it.trim() == "CSQTT_DEPLOY_OK" }
+    exitStatus == 0 && output.lineSequence().any { it.trim() == "WSTT_DEPLOY_OK" }
 
 private fun deployFailureDetail(output: String): String? =
     output.lineSequence()
         .map(String::trim)
-        .lastOrNull { it.startsWith("CSQTT_DEPLOY_ERROR|") }
+        .lastOrNull { it.startsWith("WSTT_DEPLOY_ERROR|") }
         ?.split("|", limit = 3)
         ?.getOrNull(2)
         ?.trim()
@@ -51,9 +51,9 @@ internal fun deployFailureMessage(exitStatus: Int, output: String): String {
         if (detail == null) message else "$message Причина: $detail"
 
     return when {
-        output.lineSequence().any { it.trim() == "CSQTT_DEPLOY_ROLLED_BACK" } || exitStatus == 30 ->
+        output.lineSequence().any { it.trim() == "WSTT_DEPLOY_ROLLED_BACK" } || exitStatus == 30 ->
             withDetail("Новый релиз не прошёл проверку; предыдущая установка восстановлена")
-        output.lineSequence().any { it.trim() == "CSQTT_DEPLOY_ROLLBACK_FAILED" } || exitStatus == 31 ->
+        output.lineSequence().any { it.trim() == "WSTT_DEPLOY_ROLLBACK_FAILED" } || exitStatus == 31 ->
             withDetail("Новый релиз не запустился, а автоматический rollback завершился с ошибкой — требуется проверка VPS")
         exitStatus == 20 ->
             withDetail("Кандидат не прошёл предзапусковую проверку; работающий сервер не останавливался")
@@ -110,11 +110,11 @@ internal fun parseDeployOutputLine(rawLine: String): DeployOutputLine? {
     val raw = rawLine.replace(ANSI_ESCAPE, "").trim()
     if (
         raw.isEmpty() ||
-            raw.startsWith("CSQTT_PROGRESS|") ||
-            raw.startsWith("CSQTT_DEPLOY_ERROR|") ||
-            raw == "CSQTT_DEPLOY_OK" ||
-            raw == "CSQTT_DEPLOY_ROLLED_BACK" ||
-            raw == "CSQTT_DEPLOY_ROLLBACK_FAILED"
+            raw.startsWith("WSTT_PROGRESS|") ||
+            raw.startsWith("WSTT_DEPLOY_ERROR|") ||
+            raw == "WSTT_DEPLOY_OK" ||
+            raw == "WSTT_DEPLOY_ROLLED_BACK" ||
+            raw == "WSTT_DEPLOY_ROLLBACK_FAILED"
     ) return null
 
     val warning = raw.startsWith("[WARN]", ignoreCase = true) || raw.startsWith("[!]") || raw.startsWith("⚠")
@@ -235,7 +235,7 @@ private class DeploySSHClient(
         }
 
         val result = StringBuilder()
-        val progressRegex = Regex("^CSQTT_PROGRESS\\|(\\d+\\.?\\d*)\\|(.+)$")
+        val progressRegex = Regex("^WSTT_PROGRESS\\|(\\d+\\.?\\d*)\\|(.+)$")
         val cmdAdjusted = if (command.contains("sudo") && !command.contains("sudo -S")) {
             command.replace("sudo ", "sudo -S ")
         } else command
@@ -266,7 +266,7 @@ private class DeploySSHClient(
                                 DeployManager.updateProgress(p, step)
                                 TunnelManager.addDeployInfoLog("Этап: $step")
                             }
-                            !clean.contains("CSQTT_PROGRESS") -> {
+                            !clean.contains("WSTT_PROGRESS") -> {
                                 synchronized(result) { result.appendLine(clean) }
                                 publishDeployOutput(clean)
                                 val parsed = parseDeployOutputLine(clean)
@@ -670,7 +670,7 @@ internal suspend fun performDeploy(
             return@withContext true
         } else {
             DeployManager.writeError(
-                "Deploy failed: exit=${deployResult.exitStatus}, success marker=${output.contains("CSQTT_DEPLOY_OK")}" +
+                "Deploy failed: exit=${deployResult.exitStatus}, success marker=${output.contains("WSTT_DEPLOY_OK")}" +
                     "\n${output.takeLast(1200)}"
             )
             val failureMessage = deployFailureMessage(deployResult.exitStatus, output)
@@ -723,13 +723,13 @@ internal suspend fun performUninstall(
         TunnelManager.addDeploySuccessLog("SSH-соединение установлено")
 
         onProgress(0.15f, "Подготовка штатного удаления...")
-        TunnelManager.addDeployInfoLog("Загрузка штатного установщика CSQTT")
+        TunnelManager.addDeployInfoLog("Загрузка штатного установщика WSTT")
         uninstallScript = File(context.cacheDir, "csqtt-uninstall-${System.nanoTime()}.sh")
         context.assets.open("deploy.sh").use { input ->
             FileOutputStream(uninstallScript).use { output -> input.copyTo(output) }
         }
         if (!uninstallScript.isFile || uninstallScript.length() == 0L) {
-            throw IOException("Не удалось подготовить штатный установщик CSQTT")
+            throw IOException("Не удалось подготовить штатный установщик WSTT")
         }
         val remoteScriptPath = "/tmp/.wstt-uninstall-${System.nanoTime()}.sh"
         remoteTempCleanup = {

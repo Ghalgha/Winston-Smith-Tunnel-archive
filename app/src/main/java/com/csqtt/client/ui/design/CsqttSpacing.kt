@@ -1,10 +1,10 @@
-package com.csqtt.client.ui.design
+package com.wstt.client.ui.design
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.unit.dp
 
 @Immutable
-object CsqttSpacing {
+object WsttSpacing {
     val None = 0.dp
     val Xxs = 4.dp
     val Xs = 8.dp

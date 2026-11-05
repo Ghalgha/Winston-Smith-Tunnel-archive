@@ -3,7 +3,7 @@
 <!-- SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0 -->
 
 <resources>
-    <style name="Theme.CSQTTClient" parent="android:Theme.Material.Light.NoActionBar">
+    <style name="Theme.WSTTClient" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@color/app_background</item>
         <item name="android:colorBackground">@color/app_background</item>
         <item name="android:windowSplashScreenBackground">@color/app_background</item>

@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 import android.app.NotificationManager
 import android.content.BroadcastReceiver
@@ -10,6 +10,6 @@ class CaptchaCancelReceiver : BroadcastReceiver() {
         TunnelManager.stop()
         ManlCaptchaWebViewManager.activeActivity?.finish()
         val notifMgr = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notifMgr.cancel(CsqttConstants.Notifications.CAPTCHA_NOTIFICATION_ID)
+        notifMgr.cancel(WsttConstants.Notifications.CAPTCHA_NOTIFICATION_ID)
     }
 }

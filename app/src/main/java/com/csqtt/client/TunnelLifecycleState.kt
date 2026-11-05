@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 internal fun nextTunnelGenerationId(nowSeconds: Long, current: Long): Long = maxOf(
     nowSeconds,

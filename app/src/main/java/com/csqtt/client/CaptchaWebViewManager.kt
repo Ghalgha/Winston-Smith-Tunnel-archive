@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 import android.annotation.SuppressLint
 import android.net.Uri
@@ -34,12 +34,12 @@ import kotlin.random.Random
 @SuppressLint("StaticFieldLeak")
 object CaptchaWebViewManager {
     private const val TAG = "CaptchaWV"
-    private const val CAPTCHA_TIMEOUT_MS = CsqttConstants.Timeouts.CAPTCHA_AUTO_TIMEOUT_MS
-    private const val WV_CREATE_TIMEOUT_MS = CsqttConstants.Timeouts.CAPTCHA_WV_CREATE_TIMEOUT_MS
-    const val ERROR_SLIDER_DETECTED = CsqttConstants.Captcha.ERROR_SLIDER_DETECTED
+    private const val CAPTCHA_TIMEOUT_MS = WsttConstants.Timeouts.CAPTCHA_AUTO_TIMEOUT_MS
+    private const val WV_CREATE_TIMEOUT_MS = WsttConstants.Timeouts.CAPTCHA_WV_CREATE_TIMEOUT_MS
+    const val ERROR_SLIDER_DETECTED = WsttConstants.Captcha.ERROR_SLIDER_DETECTED
 
-    private val VIEWPORT_WIDTHS = CsqttConstants.Captcha.AUTO_VIEWPORT_WIDTHS
-    private val VIEWPORT_HEIGHTS = CsqttConstants.Captcha.AUTO_VIEWPORT_HEIGHTS
+    private val VIEWPORT_WIDTHS = WsttConstants.Captcha.AUTO_VIEWPORT_WIDTHS
+    private val VIEWPORT_HEIGHTS = WsttConstants.Captcha.AUTO_VIEWPORT_HEIGHTS
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private val captchaMutex = Mutex()
@@ -73,14 +73,14 @@ object CaptchaWebViewManager {
                     try {
                         const data = await clone.json();
                         if (data.response && data.response.success_token) {
-                            window.CsqttCaptcha.postMessage(JSON.stringify({type: 'success', token: data.response.success_token}));
+                            window.WsttCaptcha.postMessage(JSON.stringify({type: 'success', token: data.response.success_token}));
                         } else if (
                             data.response &&
                             data.response.show_captcha_type === 'slider'
                         ) {
-                            window.CsqttCaptcha.postMessage(JSON.stringify({type: 'slider'}));
+                            window.WsttCaptcha.postMessage(JSON.stringify({type: 'slider'}));
                         } else if (data.error) {
-                            window.CsqttCaptcha.postMessage(JSON.stringify({type: 'error'}));
+                            window.WsttCaptcha.postMessage(JSON.stringify({type: 'error'}));
                         }
                     } catch(e) {}
                     return response;
@@ -101,14 +101,14 @@ object CaptchaWebViewManager {
                         try {
                             const data = JSON.parse(xhr.responseText);
                             if (data.response && data.response.success_token) {
-                                window.CsqttCaptcha.postMessage(JSON.stringify({type: 'success', token: data.response.success_token}));
+                                window.WsttCaptcha.postMessage(JSON.stringify({type: 'success', token: data.response.success_token}));
                             } else if (
                                 data.response &&
                                 data.response.show_captcha_type === 'slider'
                             ) {
-                                window.CsqttCaptcha.postMessage(JSON.stringify({type: 'slider'}));
+                                window.WsttCaptcha.postMessage(JSON.stringify({type: 'slider'}));
                             } else if (data.error) {
-                                window.CsqttCaptcha.postMessage(JSON.stringify({type: 'error'}));
+                                window.WsttCaptcha.postMessage(JSON.stringify({type: 'error'}));
                             }
                         } catch(e) {}
                     });
@@ -208,7 +208,7 @@ object CaptchaWebViewManager {
                     }
                     WebViewCompat.addWebMessageListener(
                         this,
-                        "CsqttCaptcha",
+                        "WsttCaptcha",
                         setOf(
                             "https://vk.com", "https://*.vk.com",
                             "https://vk.ru", "https://*.vk.ru",
@@ -343,7 +343,7 @@ object CaptchaWebViewManager {
             try {
                 wv.stopLoading()
                 wv.loadUrl("about:blank")
-                try { WebViewCompat.removeWebMessageListener(wv, "CsqttCaptcha") } catch (_: Exception) {}
+                try { WebViewCompat.removeWebMessageListener(wv, "WsttCaptcha") } catch (_: Exception) {}
                 wv.webViewClient = WebViewClient()
                 wv.webChromeClient = null
                 wv.onPause()

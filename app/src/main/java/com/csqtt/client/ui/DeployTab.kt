@@ -1,6 +1,6 @@
-package com.csqtt.client.ui
+package com.wstt.client.ui
 
-import com.csqtt.client.showRaisedToast
+import com.wstt.client.showRaisedToast
 import android.content.Intent
 import android.content.res.Configuration
 import android.os.Handler
@@ -24,7 +24,7 @@ import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import com.csqtt.client.TunnelService
+import com.wstt.client.TunnelService
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -38,22 +38,22 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.csqtt.client.DeployManager
-import com.csqtt.client.DeploySettingsSnapshot
-import com.csqtt.client.SettingsStore
-import com.csqtt.client.TunnelManager
-import com.csqtt.client.CsqttConstants
-import com.csqtt.client.R
-import com.csqtt.client.ui.dialogs.DeploySecretsDialog
-import com.csqtt.client.ui.dialogs.SshKeysDialog
-import com.csqtt.client.ui.dialogs.UninstallConfirmDialog
-import com.csqtt.client.ui.components.CsqttBanner
-import com.csqtt.client.ui.components.CsqttScreen
-import com.csqtt.client.ui.components.CsqttSettingRow
-import com.csqtt.client.ui.design.CsqttShapes
-import com.csqtt.client.ui.design.CsqttSizes
-import com.csqtt.client.ui.design.CsqttSpacing
-import com.csqtt.client.ui.design.CsqttTheme
+import com.wstt.client.DeployManager
+import com.wstt.client.DeploySettingsSnapshot
+import com.wstt.client.SettingsStore
+import com.wstt.client.TunnelManager
+import com.wstt.client.WsttConstants
+import com.wstt.client.R
+import com.wstt.client.ui.dialogs.DeploySecretsDialog
+import com.wstt.client.ui.dialogs.SshKeysDialog
+import com.wstt.client.ui.dialogs.UninstallConfirmDialog
+import com.wstt.client.ui.components.WsttBanner
+import com.wstt.client.ui.components.WsttScreen
+import com.wstt.client.ui.components.WsttSettingRow
+import com.wstt.client.ui.design.WsttShapes
+import com.wstt.client.ui.design.WsttSizes
+import com.wstt.client.ui.design.WsttSpacing
+import com.wstt.client.ui.design.WsttTheme
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
@@ -63,9 +63,9 @@ internal data class DeployUiState(
     val sshLogin: String = "",
     val sshPassword: String = "",
     val manualPorts: Boolean = false,
-    val sshPort: String = CsqttConstants.Network.DEFAULT_SSH_PORT.toString(),
-    val peerPort: String = CsqttConstants.Network.DEFAULT_SERVER_PEER_PORT.toString(),
-    val webPort: String = CsqttConstants.Network.DEFAULT_SERVER_WEB_PORT.toString(),
+    val sshPort: String = WsttConstants.Network.DEFAULT_SSH_PORT.toString(),
+    val peerPort: String = WsttConstants.Network.DEFAULT_SERVER_PEER_PORT.toString(),
+    val webPort: String = WsttConstants.Network.DEFAULT_SERVER_WEB_PORT.toString(),
     val mainPasswordConfigured: Boolean = false,
     val webPanelConfigured: Boolean = false,
     val sshKeysMode: Boolean = false,
@@ -96,7 +96,7 @@ internal data class DeployUiState(
     val panelDisplayUrl: String
         get() {
             val h = host.ifBlank { "IP" }
-            val p = if (manualPorts) (webPort.toIntOrNull() ?: CsqttConstants.Network.DEFAULT_SERVER_WEB_PORT) else CsqttConstants.Network.DEFAULT_SERVER_WEB_PORT
+            val p = if (manualPorts) (webPort.toIntOrNull() ?: WsttConstants.Network.DEFAULT_SERVER_WEB_PORT) else WsttConstants.Network.DEFAULT_SERVER_WEB_PORT
             val u = if (secretPathUuid.isNotBlank()) {
                 if (secretPathUuid.startsWith("/")) secretPathUuid else "/$secretPathUuid"
             } else {
@@ -151,18 +151,18 @@ internal fun resolveServerPorts(
 ): EffectiveServerPorts {
     if (!manualPorts) {
         return EffectiveServerPorts(
-            ssh = CsqttConstants.Network.DEFAULT_SSH_PORT,
-            peer = CsqttConstants.Network.DEFAULT_SERVER_PEER_PORT,
-            web = CsqttConstants.Network.DEFAULT_SERVER_WEB_PORT,
+            ssh = WsttConstants.Network.DEFAULT_SSH_PORT,
+            peer = WsttConstants.Network.DEFAULT_SERVER_PEER_PORT,
+            web = WsttConstants.Network.DEFAULT_SERVER_WEB_PORT,
         )
     }
     return EffectiveServerPorts(
         ssh = sshPort.toIntOrNull()?.takeIf { it in 1..65535 }
-            ?: CsqttConstants.Network.DEFAULT_SSH_PORT,
+            ?: WsttConstants.Network.DEFAULT_SSH_PORT,
         peer = peerPort.toIntOrNull()?.takeIf { it in 1..65535 }
-            ?: CsqttConstants.Network.DEFAULT_SERVER_PEER_PORT,
+            ?: WsttConstants.Network.DEFAULT_SERVER_PEER_PORT,
         web = webPort.toIntOrNull()?.takeIf { it in 1..65535 }
-            ?: CsqttConstants.Network.DEFAULT_SERVER_WEB_PORT,
+            ?: WsttConstants.Network.DEFAULT_SERVER_WEB_PORT,
     )
 }
 
@@ -213,7 +213,7 @@ internal fun DeployTab(
     var sshLogin by rememberSaveable(savedSettings.profile) { mutableStateOf(savedLogin) }
     var sshPassword by rememberSaveable(savedSettings.profile) { mutableStateOf(savedPassword) }
     var sshPort by rememberSaveable(savedSettings.profile) {
-        mutableStateOf(savedSshPort.ifBlank { CsqttConstants.Network.DEFAULT_SSH_PORT.toString() })
+        mutableStateOf(savedSshPort.ifBlank { WsttConstants.Network.DEFAULT_SSH_PORT.toString() })
     }
     var peerPort by rememberSaveable(savedSettings.profile) { mutableStateOf(savedServerPeerPort.toString()) }
     var webPort by rememberSaveable(savedSettings.profile) { mutableStateOf(savedServerWebPort.toString()) }
@@ -242,7 +242,7 @@ internal fun DeployTab(
     }
     LaunchedEffect(savedSettings.profile, savedSshPort, savedServerPeerPort, savedServerWebPort) {
         if (!portsEdited) {
-            sshPort = savedSshPort.ifBlank { CsqttConstants.Network.DEFAULT_SSH_PORT.toString() }
+            sshPort = savedSshPort.ifBlank { WsttConstants.Network.DEFAULT_SSH_PORT.toString() }
             peerPort = savedServerPeerPort.toString()
             webPort = savedServerWebPort.toString()
         }
@@ -437,9 +437,9 @@ internal fun DeployTab(
                 }
                 is DeployAction.ManualPortsChanged -> {
                     if (!action.enabled) {
-                        sshPort = CsqttConstants.Network.DEFAULT_SSH_PORT.toString()
-                        peerPort = CsqttConstants.Network.DEFAULT_SERVER_PEER_PORT.toString()
-                        webPort = CsqttConstants.Network.DEFAULT_SERVER_WEB_PORT.toString()
+                        sshPort = WsttConstants.Network.DEFAULT_SSH_PORT.toString()
+                        peerPort = WsttConstants.Network.DEFAULT_SERVER_PEER_PORT.toString()
+                        webPort = WsttConstants.Network.DEFAULT_SERVER_WEB_PORT.toString()
                         portsEdited = false
                     }
                     scope.launch { settingsStore.saveManualPortsEnabled(action.enabled) }

@@ -1,9 +1,9 @@
-package com.csqtt.client.ui.dialogs
+package com.wstt.client.ui.dialogs
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
-import com.csqtt.client.ui.appSectionCardBorderColor
-import com.csqtt.client.ui.appSectionCardColor
+import com.wstt.client.ui.appSectionCardBorderColor
+import com.wstt.client.ui.appSectionCardColor
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
@@ -13,8 +13,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import com.csqtt.client.ui.design.CsqttShapes
-import com.csqtt.client.ui.design.CsqttSizes
+import com.wstt.client.ui.design.WsttShapes
+import com.wstt.client.ui.design.WsttSizes
 
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
@@ -31,7 +31,7 @@ fun UninstallConfirmDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
     ) {
         Surface(
             modifier = Modifier.fillMaxWidth(0.92f),
-            shape = CsqttShapes.Dialog,
+            shape = WsttShapes.Dialog,
             color = appSectionCardColor(),
             contentColor = MaterialTheme.colorScheme.onSurface,
             border = BorderStroke(1.dp, appSectionCardBorderColor()),
@@ -44,13 +44,13 @@ fun UninstallConfirmDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    "Удаление CSQTT с сервера",
+                    "Удаление WSTT с сервера",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.error
                 )
                 Text(
-                    "Будут удалены: бинарник, systemd-сервис, бот, конфигурация CSQTT и только помеченные правила firewall/NAT для CSQTT.\n\nЭто действие необратимо.",
+                    "Будут удалены: бинарник, systemd-сервис, бот, конфигурация WSTT и только помеченные правила firewall/NAT для WSTT.\n\nЭто действие необратимо.",
                     style = MaterialTheme.typography.bodySmall,
                     lineHeight = 15.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -70,7 +70,7 @@ fun UninstallConfirmDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
                     textStyle = MaterialTheme.typography.bodyMedium,
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = CsqttShapes.Control,
+                    shape = WsttShapes.Control,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = MaterialTheme.colorScheme.error,
                         unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
@@ -84,8 +84,8 @@ fun UninstallConfirmDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
                         onClick = onDismiss,
                         modifier = Modifier
                             .weight(1f)
-                            .height(CsqttSizes.ControlHeight),
-                        shape = CsqttShapes.Pill,
+                            .height(WsttSizes.ControlHeight),
+                        shape = WsttShapes.Pill,
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)
                     ) {
                         Text("Отмена", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
@@ -94,8 +94,8 @@ fun UninstallConfirmDialog(onDismiss: () -> Unit, onConfirm: () -> Unit) {
                         onClick = onConfirm,
                         modifier = Modifier
                             .weight(1f)
-                            .height(CsqttSizes.ControlHeight),
-                        shape = CsqttShapes.Pill,
+                            .height(WsttSizes.ControlHeight),
+                        shape = WsttShapes.Pill,
                         enabled = isConfirmed,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.error,

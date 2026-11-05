@@ -1,7 +1,7 @@
-package com.csqtt.client.ui
+package com.wstt.client.ui
 
-import com.csqtt.client.showRaisedToast
-import com.csqtt.client.CsqttConstants
+import com.wstt.client.showRaisedToast
+import com.wstt.client.WsttConstants
 
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -82,25 +82,25 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.csqtt.client.BuildConfig
-import com.csqtt.client.R
-import com.csqtt.client.SettingsStore
-import com.csqtt.client.UPDATE_DIALOG_ACTION_POSTPONED
-import com.csqtt.client.UPDATE_DIALOG_ACTION_UPDATE
-import com.csqtt.client.CSQTTColors
-import com.csqtt.client.fetchLatestReleaseInfo
-import com.csqtt.client.isNewerVersion
+import com.wstt.client.BuildConfig
+import com.wstt.client.R
+import com.wstt.client.SettingsStore
+import com.wstt.client.UPDATE_DIALOG_ACTION_POSTPONED
+import com.wstt.client.UPDATE_DIALOG_ACTION_UPDATE
+import com.wstt.client.WSTTColors
+import com.wstt.client.fetchLatestReleaseInfo
+import com.wstt.client.isNewerVersion
 import kotlinx.coroutines.launch
-import com.csqtt.client.ui.components.CsqttScreen
-import com.csqtt.client.ui.design.CsqttShapes
-import com.csqtt.client.ui.design.CsqttSpacing
+import com.wstt.client.ui.components.WsttScreen
+import com.wstt.client.ui.design.WsttShapes
+import com.wstt.client.ui.design.WsttSpacing
 
-private const val ReleasesUrl = CsqttConstants.Links.RELEASES
-private const val IssuesUrl = CsqttConstants.Links.ISSUES
-private const val DeveloperProfileUrl = CsqttConstants.Links.DEVELOPER_PROFILE
-private const val RepositoryUrl = CsqttConstants.Links.REPOSITORY
-private const val TelegramUrl = CsqttConstants.Links.TELEGRAM
-private const val TelegramHandle = CsqttConstants.Links.TELEGRAM_HANDLE
+private const val ReleasesUrl = WsttConstants.Links.RELEASES
+private const val IssuesUrl = WsttConstants.Links.ISSUES
+private const val DeveloperProfileUrl = WsttConstants.Links.DEVELOPER_PROFILE
+private const val RepositoryUrl = WsttConstants.Links.REPOSITORY
+private const val TelegramUrl = WsttConstants.Links.TELEGRAM
+private const val TelegramHandle = WsttConstants.Links.TELEGRAM_HANDLE
 
 private val browserPackages = listOf(
     "com.android.chrome",
@@ -136,7 +136,7 @@ private fun openUrlInBrowser(context: Context, url: String) {
         val intent = Intent(Intent.ACTION_VIEW, uri).apply { addCategory(Intent.CATEGORY_BROWSABLE) }
         if (intent.resolveActivity(pm) != null) context.startActivity(intent)
     } catch (error: Exception) {
-        Log.w("CSQTT", "Не удалось открыть ссылку: $url", error)
+        Log.w("WSTT", "Не удалось открыть ссылку: $url", error)
         context.showRaisedToast("Не удалось открыть ссылку", Toast.LENGTH_SHORT)
     }
 }
@@ -153,7 +153,7 @@ fun InfoTab(
     val scope = rememberCoroutineScope()
     val currentVersion = remember { "v${BuildConfig.VERSION_NAME.removePrefix("v")}" }
     var isCheckingUpdates by remember { mutableStateOf(false) }
-    var pendingManualRelease by remember { mutableStateOf<com.csqtt.client.AppReleaseInfo?>(null) }
+    var pendingManualRelease by remember { mutableStateOf<com.wstt.client.AppReleaseInfo?>(null) }
     val updateLatestVersion by settingsStore.updateLatestVersion.collectAsStateWithLifecycle(initialValue = "")
     val updateLastError by settingsStore.updateLastError.collectAsStateWithLifecycle(initialValue = "")
     val updateStatus = remember(isCheckingUpdates, updateLatestVersion, updateLastError, currentVersion) {
@@ -167,7 +167,7 @@ fun InfoTab(
         }
     }
 
-    CsqttScreen {
+    WsttScreen {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -212,7 +212,7 @@ fun InfoTab(
                     subtitle = "Android, ABI, версия, устройство",
                     onClick = {
                         val clipboard = context.getSystemService(ClipboardManager::class.java)
-                        clipboard?.setPrimaryClip(ClipData.newPlainText("CSQTT Report", buildSupportReport()))
+                        clipboard?.setPrimaryClip(ClipData.newPlainText("WSTT Report", buildSupportReport()))
                         context.showRaisedToast("Отчёт сформирован и скопирован", Toast.LENGTH_SHORT)
                     },
                     icon = {
@@ -337,7 +337,7 @@ fun InfoTab(
             )
 
             ProjectLinkRow(
-                title = "Репозиторий CSQTT",
+                title = "Репозиторий WSTT",
                 subtitle = "Исходники и релизы приложения",
                 onClick = { openUrlInBrowser(context, RepositoryUrl) },
                 icon = {
@@ -387,10 +387,10 @@ fun InfoTab(
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Surface(
-                shape = CsqttShapes.Pill,
+                shape = WsttShapes.Pill,
                 color = Color.Transparent,
                 modifier = Modifier
-                    .clip(CsqttShapes.Pill)
+                    .clip(WsttShapes.Pill)
                     .clickable { openUrlInBrowser(context, TelegramUrl) }
                     .padding(4.dp)
             ) {
@@ -407,7 +407,7 @@ fun InfoTab(
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier
-                    .clip(CsqttShapes.Control)
+                    .clip(WsttShapes.Control)
                     .clickable { openUrlInBrowser(context, TelegramUrl) }
                     .padding(horizontal = 8.dp, vertical = 2.dp)
             )

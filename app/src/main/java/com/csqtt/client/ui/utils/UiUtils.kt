@@ -1,11 +1,11 @@
-package com.csqtt.client.ui.utils
+package com.wstt.client.ui.utils
 
 import java.security.MessageDigest
 import javax.crypto.Cipher
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
-data class CsqttLink(
+data class WsttLink(
     val host: String,
     val port: Int,
     val password: String = "",
@@ -13,11 +13,11 @@ data class CsqttLink(
     val vkAccessToken: String = "",
 )
 
-private const val CSQTT_CIPHER_KEY_SEED = "csqtt-chiper-key"
+private const val WSTT_CIPHER_KEY_SEED = "csqtt-chiper-key"
 
 private val cipherKey: SecretKeySpec by lazy {
     val digest = MessageDigest.getInstance("SHA-256")
-    val keyBytes = digest.digest(CSQTT_CIPHER_KEY_SEED.toByteArray(Charsets.UTF_8))
+    val keyBytes = digest.digest(WSTT_CIPHER_KEY_SEED.toByteArray(Charsets.UTF_8))
     SecretKeySpec(keyBytes, "AES")
 }
 
@@ -36,7 +36,7 @@ fun decodeBase64Safe(input: String): ByteArray? {
     }.getOrNull()
 }
 
-fun decryptCsqttPayload(rawPayload: String): String? {
+fun decryptWsttPayload(rawPayload: String): String? {
     val bytes = decodeBase64Safe(rawPayload) ?: return null
     if (bytes.size >= 28) {
         val decrypted = runCatching {
@@ -53,7 +53,7 @@ fun decryptCsqttPayload(rawPayload: String): String? {
     return null
 }
 
-fun encryptCsqttPayload(plaintext: String): String {
+fun encryptWsttPayload(plaintext: String): String {
     val iv = runCatching {
         val mac = javax.crypto.Mac.getInstance("HmacSHA256")
         mac.init(cipherKey)
@@ -83,37 +83,37 @@ fun encryptCsqttPayload(plaintext: String): String {
     }.getOrElse { "" }
 }
 
-fun parseCsqttLink(raw: String): CsqttLink? {
+fun parseWsttLink(raw: String): WsttLink? {
     val trimmed = raw.trim()
     val payloadStart = when {
-        trimmed.startsWith("wst://", ignoreCase = true) -> 6
+        trimmed.startsWith("wstt://", ignoreCase = true) -> 7
         trimmed.startsWith("csqtt://", ignoreCase = true) -> 8 // legacy WSTT links
         else -> return null
     }
-    val decoded = decryptCsqttPayload(trimmed.substring(payloadStart).trim()) ?: return null
+    val decoded = decryptWsttPayload(trimmed.substring(payloadStart).trim()) ?: return null
     if (decoded.contains("host=") || decoded.contains("connect?")) {
         val candidate = when {
-            decoded.startsWith("wst://connect?", ignoreCase = true) -> decoded
-            decoded.startsWith("csqtt://connect?", ignoreCase = true) -> "wst://connect?" + decoded.substring(8)
-            decoded.startsWith("connect?", ignoreCase = true) -> "wst://$decoded"
-            decoded.startsWith("csqtt://", ignoreCase = true) -> "wst://connect?" + decoded.substring(8)
-            else -> "wst://connect?$decoded"
+            decoded.startsWith("wstt://connect?", ignoreCase = true) -> decoded
+            decoded.startsWith("csqtt://connect?", ignoreCase = true) -> "wstt://connect?" + decoded.substring(8)
+            decoded.startsWith("connect?", ignoreCase = true) -> "wstt://$decoded"
+            decoded.startsWith("csqtt://", ignoreCase = true) -> "wstt://connect?" + decoded.substring(8)
+            else -> "wstt://connect?$decoded"
         }
         val decodedUri = runCatching { java.net.URI(candidate) }.getOrNull()
         if (decodedUri != null) {
-            val parsed = parseCsqttV2(decodedUri)
+            val parsed = parseWsttV2(decodedUri)
             if (parsed != null) return parsed
         }
     }
     return null
 }
 
-fun CsqttLink.peerAddress(): String {
+fun WsttLink.peerAddress(): String {
     val formattedHost = if (host.contains(':') && !host.startsWith('[')) "[$host]" else host
     return "$formattedHost:$port"
 }
 
-private fun parseCsqttV2(uri: java.net.URI): CsqttLink? {
+private fun parseWsttV2(uri: java.net.URI): WsttLink? {
     if (uri.rawUserInfo != null || uri.port != -1 || uri.rawPath.orEmpty().isNotEmpty()) return null
     val parameters = parseRawQuery(uri.rawQuery ?: return null) ?: return null
     if (parameters["v"]?.let(::decodeQueryComponent) != "2") return null
@@ -127,7 +127,7 @@ private fun parseCsqttV2(uri: java.net.URI): CsqttLink? {
     val vkAccessToken = parameters["token"]?.let(::parseLinkVkAccessToken).orEmpty()
     if (parameters.containsKey("token") && vkAccessToken.isEmpty()) return null
     if (hashes.isNotEmpty() && vkAccessToken.isNotEmpty()) return null
-    return CsqttLink(host, port, password, hashes, vkAccessToken)
+    return WsttLink(host, port, password, hashes, vkAccessToken)
 }
 
 private fun parseRawQuery(rawQuery: String): Map<String, String>? {
@@ -230,7 +230,7 @@ fun generate16CharPassword(): String {
     return sb.toString()
 }
 
-fun formatCsqttLink(
+fun formatWsttLink(
     host: String,
     peer: Int,
     password: String,
@@ -244,5 +244,5 @@ fun formatCsqttLink(
         queryParts.add("token=$token")
     }
     val plain = "connect?" + queryParts.joinToString("&")
-    return "wst://" + encryptCsqttPayload(plain)
+    return "wstt://" + encryptWsttPayload(plain)
 }

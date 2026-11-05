@@ -1,4 +1,4 @@
-package com.csqtt.client.ui.components
+package com.wstt.client.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -18,8 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import com.csqtt.client.ui.design.CsqttSizes
-import com.csqtt.client.ui.design.CsqttSpacing
+import com.wstt.client.ui.design.WsttSizes
+import com.wstt.client.ui.design.WsttSpacing
 
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
@@ -29,33 +29,33 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.csqtt.client.R
-import com.csqtt.client.BuildConfig
+import com.wstt.client.R
+import com.wstt.client.BuildConfig
 
-internal val LocalCsqttHeaderActions = staticCompositionLocalOf<(@Composable RowScope.() -> Unit)?> { null }
+internal val LocalWsttHeaderActions = staticCompositionLocalOf<(@Composable RowScope.() -> Unit)?> { null }
 
 @Composable
-fun CsqttScreen(
+fun WsttScreen(
     modifier: Modifier = Modifier,
     title: String? = null,
     subtitle: String? = null,
     actions: (@Composable RowScope.() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val headerActions = LocalCsqttHeaderActions.current
+    val headerActions = LocalWsttHeaderActions.current
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = CsqttSizes.ScreenHorizontalPadding)
-            .padding(top = CsqttSizes.ScreenTopPadding),
+            .padding(horizontal = WsttSizes.ScreenHorizontalPadding)
+            .padding(top = WsttSizes.ScreenTopPadding),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .widthIn(max = CsqttSizes.ContentMaxWidth),
-            verticalArrangement = Arrangement.spacedBy(CsqttSpacing.Md),
+                .widthIn(max = WsttSizes.ContentMaxWidth),
+            verticalArrangement = Arrangement.spacedBy(WsttSpacing.Md),
         ) {
             Row(
                 modifier = Modifier
@@ -82,12 +82,12 @@ fun CsqttScreen(
             if (!title.isNullOrBlank() || actions != null) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(CsqttSpacing.Md),
+                    horizontalArrangement = Arrangement.spacedBy(WsttSpacing.Md),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(
                         modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(CsqttSpacing.Xxs),
+                        verticalArrangement = Arrangement.spacedBy(WsttSpacing.Xxs),
                     ) {
                         if (!title.isNullOrBlank()) {
                             Text(

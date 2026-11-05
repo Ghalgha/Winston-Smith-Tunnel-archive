@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 import android.annotation.SuppressLint
 import android.Manifest
@@ -64,20 +64,20 @@ import androidx.lifecycle.lifecycleScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import com.csqtt.client.ui.AppUpdateDialog
-import com.csqtt.client.ui.ConnectionTab
-import com.csqtt.client.ui.ExceptionsTab
-import com.csqtt.client.ui.FloatingToolbar
-import com.csqtt.client.ui.LogsTab
-import com.csqtt.client.ui.SettingsTab
-import com.csqtt.client.CsqttConstants
-import com.csqtt.client.ui.DeployTab
-import com.csqtt.client.ui.InfoTab
-import com.csqtt.client.ui.components.LocalCsqttHeaderActions
-import com.csqtt.client.ui.design.CsqttMotion
-import com.csqtt.client.ui.design.CsqttShapes
-import com.csqtt.client.ui.dialogs.VkAuthDialog
-import com.csqtt.client.ui.utils.parseCsqttLink
+import com.wstt.client.ui.AppUpdateDialog
+import com.wstt.client.ui.ConnectionTab
+import com.wstt.client.ui.ExceptionsTab
+import com.wstt.client.ui.FloatingToolbar
+import com.wstt.client.ui.LogsTab
+import com.wstt.client.ui.SettingsTab
+import com.wstt.client.WsttConstants
+import com.wstt.client.ui.DeployTab
+import com.wstt.client.ui.InfoTab
+import com.wstt.client.ui.components.LocalWsttHeaderActions
+import com.wstt.client.ui.design.WsttMotion
+import com.wstt.client.ui.design.WsttShapes
+import com.wstt.client.ui.dialogs.VkAuthDialog
+import com.wstt.client.ui.utils.parseWsttLink
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.first
@@ -124,7 +124,7 @@ class MainActivity : ComponentActivity() {
         val discardStaleUiState = UpdateLaunchGuard.consumeStaleSavedState(this)
         super.onCreate(if (discardStaleUiState) null else savedInstanceState)
 
-        importCsqttLink(intent)
+        importWsttLink(intent)
 
         TunnelManager.initObservers(this)
 
@@ -139,15 +139,15 @@ class MainActivity : ComponentActivity() {
             if (renderUi) {
                 uiStateHolder.SaveableStateProvider("main_ui") {
             val settingsStore = remember { appSettingsStore }
-            val themeMode by settingsStore.themeMode.collectAsStateWithLifecycle(initialValue = CsqttConstants.Theme.MODE_SYSTEM)
-            val activeFingerprint by settingsStore.selectedFingerprint.collectAsStateWithLifecycle(initialValue = CsqttConstants.Tunnel.DEFAULT_FINGERPRINT)
+            val themeMode by settingsStore.themeMode.collectAsStateWithLifecycle(initialValue = WsttConstants.Theme.MODE_SYSTEM)
+            val activeFingerprint by settingsStore.selectedFingerprint.collectAsStateWithLifecycle(initialValue = WsttConstants.Tunnel.DEFAULT_FINGERPRINT)
             val scope = rememberCoroutineScope()
 
             val baseDensity = LocalDensity.current
             val fixedDensity = remember(baseDensity.density) { Density(baseDensity.density, 1f) }
 
             CompositionLocalProvider(LocalDensity provides fixedDensity) {
-            CSQTTTheme(themeMode = themeMode) {
+            WSTTTheme(themeMode = themeMode) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
@@ -189,13 +189,13 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        importCsqttLink(intent)
+        importWsttLink(intent)
     }
 
-    private fun importCsqttLink(intent: Intent?) {
+    private fun importWsttLink(intent: Intent?) {
         if (intent?.action != Intent.ACTION_VIEW) return
         val raw = intent.dataString ?: return
-        val link = parseCsqttLink(raw)
+        val link = parseWsttLink(raw)
         if (link == null) {
             showRaisedToast("Неверная ссылка WSTT", Toast.LENGTH_SHORT)
             return
@@ -205,7 +205,7 @@ class MainActivity : ComponentActivity() {
             .setMessage("Хост: ${link.host}\nPeer: ${link.port}\n\nЗаменить текущую конфигурацию?")
             .setPositiveButton("Импортировать") { _, _ ->
                 lifecycleScope.launch {
-                    appSettingsStore.saveCsqttParticipantLink(raw)
+                    appSettingsStore.saveWsttParticipantLink(raw)
                     showRaisedToast("Конфигурация WSTT успешно подключена", Toast.LENGTH_SHORT)
                 }
             }
@@ -279,10 +279,10 @@ internal fun navigationSwipeProgress(totalDrag: Float, containerWidth: Int): Flo
 
 internal fun shouldCommitNavigationSwipe(progress: Float): Boolean = progress > 0.4f
 
-internal fun resolveActiveNavIds(csqttLinkMode: Boolean, participantShowLogs: Boolean): List<Int> {
+internal fun resolveActiveNavIds(wsttLinkMode: Boolean, participantShowLogs: Boolean): List<Int> {
     val allIds = listOf(0, 1, 2, 3, 4)
     return allIds.filter { id ->
-        if (csqttLinkMode) {
+        if (wsttLinkMode) {
             if (id == 2) return@filter false
             if (id == 3 && !participantShowLogs) return@filter false
         }
@@ -294,9 +294,9 @@ internal fun resolveActiveNavIds(csqttLinkMode: Boolean, participantShowLogs: Bo
 @Composable
 fun MainScreen(
     settingsStore: SettingsStore,
-    themeMode: String = CsqttConstants.Theme.MODE_SYSTEM,
+    themeMode: String = WsttConstants.Theme.MODE_SYSTEM,
     onThemeChange: (String) -> Unit = {},
-    activeFingerprint: String = CsqttConstants.Tunnel.DEFAULT_FINGERPRINT,
+    activeFingerprint: String = WsttConstants.Tunnel.DEFAULT_FINGERPRINT,
     onFingerprintChange: (String) -> Unit = {},
     onVkAuthRequested: () -> Unit = {},
 ) {
@@ -314,7 +314,7 @@ fun MainScreen(
     val tunnelAuthSettings by settingsStore.tunnelAuthSnapshot.collectAsStateWithLifecycle(
         initialValue = TunnelAuthSnapshot()
     )
-    val csqttLinkMode = tunnelAuthSettings.csqttLinkMode
+    val wsttLinkMode = tunnelAuthSettings.wsttLinkMode
     val participantShowLogs by settingsStore.participantShowLogs.collectAsStateWithLifecycle(initialValue = false)
     val autoPauseOnWifi by settingsStore.autoPauseOnWifi.collectAsStateWithLifecycle(initialValue = false)
     val excludedApps by settingsStore.excludedApps.collectAsStateWithLifecycle(
@@ -348,13 +348,13 @@ fun MainScreen(
 
     val serverRoutingActive by TunnelManager.serverRoutingActive.collectAsStateWithLifecycle()
 
-    val activeNavItems = remember(csqttLinkMode, participantShowLogs) {
-        val allowedIds = resolveActiveNavIds(csqttLinkMode, participantShowLogs)
+    val activeNavItems = remember(wsttLinkMode, participantShowLogs) {
+        val allowedIds = resolveActiveNavIds(wsttLinkMode, participantShowLogs)
         navItems.filter { it.id in allowedIds }
     }
     val tabStateHolder = rememberSaveableStateHolder()
-    LaunchedEffect(csqttLinkMode, participantShowLogs) {
-        if (csqttLinkMode) {
+    LaunchedEffect(wsttLinkMode, participantShowLogs) {
+        if (wsttLinkMode) {
             if (selectedTab == 2 || (selectedTab == 3 && !participantShowLogs)) {
                 selectedTab = 0
             }
@@ -368,7 +368,7 @@ fun MainScreen(
 
     LaunchedEffect(tunnelRunning, tunnelAutoPausedForWifi) {
         if (wasRunning && !tunnelRunning && !tunnelAutoPausedForWifi) {
-            TunnelManager.startCooldown(CsqttConstants.Timeouts.VPN_PERMISSION_COOLDOWN_MS)
+            TunnelManager.startCooldown(WsttConstants.Timeouts.VPN_PERMISSION_COOLDOWN_MS)
         }
         wasRunning = tunnelRunning
     }
@@ -394,7 +394,7 @@ fun MainScreen(
             )
 
             if (release == null) {
-                Log.w("CSQTT", "[WARN] Update check: no release info, local=$currentVersion reason=$reason")
+                Log.w("WSTT", "[WARN] Update check: no release info, local=$currentVersion reason=$reason")
                 return
             }
 
@@ -403,7 +403,7 @@ fun MainScreen(
             val postponeUntil = settingsStore.updatePostponeUntil.first()
             val isPostponed = postponeVer == release.versionTag && checkedAt < postponeUntil
             Log.i(
-                "CSQTT",
+                "WSTT",
                 "Update check: local=$currentVersion remote=${release.versionTag} newer=$hasUpdate postponed=$isPostponed reason=$reason"
             )
 
@@ -431,10 +431,10 @@ fun MainScreen(
         AppBackdrop(modifier = Modifier.matchParentSize())
 
         CompositionLocalProvider(
-            LocalCsqttHeaderActions provides {
+            LocalWsttHeaderActions provides {
                 FloatingToolbar(
                     settingsStore = settingsStore,
-                    csqttLinkMode = csqttLinkMode,
+                    wsttLinkMode = wsttLinkMode,
                     activeProfile = activeProfile,
                     onActiveProfileChange = { profile ->
                         scope.launch { settingsStore.saveActiveProfile(profile) }
@@ -459,7 +459,7 @@ fun MainScreen(
                         .fillMaxSize()
                         .padding(padding)
                         .consumeWindowInsets(padding)
-                        .pointerInput(selectedTab, csqttLinkMode, participantShowLogs) {
+                        .pointerInput(selectedTab, wsttLinkMode, participantShowLogs) {
                         var totalDrag = 0f
                         detectHorizontalDragGestures(
                             onDragStart = {
@@ -538,12 +538,12 @@ fun MainScreen(
                                 } else {
                                     Spacer(modifier = Modifier.fillMaxSize())
                                 }
-                                2 -> if (!csqttLinkMode) {
+                                2 -> if (!wsttLinkMode) {
                                     DeployTab(settingsStore, deploySettings)
                                 } else {
                                     Spacer(modifier = Modifier.fillMaxSize())
                                 }
-                                3 -> if (!csqttLinkMode || participantShowLogs) {
+                                3 -> if (!wsttLinkMode || participantShowLogs) {
                                     LogsTab(settingsStore)
                                 } else {
                                     Spacer(modifier = Modifier.fillMaxSize())
@@ -665,8 +665,8 @@ private fun ProxyNavigationBar(
                 indicatorIndex.animateTo(
                     targetValue = requestedIndicatorIndex,
                     animationSpec = tween(
-                    durationMillis = CsqttMotion.Fast,
-                    easing = CsqttMotion.StandardEasing,
+                    durationMillis = WsttMotion.Fast,
+                    easing = WsttMotion.StandardEasing,
                 )
             )
         }
@@ -684,7 +684,7 @@ private fun ProxyNavigationBar(
         val indicatorOffset = trackPadding + itemWidth * dragVisualIndex
 
         Surface(
-            shape = CsqttShapes.Card,
+            shape = WsttShapes.Card,
             color = shellColor,
             border = BorderStroke(1.dp, shellBorder),
             tonalElevation = if (isDark) 0.dp else 1.dp,
@@ -721,7 +721,7 @@ private fun ProxyNavigationBar(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
-                                .clip(CsqttShapes.Control)
+                                .clip(WsttShapes.Control)
                                 .selectable(
                                     selected = item.id == selectedTab,
                                     role = Role.Tab,
@@ -739,7 +739,7 @@ private fun ProxyNavigationBar(
                                 )
                                 if (item.id == 3 && unreadErrors > 0) {
                                     Badge(
-                                        containerColor = if (tunnelRunning) colors.primary else CSQTTColors.warning,
+                                        containerColor = if (tunnelRunning) colors.primary else WSTTColors.warning,
                                         contentColor = colors.onPrimary,
                                         modifier = Modifier.offset(x = 12.dp, y = (-8).dp)
                                     ) {

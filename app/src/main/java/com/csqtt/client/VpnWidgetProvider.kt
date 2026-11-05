@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager

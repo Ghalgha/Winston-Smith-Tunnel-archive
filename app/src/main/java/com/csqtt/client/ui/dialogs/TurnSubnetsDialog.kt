@@ -1,8 +1,8 @@
-package com.csqtt.client.ui.dialogs
+package com.wstt.client.ui.dialogs
 
 import androidx.compose.foundation.BorderStroke
-import com.csqtt.client.ui.appSectionCardBorderColor
-import com.csqtt.client.ui.appSectionCardColor
+import com.wstt.client.ui.appSectionCardBorderColor
+import com.wstt.client.ui.appSectionCardColor
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -42,10 +42,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.csqtt.client.TurnSubnetRegistry
-import com.csqtt.client.ui.design.CsqttShapes
-import com.csqtt.client.ui.design.CsqttSizes
-import com.csqtt.client.ui.CompactDropdownSetting
+import com.wstt.client.TurnSubnetRegistry
+import com.wstt.client.ui.design.WsttShapes
+import com.wstt.client.ui.design.WsttSizes
+import com.wstt.client.ui.CompactDropdownSetting
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -119,7 +119,7 @@ internal fun TurnSubnetsDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         Surface(
-            shape = CsqttShapes.Dialog,
+            shape = WsttShapes.Dialog,
             color = appSectionCardColor(),
             contentColor = MaterialTheme.colorScheme.onSurface,
             border = BorderStroke(1.dp, appSectionCardBorderColor()),
@@ -169,7 +169,7 @@ internal fun TurnSubnetsDialog(
                         val isEligible = limitInt == null || subnet.count >= limitInt
                         val isChecked = isEligible && selectedSubnetId == subnet.id
                         Surface(
-                            shape = CsqttShapes.Card,
+                            shape = WsttShapes.Card,
                             color = when {
                                 !isEligible -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
                                 isChecked -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f)
@@ -291,14 +291,14 @@ internal fun TurnSubnetsDialog(
                     OutlinedButton(
                         onClick = { startPingCheck() },
                         enabled = !isPinging,
-                        shape = CsqttShapes.Pill,
+                        shape = WsttShapes.Pill,
                         border = BorderStroke(1.dp, Color(0xFF1475FD)),
                         colors = ButtonDefaults.outlinedButtonColors(
                             contentColor = Color(0xFF1475FD),
                         ),
                         modifier = Modifier
                             .weight(1f)
-                            .height(CsqttSizes.ControlHeight),
+                            .height(WsttSizes.ControlHeight),
                     ) {
                         if (isPinging) {
                             CircularProgressIndicator(
@@ -315,14 +315,14 @@ internal fun TurnSubnetsDialog(
 
                     Button(
                         onClick = onDismiss,
-                        shape = CsqttShapes.Pill,
+                        shape = WsttShapes.Pill,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color(0xFF1475FD),
                             contentColor = Color.White,
                         ),
                         modifier = Modifier
                             .weight(1f)
-                            .height(CsqttSizes.ControlHeight),
+                            .height(WsttSizes.ControlHeight),
                     ) {
                         Text("Сохранить", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                     }

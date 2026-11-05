@@ -1,7 +1,7 @@
-package com.csqtt.client.ui
+package com.wstt.client.ui
 
 import android.os.Build
-import com.csqtt.client.BuildConfig
+import com.wstt.client.BuildConfig
 
 internal fun buildSupportReport(): String {
     val androidVersion = Build.VERSION.RELEASE ?: "?"

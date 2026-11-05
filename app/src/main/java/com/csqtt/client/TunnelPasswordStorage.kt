@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 internal fun resolveTunnelPasswordStorage(
     persistentValue: String?,

@@ -1,4 +1,4 @@
-package com.csqtt.client.ui
+package com.wstt.client.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -27,8 +27,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.csqtt.client.ui.design.CsqttShapes
-import com.csqtt.client.ui.design.CsqttSizes
+import com.wstt.client.ui.design.WsttShapes
+import com.wstt.client.ui.design.WsttSizes
 import kotlinx.coroutines.delay
 
 @Composable
@@ -96,7 +96,7 @@ private fun TimedWarningDialog(
         ),
     ) {
         Surface(
-            shape = CsqttShapes.Dialog,
+            shape = WsttShapes.Dialog,
             color = appSectionCardColor(),
             contentColor = MaterialTheme.colorScheme.onSurface,
             border = BorderStroke(1.dp, appSectionCardBorderColor()),
@@ -134,8 +134,8 @@ private fun TimedWarningDialog(
                         OutlinedButton(
                             onClick = onDoNotRemind,
                             enabled = actionsEnabled,
-                            modifier = Modifier.fillMaxWidth().height(CsqttSizes.ControlHeight),
-                            shape = CsqttShapes.Pill,
+                            modifier = Modifier.fillMaxWidth().height(WsttSizes.ControlHeight),
+                            shape = WsttShapes.Pill,
                         ) {
                             Text("Не напоминать", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                         }
@@ -143,8 +143,8 @@ private fun TimedWarningDialog(
                     Button(
                         onClick = onAcknowledge,
                         enabled = actionsEnabled,
-                        modifier = Modifier.fillMaxWidth().height(CsqttSizes.ControlHeight),
-                        shape = CsqttShapes.Pill,
+                        modifier = Modifier.fillMaxWidth().height(WsttSizes.ControlHeight),
+                        shape = WsttShapes.Pill,
                     ) {
                         Text("Понятно", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                     }

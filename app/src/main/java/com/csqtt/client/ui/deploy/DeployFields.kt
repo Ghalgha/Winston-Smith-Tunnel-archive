@@ -1,4 +1,4 @@
-package com.csqtt.client.ui
+package com.wstt.client.ui
 
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -21,8 +21,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.csqtt.client.ui.design.CsqttShapes
-import com.csqtt.client.ui.design.CsqttSpacing
+import com.wstt.client.ui.design.WsttShapes
+import com.wstt.client.ui.design.WsttSpacing
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,7 +83,7 @@ internal fun DeployTextField(
                         isError = isError,
                         interactionSource = interactionSource,
                         colors = colors,
-                        shape = CsqttShapes.Control,
+                        shape = WsttShapes.Control,
                     )
                 },
             )
@@ -99,7 +99,7 @@ internal fun AdaptiveFieldPair(
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(CsqttSpacing.Sm),
+        horizontalArrangement = Arrangement.spacedBy(WsttSpacing.Sm),
     ) {
         Box(modifier = Modifier.weight(1f)) { first() }
         Box(modifier = Modifier.weight(1f)) { second() }

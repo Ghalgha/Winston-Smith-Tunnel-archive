@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -52,7 +52,7 @@ internal object VkApi {
     ): VkApiResult<T> {
         var conn: HttpURLConnection? = null
         return try {
-            conn = URL(CsqttConstants.VkAutoHash.API_METHOD_BASE_URL + method).openConnection() as HttpURLConnection
+            conn = URL(WsttConstants.VkAutoHash.API_METHOD_BASE_URL + method).openConnection() as HttpURLConnection
             conn.requestMethod = "POST"
             conn.connectTimeout = CONNECT_TIMEOUT_MS
             conn.readTimeout = READ_TIMEOUT_MS
@@ -69,7 +69,7 @@ internal object VkApi {
                     append('&')
                 }
                 append("v=")
-                append(CsqttConstants.VkAutoHash.API_VERSION)
+                append(WsttConstants.VkAutoHash.API_VERSION)
             }
             conn.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
 

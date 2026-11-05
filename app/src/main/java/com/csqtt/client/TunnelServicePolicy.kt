@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 internal object TunnelServicePolicy {
     const val STARTUP_GRACE_MS = 60_000L

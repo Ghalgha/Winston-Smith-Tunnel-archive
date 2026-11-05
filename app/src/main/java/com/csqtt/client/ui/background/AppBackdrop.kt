@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box

@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
@@ -32,11 +32,11 @@ class TunnelAuthSnapshotTest {
     fun `participant snapshot keeps link and mode in one state`() {
         val snapshot = TunnelAuthSnapshot(
             profile = 0,
-            csqttLink = "csqtt://connect?peer=example.test",
-            csqttLinkMode = true,
+            wsttLink = "csqtt://connect?peer=example.test",
+            wsttLinkMode = true,
         )
 
-        assertTrue(snapshot.csqttLinkMode)
-        assertEquals("csqtt://connect?peer=example.test", snapshot.csqttLink)
+        assertTrue(snapshot.wsttLinkMode)
+        assertEquals("csqtt://connect?peer=example.test", snapshot.wsttLink)
     }
 }

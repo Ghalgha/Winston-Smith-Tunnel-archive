@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 import android.content.Context
 import android.content.pm.PackageInfo
@@ -7,7 +7,7 @@ import android.util.Log
 import androidx.core.content.edit
 
 internal object UpdateLaunchGuard {
-    private const val TAG = "CSQTT"
+    private const val TAG = "WSTT"
     private const val PREFS = "update_launch_guard"
     private const val LAST_TOKEN = "last_package_token"
 

@@ -57,7 +57,7 @@ val verifyReleaseSigning = tasks.register("verifyReleaseSigning") {
 }
 
 android {
-    namespace = "com.csqtt.client"
+    namespace = "com.wstt.client"
     compileSdk = 37
 
     defaultConfig {

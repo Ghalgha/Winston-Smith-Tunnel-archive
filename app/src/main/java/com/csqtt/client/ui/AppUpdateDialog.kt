@@ -1,4 +1,4 @@
-package com.csqtt.client.ui
+package com.wstt.client.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -27,10 +27,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.csqtt.client.AppReleaseInfo
-import com.csqtt.client.RemoteVersionSource
-import com.csqtt.client.ui.design.CsqttShapes
-import com.csqtt.client.ui.design.CsqttSizes
+import com.wstt.client.AppReleaseInfo
+import com.wstt.client.RemoteVersionSource
+import com.wstt.client.ui.design.WsttShapes
+import com.wstt.client.ui.design.WsttSizes
 
 @Composable
 fun AppUpdateDialog(
@@ -55,7 +55,7 @@ fun AppUpdateDialog(
         )
     ) {
         Surface(
-            shape = CsqttShapes.Dialog,
+            shape = WsttShapes.Dialog,
             color = appSectionCardColor(),
             contentColor = MaterialTheme.colorScheme.onSurface,
             border = BorderStroke(1.dp, appSectionCardBorderColor()),
@@ -109,8 +109,8 @@ fun AppUpdateDialog(
                         onClick = onPostpone,
                         modifier = Modifier
                             .weight(1f)
-                            .height(CsqttSizes.ControlHeight),
-                        shape = CsqttShapes.Pill
+                            .height(WsttSizes.ControlHeight),
+                        shape = WsttShapes.Pill
                     ) {
                         Text("Позже", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                     }
@@ -119,8 +119,8 @@ fun AppUpdateDialog(
                         onClick = onUpdate,
                         modifier = Modifier
                             .weight(1f)
-                            .height(CsqttSizes.ControlHeight),
-                        shape = CsqttShapes.Pill
+                            .height(WsttSizes.ControlHeight),
+                        shape = WsttShapes.Pill
                     ) {
                         Text("Обновить", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                     }

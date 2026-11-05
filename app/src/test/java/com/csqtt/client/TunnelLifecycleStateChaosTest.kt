@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -74,9 +74,9 @@ class TunnelLifecycleStateChaosTest {
 
     @Test
     fun deterministicLifecycleChaosMatchesIndependentModel() {
-        val firstSeed = System.getenv("CSQTT_SOAK_SEED")?.toLongOrNull() ?: 0L
-        val seeds = System.getenv("CSQTT_ANDROID_LIFECYCLE_SEEDS")?.toIntOrNull()?.coerceAtLeast(1) ?: 128
-        val steps = System.getenv("CSQTT_ANDROID_LIFECYCLE_STEPS")?.toIntOrNull()?.coerceAtLeast(1) ?: 10_000
+        val firstSeed = System.getenv("WSTT_SOAK_SEED")?.toLongOrNull() ?: 0L
+        val seeds = System.getenv("WSTT_ANDROID_LIFECYCLE_SEEDS")?.toIntOrNull()?.coerceAtLeast(1) ?: 128
+        val steps = System.getenv("WSTT_ANDROID_LIFECYCLE_STEPS")?.toIntOrNull()?.coerceAtLeast(1) ?: 10_000
         repeat(seeds) { offset ->
             val seed = firstSeed + offset
             assertTrue("lifecycle diverged at reproducible seed $seed", runTrace(seed, steps))

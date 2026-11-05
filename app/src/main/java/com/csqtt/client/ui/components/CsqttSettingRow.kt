@@ -1,4 +1,4 @@
-package com.csqtt.client.ui.components
+package com.wstt.client.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -20,11 +20,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.csqtt.client.ui.design.CsqttSizes
-import com.csqtt.client.ui.design.CsqttSpacing
+import com.wstt.client.ui.design.WsttSizes
+import com.wstt.client.ui.design.WsttSpacing
 
 @Composable
-fun CsqttSettingRow(
+fun WsttSettingRow(
     title: String,
     checked: Boolean,
     onCheckedChange: ((Boolean) -> Unit)?,
@@ -49,13 +49,13 @@ fun CsqttSettingRow(
         modifier = modifier
             .fillMaxWidth()
             .then(interactionModifier)
-            .padding(vertical = CsqttSpacing.Xs),
-        horizontalArrangement = Arrangement.spacedBy(CsqttSpacing.Md),
+            .padding(vertical = WsttSpacing.Xs),
+        horizontalArrangement = Arrangement.spacedBy(WsttSpacing.Md),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(CsqttSpacing.Xxs),
+            verticalArrangement = Arrangement.spacedBy(WsttSpacing.Xxs),
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -99,7 +99,7 @@ fun CsqttSettingRow(
             checked = checked,
             onCheckedChange = null,
             enabled = enabled,
-            modifier = Modifier.padding(start = CsqttSpacing.Xs),
+            modifier = Modifier.padding(start = WsttSpacing.Xs),
         )
     }
 }

@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 data class TurnSubnet(
     val id: String,

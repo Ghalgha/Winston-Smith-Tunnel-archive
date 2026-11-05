@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 import androidx.core.net.toUri
 import kotlinx.coroutines.Dispatchers
@@ -13,7 +13,7 @@ internal object VkTokenScraper {
         val jsLocationRegex = Regex("location\\.href\\s*=\\s*[\"']([^\"']+)[\"']")
         val oauthGrantRegex = Regex("(https://login\\.vk\\.(?:com|ru)/\\?act=grant_access[^\"'\\s<]+)")
 
-        var hopsRemaining = CsqttConstants.VkAutoHash.MAX_OAUTH_HOPS
+        var hopsRemaining = WsttConstants.VkAutoHash.MAX_OAUTH_HOPS
         
         try {
             while (hopsRemaining-- > 0) {

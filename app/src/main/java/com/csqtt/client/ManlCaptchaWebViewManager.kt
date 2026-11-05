@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 object ManlCaptchaWebViewManager {
     private const val TAG = "ManlCaptchaWV"
-    private const val CAPTCHA_TIMEOUT_MS = CsqttConstants.Timeouts.CAPTCHA_MANUAL_TIMEOUT_MS
+    private const val CAPTCHA_TIMEOUT_MS = WsttConstants.Timeouts.CAPTCHA_MANUAL_TIMEOUT_MS
 
     val captchaMutex = Mutex()
     val pendingResult = AtomicReference<CompletableDeferred<Result<String>>?>(null)
@@ -47,8 +47,8 @@ object ManlCaptchaWebViewManager {
         pendingResult.getAndSet(null)?.completeExceptionally(CancellationException("Cancelled by system"))
     }
 
-    private const val NOTIFICATION_ID = CsqttConstants.Notifications.CAPTCHA_NOTIFICATION_ID
-    private const val CHANNEL_ID = CsqttConstants.Notifications.CAPTCHA_CHANNEL_ID
+    private const val NOTIFICATION_ID = WsttConstants.Notifications.CAPTCHA_NOTIFICATION_ID
+    private const val CHANNEL_ID = WsttConstants.Notifications.CAPTCHA_CHANNEL_ID
 
     private fun showCaptchaNotification(context: Context, redirectUri: String) {
         if (MainActivity.isForeground) return

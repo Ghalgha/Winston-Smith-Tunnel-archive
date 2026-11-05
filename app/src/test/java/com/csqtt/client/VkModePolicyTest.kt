@@ -1,4 +1,4 @@
-package com.csqtt.client
+package com.wstt.client
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -7,10 +7,10 @@ class VkModePolicyTest {
     @Test
     fun autoVkHashSelectsAutoVkWorkMode() {
         assertEquals(
-            CsqttConstants.VkAuth.MODE_AUTO_JS,
+            WsttConstants.VkAuth.MODE_AUTO_JS,
             vkAuthModeForHashMode(
-                CsqttConstants.VkAutoHash.MODE_AUTO_JS,
-                CsqttConstants.VkAuth.MODE_CALLS,
+                WsttConstants.VkAutoHash.MODE_AUTO_JS,
+                WsttConstants.VkAuth.MODE_CALLS,
             ),
         )
     }
@@ -18,10 +18,10 @@ class VkModePolicyTest {
     @Test
     fun autoVkWorkModeSelectsAutoVkHashes() {
         assertEquals(
-            CsqttConstants.VkAutoHash.MODE_AUTO_JS,
+            WsttConstants.VkAutoHash.MODE_AUTO_JS,
             vkHashModeForAuthMode(
-                CsqttConstants.VkAuth.MODE_AUTO_JS,
-                CsqttConstants.VkAutoHash.MODE_AUTO_API,
+                WsttConstants.VkAuth.MODE_AUTO_JS,
+                WsttConstants.VkAutoHash.MODE_AUTO_API,
                 hasVkToken = true,
             ),
         )
@@ -30,10 +30,10 @@ class VkModePolicyTest {
     @Test
     fun autoApiHashLeavesAutoVkWorkMode() {
         assertEquals(
-            CsqttConstants.VkAuth.MODE_CALLS,
+            WsttConstants.VkAuth.MODE_CALLS,
             vkAuthModeForHashMode(
-                CsqttConstants.VkAutoHash.MODE_AUTO_API,
-                CsqttConstants.VkAuth.MODE_AUTO_JS,
+                WsttConstants.VkAutoHash.MODE_AUTO_API,
+                WsttConstants.VkAuth.MODE_AUTO_JS,
             ),
         )
     }
@@ -41,18 +41,18 @@ class VkModePolicyTest {
     @Test
     fun autoWorkModeMovesAutoVkHashesToAvailableNonVkMode() {
         assertEquals(
-            CsqttConstants.VkAutoHash.MODE_AUTO_API,
+            WsttConstants.VkAutoHash.MODE_AUTO_API,
             vkHashModeForAuthMode(
-                CsqttConstants.VkAuth.MODE_CALLS,
-                CsqttConstants.VkAutoHash.MODE_AUTO_JS,
+                WsttConstants.VkAuth.MODE_CALLS,
+                WsttConstants.VkAutoHash.MODE_AUTO_JS,
                 hasVkToken = true,
             ),
         )
         assertEquals(
-            CsqttConstants.VkAutoHash.MODE_MANUAL,
+            WsttConstants.VkAutoHash.MODE_MANUAL,
             vkHashModeForAuthMode(
-                CsqttConstants.VkAuth.MODE_CALLS,
-                CsqttConstants.VkAutoHash.MODE_AUTO_JS,
+                WsttConstants.VkAuth.MODE_CALLS,
+                WsttConstants.VkAutoHash.MODE_AUTO_JS,
                 hasVkToken = false,
             ),
         )
@@ -61,10 +61,10 @@ class VkModePolicyTest {
     @Test
     fun manualHashLeavesAutoVkWorkMode() {
         assertEquals(
-            CsqttConstants.VkAuth.MODE_CALLS,
+            WsttConstants.VkAuth.MODE_CALLS,
             vkAuthModeForHashMode(
-                CsqttConstants.VkAutoHash.MODE_MANUAL,
-                CsqttConstants.VkAuth.MODE_AUTO_JS,
+                WsttConstants.VkAutoHash.MODE_MANUAL,
+                WsttConstants.VkAuth.MODE_AUTO_JS,
             ),
         )
     }
@@ -73,15 +73,15 @@ class VkModePolicyTest {
     fun unavailableManualHashStaysInCurrentProcessWhileAutoHashIsReplaced() {
         assertEquals(
             false,
-            shouldReplaceUnavailableVkHash(CsqttConstants.VkAutoHash.MODE_MANUAL),
+            shouldReplaceUnavailableVkHash(WsttConstants.VkAutoHash.MODE_MANUAL),
         )
         assertEquals(
             true,
-            shouldReplaceUnavailableVkHash(CsqttConstants.VkAutoHash.MODE_AUTO_API),
+            shouldReplaceUnavailableVkHash(WsttConstants.VkAutoHash.MODE_AUTO_API),
         )
         assertEquals(
             true,
-            shouldReplaceUnavailableVkHash(CsqttConstants.VkAutoHash.MODE_AUTO_JS),
+            shouldReplaceUnavailableVkHash(WsttConstants.VkAutoHash.MODE_AUTO_JS),
         )
     }
 
@@ -90,24 +90,24 @@ class VkModePolicyTest {
         assertEquals(
             true,
             shouldConfirmAutoJsMode(
-                currentMode = CsqttConstants.VkAuth.MODE_CALLS,
-                requestedMode = CsqttConstants.VkAuth.MODE_AUTO_JS,
+                currentMode = WsttConstants.VkAuth.MODE_CALLS,
+                requestedMode = WsttConstants.VkAuth.MODE_AUTO_JS,
                 warningAcknowledged = false,
             ),
         )
         assertEquals(
             false,
             shouldConfirmAutoJsMode(
-                currentMode = CsqttConstants.VkAuth.MODE_AUTO_JS,
-                requestedMode = CsqttConstants.VkAuth.MODE_AUTO_JS,
+                currentMode = WsttConstants.VkAuth.MODE_AUTO_JS,
+                requestedMode = WsttConstants.VkAuth.MODE_AUTO_JS,
                 warningAcknowledged = false,
             ),
         )
         assertEquals(
             false,
             shouldConfirmAutoJsMode(
-                currentMode = CsqttConstants.VkAuth.MODE_CALLS,
-                requestedMode = CsqttConstants.VkAuth.MODE_AUTO_JS,
+                currentMode = WsttConstants.VkAuth.MODE_CALLS,
+                requestedMode = WsttConstants.VkAuth.MODE_AUTO_JS,
                 warningAcknowledged = true,
             ),
         )

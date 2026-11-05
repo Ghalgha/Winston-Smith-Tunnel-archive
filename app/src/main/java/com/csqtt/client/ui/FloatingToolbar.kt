@@ -1,4 +1,4 @@
-package com.csqtt.client.ui
+package com.wstt.client.ui
 
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.BorderStroke
@@ -11,14 +11,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
-import com.csqtt.client.SettingsStore
+import com.wstt.client.SettingsStore
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.csqtt.client.R
+import com.wstt.client.R
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -26,12 +26,12 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.verticalScroll
-import com.csqtt.client.CsqttConstants
-import com.csqtt.client.TunnelManager
-import com.csqtt.client.ui.components.CsqttSegmentedControl
-import com.csqtt.client.ui.components.CsqttSettingRow
-import com.csqtt.client.ui.design.CsqttShapes
-import com.csqtt.client.ui.design.CsqttSizes
+import com.wstt.client.WsttConstants
+import com.wstt.client.TunnelManager
+import com.wstt.client.ui.components.WsttSegmentedControl
+import com.wstt.client.ui.components.WsttSettingRow
+import com.wstt.client.ui.design.WsttShapes
+import com.wstt.client.ui.design.WsttSizes
 import android.Manifest
 import android.content.pm.PackageManager
 import android.widget.Toast
@@ -39,17 +39,17 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.compose.ui.platform.LocalContext
-import com.csqtt.client.ui.dialogs.ImportExportDialog
-import com.csqtt.client.ui.dialogs.QrScannerDialog
-import com.csqtt.client.ui.dialogs.SupportDeveloperDialog
-import com.csqtt.client.ui.dialogs.TurnSubnetsDialog
+import com.wstt.client.ui.dialogs.ImportExportDialog
+import com.wstt.client.ui.dialogs.QrScannerDialog
+import com.wstt.client.ui.dialogs.SupportDeveloperDialog
+import com.wstt.client.ui.dialogs.TurnSubnetsDialog
 
 private enum class UsageRole { Owner, Participant }
 
 @Composable
 fun FloatingToolbar(
     settingsStore: SettingsStore,
-    csqttLinkMode: Boolean,
+    wsttLinkMode: Boolean,
     activeProfile: Int,
     onActiveProfileChange: (Int) -> Unit,
     currentTheme: String,
@@ -62,9 +62,9 @@ fun FloatingToolbar(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val selectedRole = if (csqttLinkMode) UsageRole.Participant else UsageRole.Owner
+    val selectedRole = if (wsttLinkMode) UsageRole.Participant else UsageRole.Owner
     val vkAuthMode by settingsStore.vkAuthMode.collectAsStateWithLifecycle(
-        initialValue = CsqttConstants.VkAuth.MODE_CALLS,
+        initialValue = WsttConstants.VkAuth.MODE_CALLS,
     )
     val tunnelRunning by TunnelManager.running.collectAsStateWithLifecycle()
     val selectedTurnSubnet by settingsStore.selectedTurnSubnet.collectAsStateWithLifecycle(
@@ -117,7 +117,7 @@ fun FloatingToolbar(
             )
         }
 
-        if (!csqttLinkMode) {
+        if (!wsttLinkMode) {
             IconButton(
                 onClick = { showImportExportDialog = true },
                 modifier = Modifier.size(38.dp),
@@ -180,15 +180,15 @@ fun FloatingToolbar(
         QrScannerDialog(
             onDismissRequest = { showQrScanner = false },
             onQrCodeScanned = { rawLink ->
-                val parsed = com.csqtt.client.ui.utils.parseCsqttLink(rawLink)
+                val parsed = com.wstt.client.ui.utils.parseWsttLink(rawLink)
                 if (parsed != null) {
                     showQrScanner = false
                     scope.launch {
-                        settingsStore.saveCsqttParticipantLink(rawLink.trim())
+                        settingsStore.saveWsttParticipantLink(rawLink.trim())
                     }
                     Toast.makeText(context, "Ссылка подключена из QR-кода ✓ Режим участника включён", Toast.LENGTH_LONG).show()
                 } else {
-                    Toast.makeText(context, "QR-код не содержит ссылку CSQTT", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "QR-код не содержит ссылку WSTT", Toast.LENGTH_SHORT).show()
                 }
             }
         )
@@ -200,7 +200,7 @@ fun FloatingToolbar(
                 properties = DialogProperties(usePlatformDefaultWidth = false)
             ) {
                 Surface(
-                    shape = CsqttShapes.Dialog,
+                    shape = WsttShapes.Dialog,
                     color = appSectionCardColor(),
                     border = BorderStroke(1.dp, appSectionCardBorderColor()),
                     tonalElevation = 0.dp,
@@ -250,7 +250,7 @@ fun FloatingToolbar(
                         overflow = TextOverflow.Ellipsis,
                     )
 
-                    CsqttSegmentedControl(
+                    WsttSegmentedControl(
                         options = listOf(
                             UsageRole.Owner to "Владелец",
                             UsageRole.Participant to "Участник",
@@ -258,13 +258,13 @@ fun FloatingToolbar(
                         selected = selectedRole,
                         onSelected = { role ->
                             val participant = role == UsageRole.Participant
-                            if (participant != csqttLinkMode) {
-                                scope.launch { settingsStore.saveCsqttLinkMode(participant) }
+                            if (participant != wsttLinkMode) {
+                                scope.launch { settingsStore.saveWsttLinkMode(participant) }
                             }
                         },
                         modifier = Modifier
                             .padding(horizontal = 4.dp)
-                            .height(CsqttSizes.CompactControlHeight),
+                            .height(WsttSizes.CompactControlHeight),
                     )
 
                     HorizontalDivider(
@@ -272,11 +272,11 @@ fun FloatingToolbar(
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                     )
 
-                    if (!csqttLinkMode) {
+                    if (!wsttLinkMode) {
                         CompactDropdownSetting(
                             title = "Профиль конфигурации",
                             selectedKey = activeProfile.toString(),
-                            options = (CsqttConstants.Profiles.MIN_INDEX..CsqttConstants.Profiles.MAX_INDEX)
+                            options = (WsttConstants.Profiles.MIN_INDEX..WsttConstants.Profiles.MAX_INDEX)
                                 .map { profile -> profile.toString() to (profileNames[profile] ?: "Профиль $profile") },
                             enabled = true,
                             onSelected = { profile ->
@@ -308,15 +308,15 @@ fun FloatingToolbar(
                         title = "Оформление",
                         selectedKey = currentTheme,
                         options = listOf(
-                            CsqttConstants.Theme.MODE_SYSTEM to "Система",
-                            CsqttConstants.Theme.MODE_LIGHT to "Светлая",
-                            CsqttConstants.Theme.MODE_DARK to "Тёмная",
+                            WsttConstants.Theme.MODE_SYSTEM to "Система",
+                            WsttConstants.Theme.MODE_LIGHT to "Светлая",
+                            WsttConstants.Theme.MODE_DARK to "Тёмная",
                         ),
                         enabled = true,
                         onSelected = onThemeChange,
                     )
 
-                    CsqttSettingRow(
+                    WsttSettingRow(
                         title = "Автопауза при Wi-Fi",
                         checked = autoPauseOnWifi,
                         onCheckedChange = onAutoPauseOnWifiChange,
@@ -324,8 +324,8 @@ fun FloatingToolbar(
                         infoContentDescription = "Как работает автопауза при Wi-Fi",
                     )
 
-                    if (csqttLinkMode) {
-                        CsqttSettingRow(
+                    if (wsttLinkMode) {
+                        WsttSettingRow(
                             title = "Показывать логи",
                             checked = participantShowLogs,
                             onCheckedChange = { checked ->
@@ -334,13 +334,13 @@ fun FloatingToolbar(
                         )
                     }
 
-                    if (!csqttLinkMode) {
+                    if (!wsttLinkMode) {
                         OutlinedButton(
                             onClick = { showTurnSubnetsDialog = true },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(CsqttSizes.ControlHeight),
-                            shape = CsqttShapes.Pill,
+                                .height(WsttSizes.ControlHeight),
+                            shape = WsttShapes.Pill,
                             colors = ButtonDefaults.outlinedButtonColors(
                                 containerColor = Color.Transparent,
                                 contentColor = MaterialTheme.colorScheme.onSurface,
@@ -390,7 +390,7 @@ fun FloatingToolbar(
             properties = DialogProperties(usePlatformDefaultWidth = false),
         ) {
             Surface(
-                shape = CsqttShapes.Dialog,
+                shape = WsttShapes.Dialog,
                 color = appSectionCardColor(),
                 contentColor = MaterialTheme.colorScheme.onSurface,
                 border = BorderStroke(1.dp, appSectionCardBorderColor()),
@@ -431,7 +431,7 @@ fun FloatingToolbar(
                         onValueChange = { editingProfileName = it },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
-                        shape = CsqttShapes.Control,
+                        shape = WsttShapes.Control,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
                             unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
@@ -462,8 +462,8 @@ fun FloatingToolbar(
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(CsqttSizes.ControlHeight),
-                        shape = CsqttShapes.Control,
+                            .height(WsttSizes.ControlHeight),
+                        shape = WsttShapes.Control,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.onPrimary,
