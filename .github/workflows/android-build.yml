@@ -66,7 +66,11 @@ jobs:
           echo "WSTT_RUST_TOOLCHAIN_READY=1" >> "$GITHUB_ENV"
       - name: Run Rust checks and build Linux server binaries
         run: |
-          cargo install cargo-zigbuild --locked
+          if ! command -v cargo-zigbuild >/dev/null 2>&1; then
+            cargo install cargo-zigbuild --locked
+          else
+            echo "Using cached cargo-zigbuild: $(cargo zigbuild --version 2>/dev/null || cargo-zigbuild --version)"
+          fi
           chmod +x rust-server/build_linux.sh
           bash -n app/src/main/assets/deploy.sh
           if grep -Eq '(/etc/csqtt|/usr/local/bin/csqtt|/usr/local/lib/csqtt|csqtt\.service|CSQTT_MANAGED|CSQTT_TPROXY|CSQTT_LOCAL_SOCKS|CSQTT_SOCKS|CSQTT_CASCADE_NO_QUIC|csqtp\*)' app/src/main/assets/deploy.sh; then
