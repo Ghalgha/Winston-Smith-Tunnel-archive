@@ -2,7 +2,7 @@
 
 use crate::wire_protocol::PATH_ECHO_PREFIX;
 
-const PATH_PROBE_PREFIX: &[u8] = b"\xffCSQTT_PATH_PROBE_V1";
+const PATH_PROBE_PREFIX: &[u8] = b"\xff\x43\x53\x51\x54\x54_PATH_PROBE_V1";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PathProbe {
