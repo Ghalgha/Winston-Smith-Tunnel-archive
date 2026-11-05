@@ -35,7 +35,7 @@ jobs:
       - name: Run Rust client unit tests
         run: cargo +1.97.1 test --locked --manifest-path rust-client/Cargo.toml --all-targets
 
-  build:
+  linux-server:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -62,10 +62,7 @@ jobs:
           rustup target add \
             x86_64-unknown-linux-musl \
             aarch64-unknown-linux-musl \
-            armv7-unknown-linux-musleabihf \
-            aarch64-linux-android \
-            armv7-linux-androideabi \
-            x86_64-linux-android
+            armv7-unknown-linux-musleabihf
           echo "WSTT_RUST_TOOLCHAIN_READY=1" >> "$GITHUB_ENV"
       - name: Run Rust checks and build Linux server binaries
         run: |
@@ -135,8 +132,85 @@ jobs:
           for asset in csqtt-linux-amd64 csqtt-linux-arm64 csqtt-linux-armv7; do
             test -s "app/src/main/assets/$asset"
           done
-      - name: Reclaim disk space after Linux cross-build
-        run: rm -rf rust-server/build rust-server/target .zig-cache
+      - name: Upload verified Linux server assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: wstt-linux-server-assets-${{ github.sha }}
+          path: |
+            app/src/main/assets/csqtt-linux-amd64
+            app/src/main/assets/csqtt-linux-arm64
+            app/src/main/assets/csqtt-linux-armv7
+            app/src/main/assets/csqtt.server-provenance.json
+          if-no-files-found: error
+          retention-days: 1
+
+  android-native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache Android native Rust dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin
+            rust-client/target
+          key: android-native-${{ runner.os }}-rust-1.97.1-${{ hashFiles('rust-client/Cargo.lock') }}
+          restore-keys: |
+            android-native-${{ runner.os }}-rust-1.97.1-
+      - name: Set up Rust 1.97.1 and Android targets
+        run: |
+          rustup toolchain install 1.97.1 --profile minimal
+          rustup default 1.97.1
+          rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
+          echo "WSTT_RUST_TOOLCHAIN_READY=1" >> "$GITHUB_ENV"
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - name: Install Android NDK
+        run: sdkmanager --install "ndk;28.2.13676358"
+      - name: Build and verify native Android libraries
+        run: |
+          chmod +x scripts/build_android_native.sh
+          scripts/build_android_native.sh
+      - name: Upload verified Android native libraries
+        uses: actions/upload-artifact@v4
+        with:
+          name: wstt-android-native-${{ github.sha }}
+          path: |
+            app/src/main/jniLibs/**
+            app/src/main/libclient.provenance.json
+          if-no-files-found: error
+          retention-days: 1
+
+  android-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [linux-server, android-native]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download verified Linux server assets
+        uses: actions/download-artifact@v4
+        with:
+          name: wstt-linux-server-assets-${{ github.sha }}
+          path: app/src/main/assets
+      - name: Download verified Android native libraries
+        uses: actions/download-artifact@v4
+        with:
+          name: wstt-android-native-${{ github.sha }}
+          path: app/src/main
+      - name: Verify transferred production assets
+        run: |
+          pwsh -NoProfile -File scripts/server_asset_provenance.ps1 -Mode Verify
+          test -s app/src/main/libclient.provenance.json
+          for asset in csqtt-linux-amd64 csqtt-linux-arm64 csqtt-linux-armv7; do
+            test -s "app/src/main/assets/$asset"
+          done
+          for abi in arm64-v8a armeabi-v7a x86_64; do
+            test -s "app/src/main/jniLibs/$abi/libclient.so"
+          done
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -146,21 +220,12 @@ jobs:
           packages: platform-tools
       - name: Install Android platform and build tools
         run: |
-          sdkmanager --install "platforms;android-37.0" "build-tools;37.0.0" "ndk;28.2.13676358" "cmake;3.31.1"
+          sdkmanager --install "platforms;android-37.0" "build-tools;37.0.0"
           SDK_ROOT="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
           if [ -d "$SDK_ROOT/platforms/android-37.0" ] && [ ! -e "$SDK_ROOT/platforms/android-37" ]; then
             ln -s android-37.0 "$SDK_ROOT/platforms/android-37"
           fi
           test -d "$SDK_ROOT/platforms/android-37"
-      - name: Build native Android libraries
-        run: |
-          command -v cmake
-          command -v ninja
-          command -v make
-          chmod +x scripts/build_android_native.sh
-          scripts/build_android_native.sh
-      - name: Remove Rust intermediates before Gradle
-        run: rm -rf rust-client/target
       - uses: gradle/actions/setup-gradle@v4
       - name: Build debug APK and run Android unit tests
         run: |
