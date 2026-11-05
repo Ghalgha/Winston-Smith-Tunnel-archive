@@ -370,7 +370,7 @@ pub fn encrypt_csqtt_link(payload: &str) -> String {
         Ok(k) => k,
         Err(_) => {
             let b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(payload.as_bytes());
-            return format!("wst://{b64}");
+            return format!("wstt://{b64}");
         }
     };
     let key = LessSafeKey::new(unbound);
@@ -389,7 +389,7 @@ pub fn encrypt_csqtt_link(payload: &str) -> String {
         Ok(n) => n,
         Err(_) => {
             let b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(payload.as_bytes());
-            return format!("wst://{b64}");
+            return format!("wstt://{b64}");
         }
     };
 
@@ -399,7 +399,7 @@ pub fn encrypt_csqtt_link(payload: &str) -> String {
         .is_err()
     {
         let b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(payload.as_bytes());
-        return format!("wst://{b64}");
+        return format!("wstt://{b64}");
     }
 
     let mut combined = Vec::with_capacity(12 + in_out.len());
@@ -407,7 +407,7 @@ pub fn encrypt_csqtt_link(payload: &str) -> String {
     combined.extend_from_slice(&in_out);
 
     let b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&combined);
-    format!("wst://{b64}")
+    format!("wstt://{b64}")
 }
 
 #[allow(dead_code)]
@@ -418,7 +418,7 @@ pub fn decrypt_csqtt_link(raw_link: &str) -> Option<String> {
 
     let raw_link = raw_link.trim();
     let payload = raw_link
-        .strip_prefix("wst://")
+        .strip_prefix("wstt://")
         .or_else(|| raw_link.strip_prefix("csqtt://"))?
         .trim();
     let clean = payload.replace(['\n', '\r'], "");
@@ -9912,7 +9912,7 @@ const PANEL_HTML: &str = r##"
                 </div>
                 <div class="api-card-body">
                     <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">
-                        Создает ключ доступа. Если <code>password</code> не указан, сервер сгенерирует надежный криптостойкий пароль. В ответе возвращаются готовая ссылка <code>link</code> (<code>wst://...</code>) и срок <code>expires</code>.
+                        Создает ключ доступа. Если <code>password</code> не указан, сервер сгенерирует надежный криптостойкий пароль. В ответе возвращаются готовая ссылка <code>link</code> (<code>wstt://...</code>) и срок <code>expires</code>.
                     </p>
                     <div class="api-code-label">Тело запроса (JSON):</div>
                     <pre class="api-code-block"><code>{
@@ -10071,11 +10071,11 @@ const PANEL_HTML: &str = r##"
                 <div class="api-card-header">
                     <span class="api-method get">GET</span>
                     <span class="api-path">/api/links</span>
-                    <span class="api-desc">Массив всех готовых ссылок wst://</span>
+                    <span class="api-desc">Массив всех готовых ссылок wstt://</span>
                 </div>
                 <div class="api-card-body">
                     <p style="font-size: 12px; color: var(--text-muted);">
-                        Возвращает компактный массив объектов всех клиентов и мастер-пароля с готовыми ссылками <code>wst://...</code> и <code>sub_link</code> для ботов.
+                        Возвращает компактный массив объектов всех клиентов и мастер-пароля с готовыми ссылками <code>wstt://...</code> и <code>sub_link</code> для ботов.
                     </p>
                 </div>
             </div>
@@ -10265,7 +10265,7 @@ const PANEL_HTML: &str = r##"
                 </div>
                 <div class="api-card-body">
                     <p style="font-size: 12px; color: var(--text-muted);">
-                        Публичная веб-страница подписки клиента или Главного пароля (без необходимости авторизации). Содержит живой векторный QR-код, прямую ссылку <code>wst://connect?...</code>, кнопку «Подключить в приложении WSTT» (с нативным уведомлением в приложении), контрастную кнопку копирования и инструкции.
+                        Публичная веб-страница подписки клиента или Главного пароля (без необходимости авторизации). Содержит живой векторный QR-код, прямую ссылку <code>wstt://connect?...</code>, кнопку «Подключить в приложении WSTT» (с нативным уведомлением в приложении), контрастную кнопку копирования и инструкции.
                     </p>
                 </div>
             </div>
@@ -10288,7 +10288,7 @@ const PANEL_HTML: &str = r##"
   "password": "p_abc123...",
   "vk_token": "...",
   "hash": "...",
-  "link": "wst://connect?v=2&host=vpn.example.com&peer=46100&password=..."
+  "link": "wstt://connect?v=2&host=vpn.example.com&peer=46100&password=..."
 }</code></pre>
                 </div>
             </div>
@@ -10314,7 +10314,7 @@ const PANEL_HTML: &str = r##"
                 </div>
                 <div class="api-card-body">
                     <p style="font-size: 12px; color: var(--text-muted);">
-                        Возвращает JSON-массив с параметрами подключения всех активных клиентов группы (также доступны алиасы <code>/{group_sub_uuid}/sub-group.json</code> и <code>/api/sub-group/{group_sub_uuid}</code>): <code>[{ "name": "...", "link": "wst://...", ... }]</code>.
+                        Возвращает JSON-массив с параметрами подключения всех активных клиентов группы (также доступны алиасы <code>/{group_sub_uuid}/sub-group.json</code> и <code>/api/sub-group/{group_sub_uuid}</code>): <code>[{ "name": "...", "link": "wstt://...", ... }]</code>.
                     </p>
                 </div>
             </div>
@@ -13405,7 +13405,7 @@ mod tests {
         let payload = "connect?v=2&host=1.2.3.4&peer=46100&password=testpass";
         let encrypted1 = encrypt_csqtt_link(payload);
         let encrypted2 = encrypt_csqtt_link(payload);
-        assert!(encrypted1.starts_with("wst://"));
+        assert!(encrypted1.starts_with("wstt://"));
         assert_eq!(
             encrypted1, encrypted2,
             "link encryption must be deterministic for identical payload"
@@ -13418,7 +13418,7 @@ mod tests {
     fn csqtt_link_legacy_scheme_remains_readable() {
         let payload = "connect?v=2&host=1.2.3.4&peer=46100&password=legacy";
         let current = encrypt_csqtt_link(payload);
-        let legacy = current.replacen("wst://", "csqtt://", 1);
+        let legacy = current.replacen("wstt://", "csqtt://", 1);
         assert_eq!(decrypt_csqtt_link(&legacy).as_deref(), Some(payload));
     }
 
@@ -13435,7 +13435,7 @@ mod tests {
     #[test]
     fn make_client_link_contains_password_and_aes_roundtrip() {
         let link = make_client_link("1.2.3.4", 46100, "abc1234567890123", "", false, "");
-        assert!(link.starts_with("wst://"));
+        assert!(link.starts_with("wstt://"));
         let decrypted = decrypt_csqtt_link(&link).expect("must decrypt");
         assert!(decrypted.contains("password=abc1234567890123"));
         assert!(!decrypted.contains("client="));
