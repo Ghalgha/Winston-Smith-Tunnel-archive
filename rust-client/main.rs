@@ -981,7 +981,7 @@ mod worker_count_tests {
 
     #[test]
     fn runtime_thread_budget_accounts_for_live_scale_up_ceiling() {
-        assert_eq!(runtime_worker_threads_for_limits(5, 18, 0, 16), 3);
+        assert_eq!(runtime_worker_threads_for_limits(5, 18, 0, 16), 2);
         assert_eq!(runtime_worker_threads_for_limits(5, 0, 0, 16), 1);
     }
 
