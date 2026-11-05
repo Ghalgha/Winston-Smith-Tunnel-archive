@@ -128,7 +128,7 @@ if ip netns exec "$NS" ip link show wstt1 >/dev/null 2>&1; then fail "TUN remain
 
 if command -v systemd-run >/dev/null && command -v systemctl >/dev/null && systemctl show --property=Version --value >/dev/null 2>&1; then
   read -r UDP WEB < <(ports)
-  UNIT_NAME="wstt-check-$-$RANDOM.service"
+  UNIT_NAME="wstt-check-$BASHPID-$RANDOM.service"
   if systemctl show "$UNIT_NAME" >/dev/null 2>&1; then fail "Generated systemd unit name already exists: $UNIT_NAME"; fi
   UNIT="$UNIT_NAME"
   mkdir "$RUN_DIR/systemd"
