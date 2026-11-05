@@ -115,6 +115,7 @@ function Get-BuildInputHash {
         "rust-server",
         "shared/dtls.rs",
         "shared/wire_protocol.rs",
+        "app/src/main/assets/domains.txt",
         "scripts/server_asset_provenance.ps1"
     )
 
@@ -166,7 +167,7 @@ function Get-BuildInputHash {
         }
     }
 
-    foreach ($singleFile in @("shared/dtls.rs", "shared/wire_protocol.rs", "scripts/server_asset_provenance.ps1")) {
+    foreach ($singleFile in @("shared/dtls.rs", "shared/wire_protocol.rs", "app/src/main/assets/domains.txt", "scripts/server_asset_provenance.ps1")) {
         $fullPath = Join-Path $projectRoot ($singleFile.Replace("/", [IO.Path]::DirectorySeparatorChar))
         if ((Test-Path -LiteralPath $fullPath -PathType Leaf) -and -not $trackedSet.Contains($singleFile)) {
             $untrackedInputs.Add($singleFile)
