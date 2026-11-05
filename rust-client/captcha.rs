@@ -448,7 +448,7 @@ impl CaptchaSession<'_> {
         let input = page.pow_input.clone();
         let difficulty = page.pow_difficulty;
         let cancel = self.cancel.clone();
-        let hash = crate::cpu_task::run("csqtt-captcha-pow", move || {
+        let hash = crate::cpu_task::run("wstt-captcha-pow", move || {
             solve_pow(&input, difficulty, &cancel)
         })
         .await?;
