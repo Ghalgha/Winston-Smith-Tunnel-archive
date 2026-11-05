@@ -163,6 +163,7 @@ fn main() {
     let arguments = Arguments::parse_from(normalized_arguments());
     let runtime = match build_runtime(runtime_worker_threads(
         arguments.workers,
+        arguments.max_workers,
         arguments.runtime_threads,
     )) {
         Ok(runtime) => runtime,
@@ -198,11 +199,33 @@ fn build_runtime(default_worker_threads: usize) -> Result<tokio::runtime::Runtim
         .context("создание Tokio runtime")
 }
 
-fn runtime_worker_threads(requested_workers: usize, configured_threads: usize) -> usize {
+fn runtime_worker_threads(
+    requested_workers: usize,
+    configured_workers: usize,
+    configured_threads: usize,
+) -> usize {
     let available = std::thread::available_parallelism()
         .map(|parallelism| parallelism.get())
         .unwrap_or(1);
-    runtime_worker_threads_with_limit(requested_workers, configured_threads, available)
+    runtime_worker_threads_for_limits(
+        requested_workers,
+        configured_workers,
+        configured_threads,
+        available,
+    )
+}
+
+fn runtime_worker_threads_for_limits(
+    requested_workers: usize,
+    configured_workers: usize,
+    configured_threads: usize,
+    available_threads: usize,
+) -> usize {
+    runtime_worker_threads_with_limit(
+        requested_workers.max(configured_workers),
+        configured_threads,
+        available_threads,
+    )
 }
 
 fn runtime_worker_threads_with_limit(
@@ -954,6 +977,12 @@ mod worker_count_tests {
                 assert_eq!(workers % WORKERS_PER_GROUP, 0);
             }
         }
+    }
+
+    #[test]
+    fn runtime_thread_budget_accounts_for_live_scale_up_ceiling() {
+        assert_eq!(runtime_worker_threads_for_limits(5, 18, 0, 16), 3);
+        assert_eq!(runtime_worker_threads_for_limits(5, 0, 0, 16), 1);
     }
 
     #[test]
