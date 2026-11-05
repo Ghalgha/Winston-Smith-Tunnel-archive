@@ -9,7 +9,7 @@ class TunnelEventParserTest {
     @Test
     fun parsesStats() {
         val event = TunnelEventParser.parse(
-            "__CSQTT_EVENT__|STATS|{\"active\":3,\"bytes_up\":120,\"bytes_down\":450}"
+            "__WSTT_EVENT__|STATS|{\"active\":3,\"bytes_up\":120,\"bytes_down\":450}"
         ) as TunnelEventParser.Event.Stats
 
         assertEquals(3, event.active)
@@ -20,7 +20,7 @@ class TunnelEventParserTest {
     @Test
     fun parsesFatalError() {
         val event = TunnelEventParser.parse(
-            "__CSQTT_EVENT__|ERROR|{\"code\":\"AUTH\",\"message\":\"denied\",\"fatal\":true}"
+            "__WSTT_EVENT__|ERROR|{\"code\":\"AUTH\",\"message\":\"denied\",\"fatal\":true}"
         ) as TunnelEventParser.Event.Error
 
         assertEquals("AUTH", event.code)
@@ -31,47 +31,47 @@ class TunnelEventParserTest {
     @Test
     fun parsesWorkers() {
         val event = TunnelEventParser.parse(
-            "__CSQTT_EVENT__|WORKERS|{\"workers\":36}"
+            "__WSTT_EVENT__|WORKERS|{\"workers\":36}"
         ) as TunnelEventParser.Event.Workers
 
         assertEquals(36, event.workers)
 
         val event4 = TunnelEventParser.parse(
-            "__CSQTT_EVENT__|WORKERS|{\"workers\":4}"
+            "__WSTT_EVENT__|WORKERS|{\"workers\":4}"
         ) as TunnelEventParser.Event.Workers
 
         assertEquals(4, event4.workers)
 
         val event100 = TunnelEventParser.parse(
-            "__CSQTT_EVENT__|WORKERS|{\"workers\":100}"
+            "__WSTT_EVENT__|WORKERS|{\"workers\":100}"
         ) as TunnelEventParser.Event.Workers
 
         assertEquals(100, event100.workers)
 
-        assertNull(TunnelEventParser.parse("__CSQTT_EVENT__|WORKERS|{\"workers\":2}"))
-        assertNull(TunnelEventParser.parse("__CSQTT_EVENT__|WORKERS|{\"workers\":101}"))
+        assertNull(TunnelEventParser.parse("__WSTT_EVENT__|WORKERS|{\"workers\":2}"))
+        assertNull(TunnelEventParser.parse("__WSTT_EVENT__|WORKERS|{\"workers\":101}"))
     }
 
     @Test
     fun rustLifecycleObjectPayloadsMatchKotlinContract() {
         assertTrue(
-            TunnelEventParser.parse("__CSQTT_EVENT__|READY|{}") is
+            TunnelEventParser.parse("__WSTT_EVENT__|READY|{}") is
                 TunnelEventParser.Event.Ready
         )
         assertTrue(
-            TunnelEventParser.parse("__CSQTT_EVENT__|STOPPED|{}") is
+            TunnelEventParser.parse("__WSTT_EVENT__|STOPPED|{}") is
                 TunnelEventParser.Event.Stopped
         )
         assertTrue(
-            TunnelEventParser.parse("__CSQTT_EVENT__|ACTIVE_ZERO|{}") is
+            TunnelEventParser.parse("__WSTT_EVENT__|ACTIVE_ZERO|{}") is
                 TunnelEventParser.Event.ActiveZero
         )
         assertTrue(
-            TunnelEventParser.parse("__CSQTT_EVENT__|NETWORK_SUSPECT|{}") is
+            TunnelEventParser.parse("__WSTT_EVENT__|NETWORK_SUSPECT|{}") is
                 TunnelEventParser.Event.NetworkSuspect
         )
         assertTrue(
-            TunnelEventParser.parse("__CSQTT_EVENT__|DTLS|{}") is
+            TunnelEventParser.parse("__WSTT_EVENT__|DTLS|{}") is
                 TunnelEventParser.Event.Dtls
         )
     }
@@ -80,21 +80,21 @@ class TunnelEventParserTest {
     fun serverRestartRequiresPanelSource() {
         assertTrue(
             TunnelEventParser.parse(
-                "__CSQTT_EVENT__|SERVER_RESTART|{\"source\":\"panel\"}",
+                "__WSTT_EVENT__|SERVER_RESTART|{\"source\":\"panel\"}",
             ) is TunnelEventParser.Event.ServerRestart,
         )
         assertNull(
             TunnelEventParser.parse(
-                "__CSQTT_EVENT__|SERVER_RESTART|{\"source\":\"network\"}",
+                "__WSTT_EVENT__|SERVER_RESTART|{\"source\":\"network\"}",
             ),
         )
-        assertNull(TunnelEventParser.parse("__CSQTT_EVENT__|SERVER_RESTART|{}"))
+        assertNull(TunnelEventParser.parse("__WSTT_EVENT__|SERVER_RESTART|{}"))
     }
 
     @Test
     fun parsesCredentialProgress() {
         val progress = TunnelEventParser.parse(
-            "__CSQTT_EVENT__|PROGRESS|{\"kind\":\"credentials\"}",
+            "__WSTT_EVENT__|PROGRESS|{\"kind\":\"credentials\"}",
         ) as TunnelEventParser.Event.Progress
         assertEquals("credentials", progress.kind)
     }
@@ -102,42 +102,42 @@ class TunnelEventParserTest {
     @Test
     fun parsesCallUnavailableWithoutTurningItIntoALogError() {
         val event = TunnelEventParser.parse(
-            "__CSQTT_EVENT__|CALL_UNAVAILABLE|{\"hash\":\"dead-hash\",\"code\":951}",
+            "__WSTT_EVENT__|CALL_UNAVAILABLE|{\"hash\":\"dead-hash\",\"code\":951}",
         ) as TunnelEventParser.Event.CallUnavailable
 
         assertEquals("dead-hash", event.hash)
         assertEquals(951, event.code)
-        assertNull(TunnelEventParser.parse("__CSQTT_EVENT__|CALL_UNAVAILABLE|{\"code\":951}"))
+        assertNull(TunnelEventParser.parse("__WSTT_EVENT__|CALL_UNAVAILABLE|{\"code\":951}"))
     }
 
     @Test
     fun detailedPerfEventsAreIgnored() {
         assertNull(
             TunnelEventParser.parse(
-                "__CSQTT_EVENT__|PERF_DETAIL|{\"rows\":[{\"name\":\"Crypto/obfs\"}]}",
+                "__WSTT_EVENT__|PERF_DETAIL|{\"rows\":[{\"name\":\"Crypto/obfs\"}]}",
             ),
         )
     }
 
     @Test
     fun rejectsUnknownProgressKinds() {
-        assertNull(TunnelEventParser.parse("__CSQTT_EVENT__|PROGRESS|{\"kind\":\"unknown\"}"))
+        assertNull(TunnelEventParser.parse("__WSTT_EVENT__|PROGRESS|{\"kind\":\"unknown\"}"))
     }
 
     @Test
     fun handlesMalformedAndUnknownEvents() {
-        assertNull(TunnelEventParser.parse("__CSQTT_EVENT__|CAPTCHA_DONE|invalid"))
-        assertNull(TunnelEventParser.parse("__CSQTT_EVENT__|READY|"))
-        assertNull(TunnelEventParser.parse("__CSQTT_EVENT__|READY|null"))
+        assertNull(TunnelEventParser.parse("__WSTT_EVENT__|CAPTCHA_DONE|invalid"))
+        assertNull(TunnelEventParser.parse("__WSTT_EVENT__|READY|"))
+        assertNull(TunnelEventParser.parse("__WSTT_EVENT__|READY|null"))
         assertNull(TunnelEventParser.parse("regular log line"))
-        assertNull(TunnelEventParser.parse("__CSQTT_EVENT__|UNKNOWN|{}"))
+        assertNull(TunnelEventParser.parse("__WSTT_EVENT__|UNKNOWN|{}"))
     }
 
     @Test
     fun malformedProtocolLineCannotForgeReadyStoppedOrFatalEvents() {
         for (type in listOf("READY", "STOPPED", "ERROR", "STATS")) {
             for (payload in listOf("", "null", "[]", "{", "garbage", "\u0000")) {
-                assertNull(TunnelEventParser.parse("__CSQTT_EVENT__|$type|$payload"))
+                assertNull(TunnelEventParser.parse("__WSTT_EVENT__|$type|$payload"))
             }
         }
     }
@@ -145,7 +145,7 @@ class TunnelEventParserTest {
     @Test
     fun negativeStatsAreClampedBeforeLifecycleConsumption() {
         val event = TunnelEventParser.parse(
-            "__CSQTT_EVENT__|STATS|{\"active\":-9,\"bytes_up\":-1,\"bytes_down\":-2}",
+            "__WSTT_EVENT__|STATS|{\"active\":-9,\"bytes_up\":-1,\"bytes_down\":-2}",
         ) as TunnelEventParser.Event.Stats
 
         assertEquals(0, event.active)
@@ -180,7 +180,7 @@ class TunnelEventParserTest {
             }
             val line = if (index % 3 == 0) {
                 covered[0] = true
-                "__CSQTT_EVENT__|${types[index % types.size]}|$payload"
+                "__WSTT_EVENT__|${types[index % types.size]}|$payload"
             } else {
                 covered[1] = true
                 payload
