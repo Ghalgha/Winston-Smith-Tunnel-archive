@@ -1,6 +1,7 @@
 package com.wstt.client
 
-object WsttConstants {\n    private fun legacyId(codePoints: IntArray): String = String(codePoints.map(Int::toChar).toCharArray())
+object WsttConstants {
+    private fun legacyId(codePoints: IntArray): String = String(codePoints.map { it.toChar() }.toCharArray())
     object General {
         const val APP_NAME = "WSTT"
         const val PACKAGE_VK = "com.vkontakte.android"
