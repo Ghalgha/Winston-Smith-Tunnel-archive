@@ -48,8 +48,11 @@ jobs:
             ~/.cargo/git
             ~/.cargo/bin
             ~/.cache/zig-0.15.2
-          key: android-build-${{ runner.os }}-rust-1.97.1-zig-0.15.2-${{ hashFiles('rust-server/Cargo.lock') }}
+            rust-server/target
+            rust-server/build
+          key: linux-server-${{ runner.os }}-rust-1.97.1-zig-0.15.2-${{ hashFiles('rust-server/Cargo.toml', 'rust-server/Cargo.lock', 'rust-server/build.rs', 'rust-server/*.rs', 'rust-server/**/*.rs', 'rust-server/build_linux.sh') }}
           restore-keys: |
+            linux-server-${{ runner.os }}-rust-1.97.1-zig-0.15.2-
             android-build-${{ runner.os }}-rust-1.97.1-
       - name: Verify PowerShell for provenance checks
         run: pwsh --version
