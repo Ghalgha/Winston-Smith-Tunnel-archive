@@ -1338,7 +1338,7 @@ async fn settings_post(
                 Ok(dns) => {
                     let provider = dns_provider_id(&dns).unwrap_or("custom").to_owned();
                     Some((dns, provider))
-                },
+                }
                 Err(message) => return (StatusCode::BAD_REQUEST, message).into_response(),
             }
         }
@@ -2436,7 +2436,7 @@ async fn api_settings_dns(
                 Ok(dns) => {
                     let provider = dns_provider_id(&dns).unwrap_or("custom").to_owned();
                     (dns, provider)
-                },
+                }
                 Err(message) => return (StatusCode::BAD_REQUEST, message).into_response(),
             }
         }
@@ -13168,9 +13168,9 @@ mod tests {
         PWA_ICON_512_PNG, PWA_MANIFEST, PWA_SERVICE_WORKER, count_active_sessions,
         decrypt_csqtt_link, deploy_dns_profile_or_yandex, dns_provider_by_id, dns_provider_id,
         encrypt_csqtt_link, make_client_link, manual_dns, manual_dns_combined,
-        normalize_client_vk_hashes,
-        normalize_vk_access_token, process_memory, process_memory_rollup, provider_dns,
-        validate_client_name, validate_proxy_profile_name, validate_workers,
+        normalize_client_vk_hashes, normalize_vk_access_token, process_memory,
+        process_memory_rollup, provider_dns, validate_client_name, validate_proxy_profile_name,
+        validate_workers,
     };
 
     #[test]
