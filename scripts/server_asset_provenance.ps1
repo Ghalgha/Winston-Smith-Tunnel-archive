@@ -125,6 +125,36 @@ function Get-BuildInputHash {
         throw "Tracked Rust server build inputs are modified in the working tree: $($changedPaths -join ', ')"
     }
 
+    $trackedPaths = @(& git -C $projectRoot ls-files --full-name -- @paths)
+    if ($LASTEXITCODE -ne 0) {
+        throw "Unable to enumerate tracked Rust server build inputs"
+    }
+    $trackedSet = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($trackedPath in $trackedPaths) {
+        [void]$trackedSet.Add(([string]$trackedPath).Replace("\\", "/"))
+    }
+
+    $untrackedInputs = @(
+        Get-ChildItem -LiteralPath (Join-Path $projectRoot "rust-server") -Recurse -Force -File |
+            Where-Object {
+                $relativePath = $_.FullName.Substring($projectRoot.TrimEnd([char[]]@("\\", "/")).Length + 1).Replace("\\", "/")
+                $relativePath -notmatch '^rust-server/(build|target|dist)/' -and
+                    -not $trackedSet.Contains($relativePath)
+            } |
+            ForEach-Object {
+                $_.FullName.Substring($projectRoot.TrimEnd([char[]]@("\\", "/")).Length + 1).Replace("\\", "/")
+            }
+    )
+    foreach ($singleFile in @("shared/wire_protocol.rs", "scripts/server_asset_provenance.ps1")) {
+        $fullPath = Join-Path $projectRoot ($singleFile.Replace("/", "\\"))
+        if ((Test-Path -LiteralPath $fullPath -PathType Leaf) -and -not $trackedSet.Contains($singleFile)) {
+            $untrackedInputs += $singleFile
+        }
+    }
+    if ($untrackedInputs.Count -gt 0) {
+        throw "Untracked Rust server build inputs are present: $($untrackedInputs -join ', ')"
+    }
+
     $tree = Get-GitText -Arguments (@("ls-tree", "-r", "--full-tree", "HEAD", "--") + $paths)
     if ([string]::IsNullOrWhiteSpace($tree)) {
         throw "Git returned an empty Rust server build-input tree"
