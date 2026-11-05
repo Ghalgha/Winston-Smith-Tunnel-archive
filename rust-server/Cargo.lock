@@ -453,7 +453,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "csqtt"
+name = "wstt-server"
 version = "2.5.0"
 dependencies = [
  "aes",
