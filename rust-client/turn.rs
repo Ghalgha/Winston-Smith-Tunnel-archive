@@ -668,7 +668,10 @@ impl TurnAllocation {
                 if queue.pending_count() == 0 {
                     break;
                 }
-                let _ = tokio::time::timeout(remaining, completed).await;
+                // Periodic recheck also covers a completion racing with the
+                // Notify registration.
+                let wait = remaining.min(OUTBOUND_IDLE_POLL);
+                let _ = tokio::time::timeout(wait, completed).await;
             }
         }
         self.shared.request_cleanup();
