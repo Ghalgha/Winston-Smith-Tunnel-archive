@@ -1631,6 +1631,8 @@ async fn windows_client_reaches_wsl_server_through_a_real_turn_channel_and_dispa
             allocation_ready: None,
             scale_notify: None,
             target_workers: None,
+            desired_workers: None,
+            worker_ceiling: None,
             configured_workers: 0,
         },
     ));
@@ -1806,6 +1808,8 @@ async fn windows_client_reaches_wsl_server_over_dtls_srtp() {
             allocation_ready: None,
             scale_notify: None,
             target_workers: None,
+            desired_workers: None,
+            worker_ceiling: None,
             configured_workers: 0,
         },
     ));
@@ -1985,6 +1989,8 @@ async fn getconf_timeout_recovers_without_terminating_the_tunnel() {
             allocation_ready: None,
             scale_notify: None,
             target_workers: None,
+            desired_workers: None,
+            worker_ceiling: None,
             configured_workers: 0,
         },
     ));
@@ -2059,6 +2065,8 @@ async fn getconf_timeout_recovers_without_terminating_the_tunnel() {
             allocation_ready: None,
             scale_notify: None,
             target_workers: None,
+            desired_workers: None,
+            worker_ceiling: None,
             configured_workers: 0,
         },
     ));
@@ -2173,6 +2181,8 @@ async fn running_client_receives_hot_dns_configuration_without_reconnect() {
             allocation_ready: None,
             scale_notify: None,
             target_workers: None,
+            desired_workers: None,
+            worker_ceiling: None,
             configured_workers: 0,
         },
     ));
@@ -2367,6 +2377,8 @@ async fn nine_windows_workers_register_with_a_wsl_server_without_missing_or_dupl
                 allocation_ready: None,
                 scale_notify: None,
                 target_workers: None,
+                desired_workers: None,
+                worker_ceiling: None,
                 configured_workers: 0,
             },
         )));
@@ -2824,6 +2836,8 @@ async fn linux_workers_hold_per_stream_rate_through_server_dataplane() {
                 allocation_ready: None,
                 scale_notify: None,
                 target_workers: None,
+                desired_workers: None,
+                worker_ceiling: None,
                 configured_workers: workers,
             },
         )));
@@ -3075,6 +3089,8 @@ async fn assert_fatal_auth_case(wrap_pwd: &str, session_pwd: &str, expected_need
             allocation_ready: None,
             scale_notify: None,
             target_workers: None,
+            desired_workers: None,
+            worker_ceiling: None,
             configured_workers: 0,
         },
     ));
@@ -3226,6 +3242,8 @@ async fn streams_partial_death_keeps_tunnel_and_dataplane_alive() {
                 allocation_ready: None,
                 scale_notify: None,
                 target_workers: None,
+                desired_workers: None,
+                worker_ceiling: None,
                 configured_workers: 0,
             },
         )));

@@ -46,7 +46,7 @@ use events::Events;
 use obfs::ObfsMode;
 use packet::{PacketPool, packet_pool_size};
 use repair::RepairState;
-use session::ShutdownCoordinator;
+use session::{ShutdownCoordinator, reconcile_worker_target};
 use srtp_mode::SrtpMode;
 use stats::Stats;
 use std::{
@@ -163,6 +163,7 @@ fn main() {
     let arguments = Arguments::parse_from(normalized_arguments());
     let runtime = match build_runtime(runtime_worker_threads(
         arguments.workers,
+        arguments.max_workers,
         arguments.runtime_threads,
     )) {
         Ok(runtime) => runtime,
@@ -198,11 +199,33 @@ fn build_runtime(default_worker_threads: usize) -> Result<tokio::runtime::Runtim
         .context("создание Tokio runtime")
 }
 
-fn runtime_worker_threads(requested_workers: usize, configured_threads: usize) -> usize {
+fn runtime_worker_threads(
+    requested_workers: usize,
+    configured_workers: usize,
+    configured_threads: usize,
+) -> usize {
     let available = std::thread::available_parallelism()
         .map(|parallelism| parallelism.get())
         .unwrap_or(1);
-    runtime_worker_threads_with_limit(requested_workers, configured_threads, available)
+    runtime_worker_threads_for_limits(
+        requested_workers,
+        configured_workers,
+        configured_threads,
+        available,
+    )
+}
+
+fn runtime_worker_threads_for_limits(
+    requested_workers: usize,
+    configured_workers: usize,
+    configured_threads: usize,
+    available_threads: usize,
+) -> usize {
+    runtime_worker_threads_with_limit(
+        requested_workers.max(configured_workers),
+        configured_threads,
+        available_threads,
+    )
 }
 
 fn runtime_worker_threads_with_limit(
@@ -359,6 +382,8 @@ async fn run(arguments: Arguments) -> Result<i32> {
     let initial_workers = workers;
     let scale_notify = Arc::new(tokio::sync::Notify::new());
     let params_workers = Arc::new(AtomicUsize::new(initial_workers));
+    let desired_workers = Arc::new(AtomicUsize::new(initial_workers));
+    let worker_ceiling = Arc::new(AtomicUsize::new(configured_workers));
     let params = Arc::new(RuntimeParams {
         peer,
         turn_host: (!arguments.turn.is_empty()).then(|| Arc::from(arguments.turn.as_str())),
@@ -375,6 +400,8 @@ async fn run(arguments: Arguments) -> Result<i32> {
         local_port: local_port.clone(),
         password: Arc::from(password.as_str()),
         workers: params_workers.clone(),
+        desired_workers: desired_workers.clone(),
+        worker_ceiling: worker_ceiling.clone(),
         configured_workers,
     });
     print_configuration(
@@ -442,10 +469,12 @@ async fn run(arguments: Arguments) -> Result<i32> {
         dispatcher.clone(),
         stdin,
         params_workers,
+        desired_workers,
         scale_notify,
+        worker_ceiling,
         configured_workers,
     );
-    let required_ready_bots = required_js_ready_bots(groups);
+    let required_ready_bots = required_js_ready_bots_for_worker_ceiling(configured_workers);
     if js_auth_mode {
         crate::log_error!("[VK JS] Создатель удерживает звонок");
     }
@@ -552,6 +581,10 @@ async fn wait_for_js_credential_readiness(
 
 fn required_js_ready_bots(groups: usize) -> usize {
     groups.div_ceil(GROUPS_PER_CREDENTIAL).clamp(1, 2)
+}
+
+fn required_js_ready_bots_for_worker_ceiling(configured_workers: usize) -> usize {
+    required_js_ready_bots(configured_workers.div_ceil(WORKERS_PER_GROUP))
 }
 
 fn normalize_worker_count(requested: usize) -> usize {
@@ -758,8 +791,10 @@ fn start_control_input(
     dispatcher: Arc<Dispatcher>,
     mut stdin: tokio::sync::mpsc::Receiver<StdinLine>,
     worker_count: Arc<AtomicUsize>,
+    desired_workers: Arc<AtomicUsize>,
     scale_notify: Arc<tokio::sync::Notify>,
-    worker_ceiling: usize,
+    worker_ceiling: Arc<AtomicUsize>,
+    configured_workers: usize,
 ) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
         let control_required = events.enabled();
@@ -812,10 +847,17 @@ fn start_control_input(
                     } else if let Some(raw_count) = line.strip_prefix("SET_WORKERS|") {
                         match raw_count.parse::<usize>() {
                             Ok(requested) => {
-                                let target = normalize_worker_count(requested).min(worker_ceiling);
-                                let previous = worker_count.swap(target, Ordering::AcqRel);
+                                let desired = normalize_worker_count(requested).min(configured_workers);
+                                desired_workers.store(desired, Ordering::Release);
+                                let previous = worker_count.load(Ordering::Acquire);
+                                reconcile_worker_target(
+                                    &worker_count,
+                                    &desired_workers,
+                                    &worker_ceiling,
+                                    Some(&scale_notify),
+                                );
+                                let target = worker_count.load(Ordering::Acquire);
                                 if previous != target {
-                                    scale_notify.notify_waiters();
                                     crate::log_error!(
                                         "[ПОТОКИ] Динамическое изменение числа потоков: {previous} -> {target}"
                                     );
@@ -942,6 +984,12 @@ mod worker_count_tests {
     }
 
     #[test]
+    fn runtime_thread_budget_accounts_for_live_scale_up_ceiling() {
+        assert_eq!(runtime_worker_threads_for_limits(5, 18, 0, 16), 2);
+        assert_eq!(runtime_worker_threads_for_limits(5, 0, 0, 16), 1);
+    }
+
+    #[test]
     fn runtime_thread_budget_follows_stream_budget_and_cpu_limit() {
         assert_eq!(runtime_worker_threads_with_limit(5, 0, 16), 1);
         assert_eq!(runtime_worker_threads_with_limit(10, 0, 16), 2);
@@ -973,6 +1021,13 @@ mod worker_count_tests {
         assert!(should_leave_js_creator(true, true));
         assert!(!should_leave_js_creator(false, false));
         assert!(!should_leave_js_creator(false, true));
+    }
+
+    #[test]
+    fn auto_js_keeps_enough_credentials_ready_for_live_scale_up() {
+        assert_eq!(required_js_ready_bots_for_worker_ceiling(5), 1);
+        assert_eq!(required_js_ready_bots_for_worker_ceiling(18), 2);
+        assert_eq!(required_js_ready_bots_for_worker_ceiling(100), 2);
     }
 
     #[test]
