@@ -3,7 +3,7 @@ use aws_lc_rs::hkdf;
 use std::sync::LazyLock;
 
 pub const WRAP_KEY_LEN: usize = 32;
-const WRAP_SALT_BYTES: &[u8] = b"CSQTT-WRAP-v1";
+const WRAP_SALT_BYTES: &[u8] = b"\x43\x53\x51\x54\x54-WRAP-v1";
 const WRAP_INFO: &[u8] = b"rtp-obfs/chacha20poly1305";
 static WRAP_SALT: LazyLock<hkdf::Salt> =
     LazyLock::new(|| hkdf::Salt::new(hkdf::HKDF_SHA256, WRAP_SALT_BYTES));
