@@ -17,15 +17,16 @@ pass() { echo "[PASS] $*"; }
 if [ "$RUNTIME_ONLY" -eq 0 ]; then
   command -v cargo >/dev/null || fail "cargo is not on PATH"
   command -v rustup >/dev/null || fail "rustup is not on PATH"
+  command -v timeout >/dev/null || fail "timeout is not on PATH"
   if ! rustup toolchain list | grep -Fq '1.97.1'; then
     rustup toolchain install 1.97.1 --profile minimal
   fi
   if ! rustup target list --installed --toolchain 1.97.1 | grep -Fxq x86_64-unknown-linux-gnu; then
     rustup target add x86_64-unknown-linux-gnu --toolchain 1.97.1
   fi
-  cargo +1.97.1 test --locked --target x86_64-unknown-linux-gnu --manifest-path "$PROJECT_ROOT/rust-server/Cargo.toml" --all-targets
+  timeout --signal=TERM --kill-after=10s 30m cargo +1.97.1 test --locked --target x86_64-unknown-linux-gnu --manifest-path "$PROJECT_ROOT/rust-server/Cargo.toml" --all-targets
   pass "Rust server tests"
-  cargo +1.97.1 build --locked --target x86_64-unknown-linux-gnu --manifest-path "$PROJECT_ROOT/rust-server/Cargo.toml"
+  timeout --signal=TERM --kill-after=10s 30m cargo +1.97.1 build --locked --target x86_64-unknown-linux-gnu --manifest-path "$PROJECT_ROOT/rust-server/Cargo.toml"
   SERVER_BIN="$PROJECT_ROOT/rust-server/target/x86_64-unknown-linux-gnu/debug/wstt"
 else
   SERVER_BIN="$(printenv WSTT_SERVER_BIN || true)"
@@ -44,7 +45,7 @@ if [ "$EUID" -ne 0 ]; then
   exit 0
 fi
 
-for tool in ip python3 curl ss; do command -v "$tool" >/dev/null || fail "Missing required tool: $tool"; done
+for tool in ip python3 curl ss timeout; do command -v "$tool" >/dev/null || fail "Missing required tool: $tool"; done
 if [ ! -c /dev/net/tun ]; then
   skip "/dev/net/tun unavailable; runtime checks skipped"
   echo "STATUS: PASS_WITH_RUNTIME_SKIPPED"
@@ -60,7 +61,7 @@ NS_CREATED=0
 cleanup() {
   local p
   if [ -n "$UNIT" ] && command -v systemctl >/dev/null; then
-    if command -v timeout >/dev/null; then timeout 10 systemctl stop "$UNIT" >/dev/null 2>&1 || true
+    if command -v timeout >/dev/null; then timeout 10 timeout 8s systemctl stop "$UNIT" >/dev/null 2>&1 || true
     else systemctl stop "$UNIT" >/dev/null 2>&1 || true; fi
     systemctl reset-failed "$UNIT" >/dev/null 2>&1 || true
   fi
@@ -142,7 +143,7 @@ if command -v systemd-run >/dev/null && command -v systemctl >/dev/null && syste
   if systemctl show "$UNIT_NAME" >/dev/null 2>&1; then fail "Generated systemd unit name already exists: $UNIT_NAME"; fi
   UNIT="$UNIT_NAME"
   mkdir "$RUN_DIR/systemd"
-  systemd-run --quiet --collect --unit="$UNIT" --property=Type=exec --property=Restart=no \
+  systemd-run --quiet --collect --unit="$UNIT" --property=Type=exec --property=Restart=no --property=TimeoutStopSec=5s --property=KillMode=control-group \
     "$(command -v ip)" netns exec "$NS" "$SERVER_BIN" --config-dir "$RUN_DIR/systemd" --web-port "$WEB" --listen "127.0.0.1:$UDP" \
     || fail "systemd-run failed"
   OK=0
@@ -151,7 +152,7 @@ if command -v systemd-run >/dev/null && command -v systemctl >/dev/null && syste
     sleep .25
   done
   [ "$OK" -eq 1 ] || { systemctl status "$UNIT" --no-pager >&2 || true; fail "Transient systemd unit failed"; }
-  systemctl stop "$UNIT" || fail "Could not stop transient unit"
+  timeout 10s systemctl stop "$UNIT" || fail "Could not stop transient unit"
   systemctl reset-failed "$UNIT" >/dev/null 2>&1 || true
   UNIT=""
   if ip netns exec "$NS" ip link show wstt1 >/dev/null 2>&1; then fail "TUN remained after systemd stop"; fi
@@ -160,9 +161,9 @@ else
   skip "systemd unavailable; transient-unit check skipped"
 fi
 
-if command -v docker >/dev/null && docker info >/dev/null 2>&1; then
+if command -v docker >/dev/null && timeout 5s docker info >/dev/null 2>&1; then
   IMAGE="$(printenv WSTT_WSL_DOCKER_IMAGE || true)"
-  [ -n "$IMAGE" ] || IMAGE="debian:bookworm-slim"
+  [ -n "$IMAGE" ] || IMAGE="ubuntu:24.04"
   if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
     skip "Docker image $IMAGE is not local; image was not pulled"
   else
@@ -172,9 +173,9 @@ if command -v docker >/dev/null && docker info >/dev/null 2>&1; then
       -p "127.0.0.1::$DUDP/udp" -p "127.0.0.1::$DWEB/tcp" \
       --tmpfs /tmp/wstt-check:rw,nosuid,nodev,size=16m -v "$SERVER_BIN:/usr/local/bin/wstt:ro" \
       --entrypoint /usr/local/bin/wstt "$IMAGE" --config-dir /tmp/wstt-check --web-port "$DWEB" --listen "0.0.0.0:$DUDP" \
-      >"$RUN_DIR/docker.id" || { OWNER="$(docker inspect --format '{{ index .Config.Labels "wstt.wsl-test" }}' "$NAME" 2>/dev/null || true)"; [ "$OWNER" = "$NAME" ] && docker rm -f "$NAME" >/dev/null 2>&1 || true; fail "docker run failed"; }
+      >"$RUN_DIR/docker.id" || { OWNER="$(docker inspect --format '{{ index .Config.Labels "wstt.wsl-test" }}' "$NAME" 2>/dev/null || true)"; [ "$OWNER" = "$NAME" ] && timeout 10s docker rm -f "$NAME" >/dev/null 2>&1 || true; fail "docker run failed"; }
     DOCKER_CLEAN=1
-    clean_docker() { if [ "$DOCKER_CLEAN" -eq 1 ]; then OWNER="$(docker inspect --format '{{ index .Config.Labels "wstt.wsl-test" }}' "$NAME" 2>/dev/null || true)"; [ "$OWNER" = "$NAME" ] || return 1; docker rm -f "$NAME" >/dev/null 2>&1 || return 1; DOCKER_CLEAN=0; fi; }
+    clean_docker() { if [ "$DOCKER_CLEAN" -eq 1 ]; then OWNER="$(docker inspect --format '{{ index .Config.Labels "wstt.wsl-test" }}' "$NAME" 2>/dev/null || true)"; [ "$OWNER" = "$NAME" ] || return 1; timeout 10s docker rm -f "$NAME" >/dev/null 2>&1 || return 1; DOCKER_CLEAN=0; fi; }
     trap 'clean_docker; cleanup' EXIT INT TERM
     HP="$(docker port "$NAME" "$DWEB/tcp" | awk -F: 'NR==1 {print $NF}')"
     [[ "$HP" =~ ^[0-9]+$ ]] || fail "Docker host port not assigned"
