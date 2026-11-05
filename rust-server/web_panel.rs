@@ -3422,10 +3422,10 @@ async fn api_clients_batch_toggle(
             None
         }
     };
-    if let Some(rev) = revision {
-        if let Err(response) = wait_for_persistence(&state, rev).await {
-            return response;
-        }
+    if let Some(rev) = revision
+        && let Err(response) = wait_for_persistence(&state, rev).await
+    {
+        return response;
     }
     for pwd in &passwords_to_disconnect {
         crate::protocol::drop_password_sessions(&state.app, pwd);
@@ -3475,10 +3475,10 @@ async fn api_clients_batch_extend(
             None
         }
     };
-    if let Some(rev) = revision {
-        if let Err(response) = wait_for_persistence(&state, rev).await {
-            return response;
-        }
+    if let Some(rev) = revision
+        && let Err(response) = wait_for_persistence(&state, rev).await
+    {
+        return response;
     }
     (
         StatusCode::OK,
@@ -3516,10 +3516,10 @@ async fn api_clients_batch_reset_traffic(
             None
         }
     };
-    if let Some(rev) = revision {
-        if let Err(response) = wait_for_persistence(&state, rev).await {
-            return response;
-        }
+    if let Some(rev) = revision
+        && let Err(response) = wait_for_persistence(&state, rev).await
+    {
+        return response;
     }
     for pwd in &req.passwords {
         for s in state.app.sessions.iter() {
@@ -3555,10 +3555,10 @@ async fn api_clients_batch_delete(
             None
         }
     };
-    if let Some(rev) = revision {
-        if let Err(response) = wait_for_persistence(&state, rev).await {
-            return response;
-        }
+    if let Some(rev) = revision
+        && let Err(response) = wait_for_persistence(&state, rev).await
+    {
+        return response;
     }
     for pwd in &req.passwords {
         crate::protocol::drop_password_sessions(&state.app, pwd);
@@ -3602,10 +3602,10 @@ async fn api_clients_batch_group(
             None
         }
     };
-    if let Some(rev) = revision {
-        if let Err(response) = wait_for_persistence(&state, rev).await {
-            return response;
-        }
+    if let Some(rev) = revision
+        && let Err(response) = wait_for_persistence(&state, rev).await
+    {
+        return response;
     }
     (
         StatusCode::OK,
