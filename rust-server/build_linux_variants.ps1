@@ -74,7 +74,7 @@ foreach ($variant in $variants) {
     }
 
     $extraArgs = if ($CargoFeatures) { " $CargoFeatures" } else { "" }
-    $cmdArgs = "/d /c (`"$cargo`" zigbuild --release --target $($variant.Target)$extraArgs) > `"$logFile`" 2>&1"
+    $cmdArgs = "/d /c (`"$cargo`" zigbuild --locked --release --target $($variant.Target)$extraArgs) > `"$logFile`" 2>&1"
 
     $info = New-Object System.Diagnostics.ProcessStartInfo
     $info.FileName = "cmd.exe"

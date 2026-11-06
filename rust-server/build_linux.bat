@@ -51,6 +51,8 @@ if not defined RUN_TESTS (
 
 set "CARGO_FEATURES="
 if defined DIAGNOSTICS set "CARGO_FEATURES=--features diagnostics"
+set "PROVENANCE_FEATURE_ARGS="
+if defined DIAGNOSTICS set "PROVENANCE_FEATURE_ARGS=-Diagnostics"
 
 set "PY3_SHIM_DIR=%TEMP%\wstt-py3-shim"
 if not exist "%PY3_SHIM_DIR%" mkdir "%PY3_SHIM_DIR%" >nul 2>nul
@@ -109,12 +111,12 @@ if "%RUN_TESTS%"=="1" (
     if !errorlevel! neq 0 goto fail
 
     set "CARGO_TARGET_DIR=%CLIPPY_TARGET_DIR%"
-    cargo clippy --release --target x86_64-unknown-linux-musl !CARGO_FEATURES! --all-targets -- -D warnings
+    cargo clippy --locked --release --target x86_64-unknown-linux-musl !CARGO_FEATURES! --all-targets -- -D warnings
     if !errorlevel! neq 0 goto fail
     set "CARGO_TARGET_DIR=%LINUX_TARGET_DIR%"
 
     echo Compiling Linux musl test binaries - they cannot run on Windows...
-    cargo zigbuild --target x86_64-unknown-linux-musl !CARGO_FEATURES! --tests
+    cargo zigbuild --locked --target x86_64-unknown-linux-musl !CARGO_FEATURES! --tests
     if !errorlevel! neq 0 goto fail
     call :cleanup_test_zig_wrappers
     echo Linux musl tests compiled successfully. Run build_linux.sh --tests on Linux to execute them.
@@ -134,9 +136,9 @@ if errorlevel 1 goto fail
 echo Verifying Linux server assets...
 if not exist "%ASSETS_DIR%" mkdir "%ASSETS_DIR%"
 del /q "%ASSETS_DIR%\wstt" >nul 2>nul
-powershell -NoProfile -ExecutionPolicy Bypass -File "%PROVENANCE_SCRIPT%" -Mode Write
+powershell -NoProfile -ExecutionPolicy Bypass -File "%PROVENANCE_SCRIPT%" -Mode Write !PROVENANCE_FEATURE_ARGS!
 if errorlevel 1 goto fail
-powershell -NoProfile -ExecutionPolicy Bypass -File "%PROVENANCE_SCRIPT%" -Mode Verify
+powershell -NoProfile -ExecutionPolicy Bypass -File "%PROVENANCE_SCRIPT%" -Mode Verify !PROVENANCE_FEATURE_ARGS!
 if errorlevel 1 goto fail
 for %%F in ("%ASSETS_DIR%\wstt-linux-amd64") do echo wstt-linux-amd64: %%~zF bytes
 for %%F in ("%ASSETS_DIR%\wstt-linux-arm64") do echo wstt-linux-arm64: %%~zF bytes
@@ -158,7 +160,7 @@ exit /b !errorlevel!
 
 :build_server_variant
 set "CARGO_TARGET_DIR=%PROJECT_ROOT%build\wstt-uring-linux-%~2"
-cargo zigbuild --release --target %~1 !CARGO_FEATURES!
+cargo zigbuild --locked --release --target %~1 !CARGO_FEATURES!
 if errorlevel 1 exit /b 1
 copy /Y "%CARGO_TARGET_DIR%\%~1\release\wstt" "%ASSETS_DIR%\%~2" >nul
 if errorlevel 1 exit /b 1

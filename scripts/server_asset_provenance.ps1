@@ -3,7 +3,8 @@ param(
     [Parameter(Mandatory = $true)]
     [ValidateSet("Write", "Verify")]
     [string]$Mode,
-    [string]$Root
+    [string]$Root,
+    [switch]$Diagnostics
 )
 
 Set-StrictMode -Version Latest
@@ -22,7 +23,8 @@ $cargoTomlPath = Join-Path $projectRoot "rust-server\Cargo.toml"
 $cargoLockPath = Join-Path $projectRoot "rust-server\Cargo.lock"
 $wireProtocolPath = Join-Path $projectRoot "shared\wire_protocol.rs"
 $wireProtocolRevisionPath = Join-Path $projectRoot "rust-server\main.rs"
-$schema = "wstt.server-asset-provenance.v3"
+$schema = "wstt.server-asset-provenance.v4"
+$expectedFeatures = if ($Diagnostics) { @("diagnostics") } else { @() }
 $marker = "WSTT_RUST_SERVER_PRODUCTION_V1"
 $assetSpecs = @(
     [pscustomobject]@{ AssetName = "wstt-linux-amd64"; Target = "x86_64-unknown-linux-musl"; ElfClass = 2; ElfMachine = 62 },
@@ -237,6 +239,7 @@ if ($Mode -eq "Write") {
         runtime = "rust"
         package = $package.Name
         version = $package.Version
+        features = $expectedFeatures
         wireProtocolRevision = $revision
         sourceCommit = $sourceCommit
         buildInputSha256 = $buildInputHash
@@ -263,7 +266,8 @@ catch {
 if ($manifest.schema -ne $schema -or
     $manifest.marker -ne $marker -or
     $manifest.producer -ne "rust-server/build_linux.bat" -or
-    $manifest.runtime -ne "rust") {
+    $manifest.runtime -ne "rust" -or
+    (($manifest.features -join ",") -ne ($expectedFeatures -join ","))) {
     throw "Rust server provenance identity mismatch"
 }
 if ($manifest.package -ne $package.Name -or

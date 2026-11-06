@@ -26,8 +26,10 @@ if [[ -z "$RUN_CHECKS" ]]; then
   fi
 fi
 FEATURE_ARGS=()
+PROVENANCE_FEATURE_ARGS=()
 if [[ "$DIAGNOSTICS" == 1 ]]; then
   FEATURE_ARGS=(--features diagnostics)
+  PROVENANCE_FEATURE_ARGS=(-Diagnostics)
 fi
 command -v cargo >/dev/null
 command -v rustup >/dev/null
@@ -168,11 +170,11 @@ if [[ "$build_status" != 0 ]]; then
 fi
 rm -f "$ROOT/../app/src/main/assets/wstt"
 if command -v pwsh >/dev/null; then
-  pwsh -NoProfile -File "$ROOT/../scripts/server_asset_provenance.ps1" -Mode Write
-  pwsh -NoProfile -File "$ROOT/../scripts/server_asset_provenance.ps1" -Mode Verify
+  pwsh -NoProfile -File "$ROOT/../scripts/server_asset_provenance.ps1" -Mode Write "${PROVENANCE_FEATURE_ARGS[@]}"
+  pwsh -NoProfile -File "$ROOT/../scripts/server_asset_provenance.ps1" -Mode Verify "${PROVENANCE_FEATURE_ARGS[@]}"
 elif command -v powershell.exe >/dev/null; then
-  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(wslpath -w "$ROOT/../scripts/server_asset_provenance.ps1")" -Mode Write
-  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(wslpath -w "$ROOT/../scripts/server_asset_provenance.ps1")" -Mode Verify
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(wslpath -w "$ROOT/../scripts/server_asset_provenance.ps1")" -Mode Write "${PROVENANCE_FEATURE_ARGS[@]}"
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(wslpath -w "$ROOT/../scripts/server_asset_provenance.ps1")" -Mode Verify "${PROVENANCE_FEATURE_ARGS[@]}"
 else
   echo "Server assets built. Run scripts/server_asset_provenance.ps1 -Mode Write and -Mode Verify before packaging an APK." >&2
   exit 1
