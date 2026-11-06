@@ -358,7 +358,7 @@ fn url_encode(input: &str) -> String {
 }
 
 const WSTT_CIPHER_KEY_SEED: &[u8] = &[
-    99, 115, 113, 116, 116, 45, 99, 104, 105, 112, 101, 114, 45, 107, 101, 121,
+    119, 115, 116, 116, 45, 108, 105, 110, 107, 45, 107, 101, 121, 45, 118, 49,
 ];
 
 pub fn encrypt_wstt_link(payload: &str) -> String {
@@ -421,7 +421,6 @@ pub fn decrypt_wstt_link(raw_link: &str) -> Option<String> {
     let raw_link = raw_link.trim();
     let payload = raw_link
         .strip_prefix("wstt://")
-        .or_else(|| raw_link.strip_prefix("csqtt://"))?
         .trim();
     let clean = payload.replace(['\n', '\r'], "");
     let bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
@@ -13414,24 +13413,6 @@ mod tests {
         );
         let decrypted = decrypt_wstt_link(&encrypted1).expect("decryption should succeed");
         assert_eq!(decrypted, payload);
-    }
-
-    #[test]
-    fn wstt_link_legacy_scheme_remains_readable() {
-        let payload = "connect?v=2&host=1.2.3.4&peer=46100&password=legacy";
-        let current = encrypt_wstt_link(payload);
-        let legacy = current.replacen("wstt://", "csqtt://", 1);
-        assert_eq!(decrypt_wstt_link(&legacy).as_deref(), Some(payload));
-    }
-
-    #[test]
-    fn wstt_link_legacy_plaintext_rejected() {
-        use base64::Engine;
-        let payload = "connect?v=2&host=1.2.3.4&peer=46100&password=legacy";
-        let legacy_b64 =
-            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(payload.as_bytes());
-        let legacy_link = format!("csqtt://{legacy_b64}");
-        assert!(decrypt_wstt_link(&legacy_link).is_none());
     }
 
     #[test]
