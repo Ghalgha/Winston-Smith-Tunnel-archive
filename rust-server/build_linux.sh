@@ -1,0 +1,181 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+cd "$ROOT"
+RUN_CHECKS=""
+DIAGNOSTICS=0
+while (($#)); do
+  case "$1" in
+    --tests) RUN_CHECKS=1 ;;
+    --no-tests) RUN_CHECKS=0 ;;
+    --diagnostics) DIAGNOSTICS=1 ;;
+    *) echo "Usage: $0 [--tests|--no-tests] [--diagnostics]" >&2; exit 2 ;;
+  esac
+  shift
+done
+if [[ -z "$RUN_CHECKS" ]]; then
+  if [[ -t 0 ]]; then
+    read -rp "Запустить проверки и тесты (или их кросс-компиляцию) перед сборкой? [Y/n]: " REPLY
+    case "$REPLY" in
+      [nN]|[nN][oO]|[нН]|[нН][eE][тТ]) RUN_CHECKS=0 ;;
+      *) RUN_CHECKS=1 ;;
+    esac
+  else
+    RUN_CHECKS=1
+  fi
+fi
+FEATURE_ARGS=()
+PROVENANCE_FEATURE_ARGS=()
+if [[ "$DIAGNOSTICS" == 1 ]]; then
+  FEATURE_ARGS=(--features diagnostics)
+  PROVENANCE_FEATURE_ARGS=(-Diagnostics)
+fi
+command -v cargo >/dev/null
+command -v rustup >/dev/null
+command -v zig >/dev/null
+cargo zigbuild --help >/dev/null
+if [[ "${WSTT_RUST_TOOLCHAIN_READY:-0}" != "1" ]]; then
+  rustup toolchain install 1.97.1 --profile minimal --component rustfmt --component clippy
+  rustup target add x86_64-unknown-linux-musl aarch64-unknown-linux-musl armv7-unknown-linux-musleabihf --toolchain 1.97.1
+fi
+rustc +1.97.1 --version
+zig version
+WRAP="$ROOT/build/zig-wrappers"
+mkdir -p "$WRAP"
+HOST="$(rustc +1.97.1 -vV | sed -n 's/^host: //p')"
+if [[ "$HOST" == *windows* ]]; then
+cat > "$WRAP/zigcc.ps1" <<'PS1'
+$filtered = @($args | Where-Object { $_ -notlike "--target=*" })
+& zig cc -target $env:WSTT_ZIG_TARGET @filtered
+exit $LASTEXITCODE
+PS1
+cat > "$WRAP/zigcxx.ps1" <<'PS1'
+$filtered = @($args | Where-Object { $_ -notlike "--target=*" })
+& zig c++ -target $env:WSTT_ZIG_TARGET @filtered
+exit $LASTEXITCODE
+PS1
+cat > "$WRAP/zigcc.cmd" <<'CMD'
+@echo off
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0zigcc.ps1" %*
+CMD
+cat > "$WRAP/zigcxx.cmd" <<'CMD'
+@echo off
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0zigcxx.ps1" %*
+CMD
+cat > "$WRAP/zigar.cmd" <<'CMD'
+@echo off
+zig ar %*
+CMD
+CC_WRAPPER="$WRAP/zigcc.cmd"
+CXX_WRAPPER="$WRAP/zigcxx.cmd"
+AR_WRAPPER="$WRAP/zigar.cmd"
+else
+cat > "$WRAP/zigcc" <<'SH'
+#!/usr/bin/env bash
+args=()
+for arg in "$@"; do
+  [[ "$arg" == --target=* ]] || args+=("$arg")
+done
+if [[ "$WSTT_ZIG_TARGET" == arm-linux-musleabihf ]]; then args+=("-mcpu=cortex_a7"); fi
+exec zig cc -target "$WSTT_ZIG_TARGET" "${args[@]}"
+SH
+cat > "$WRAP/zigcxx" <<'SH'
+#!/usr/bin/env bash
+args=()
+for arg in "$@"; do
+  [[ "$arg" == --target=* ]] || args+=("$arg")
+done
+if [[ "$WSTT_ZIG_TARGET" == arm-linux-musleabihf ]]; then args+=("-mcpu=cortex_a7"); fi
+exec zig c++ -target "$WSTT_ZIG_TARGET" "${args[@]}"
+SH
+cat > "$WRAP/zigar" <<'SH'
+#!/usr/bin/env bash
+exec zig ar "$@"
+SH
+chmod +x "$WRAP/zigcc" "$WRAP/zigcxx" "$WRAP/zigar"
+CC_WRAPPER="$WRAP/zigcc"
+CXX_WRAPPER="$WRAP/zigcxx"
+AR_WRAPPER="$WRAP/zigar"
+fi
+export CC_x86_64_unknown_linux_musl="$CC_WRAPPER"
+export CXX_x86_64_unknown_linux_musl="$CXX_WRAPPER"
+export AR_x86_64_unknown_linux_musl="$AR_WRAPPER"
+export CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER="$CC_WRAPPER"
+export CC_aarch64_unknown_linux_musl="$CC_WRAPPER"
+export CXX_aarch64_unknown_linux_musl="$CXX_WRAPPER"
+export AR_aarch64_unknown_linux_musl="$AR_WRAPPER"
+export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER="$CC_WRAPPER"
+export CC_armv7_unknown_linux_musleabihf="$CC_WRAPPER"
+export CXX_armv7_unknown_linux_musleabihf="$CXX_WRAPPER"
+export AR_armv7_unknown_linux_musleabihf="$AR_WRAPPER"
+export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_MUSLEABIHF_LINKER="$CC_WRAPPER"
+export WSTT_ZIG_TARGET=x86_64-linux-musl
+if [[ "$RUN_CHECKS" == 1 ]]; then
+  cargo +1.97.1 fmt --all -- --check
+  CARGO_TARGET_DIR="$ROOT/build/linux-musl-check" cargo +1.97.1 clippy --locked --release --target x86_64-unknown-linux-musl "${FEATURE_ARGS[@]}" --all-targets -- -D warnings
+  if [[ "$HOST" == *linux* ]]; then
+    echo "Running Linux musl tests..."
+    CARGO_TARGET_DIR="$ROOT/build/linux-musl-tests" cargo +1.97.1 test --locked --target x86_64-unknown-linux-musl "${FEATURE_ARGS[@]}" --all-targets
+  else
+    echo "Compiling Linux musl test binaries (they cannot run on this non-Linux host)..."
+    CARGO_TARGET_DIR="$ROOT/build/linux-musl-tests" cargo +1.97.1 zigbuild --locked --target x86_64-unknown-linux-musl "${FEATURE_ARGS[@]}" --tests
+  fi
+fi
+CPU_COUNT="$(getconf _NPROCESSORS_ONLN 2>/dev/null || nproc 2>/dev/null || echo 3)"
+DEFAULT_BUILD_JOBS_PER_TARGET=$((CPU_COUNT / 3))
+if (( DEFAULT_BUILD_JOBS_PER_TARGET < 1 )); then DEFAULT_BUILD_JOBS_PER_TARGET=1; fi
+BUILD_JOBS_PER_TARGET="${WSTT_BUILD_JOBS_PER_TARGET:-$DEFAULT_BUILD_JOBS_PER_TARGET}"
+if [[ ! "$BUILD_JOBS_PER_TARGET" =~ ^[1-9][0-9]*$ ]]; then
+  echo "WSTT_BUILD_JOBS_PER_TARGET must be a positive integer" >&2
+  exit 2
+fi
+build_variant() {
+  local target="$1" zig_target="$2" asset="$3"
+  local target_dir="$ROOT/build/linux-musl-$asset"
+  WSTT_ZIG_TARGET="$zig_target" \
+    ZIG_GLOBAL_CACHE_DIR="$ROOT/build/zig-cache/$asset/global" \
+    ZIG_LOCAL_CACHE_DIR="$ROOT/build/zig-cache/$asset/local" \
+    CARGO_ZIGBUILD_CACHE_DIR="$ROOT/build/cargo-zigbuild-cache/$asset" \
+    CARGO_TARGET_DIR="$target_dir" \
+    CARGO_BUILD_JOBS="$BUILD_JOBS_PER_TARGET" \
+    cargo +1.97.1 zigbuild --locked --release --target "$target" "${FEATURE_ARGS[@]}"
+  mkdir -p "$ROOT/dist" "$ROOT/../app/src/main/assets"
+  cp "$target_dir/$target/release/wstt" "$ROOT/dist/$asset"
+  cp "$target_dir/$target/release/wstt" "$ROOT/../app/src/main/assets/$asset"
+  ls -lh "$ROOT/dist/$asset"
+}
+
+mkdir -p "$ROOT/build"
+build_variant x86_64-unknown-linux-musl x86_64-linux-musl wstt-linux-amd64 > "$ROOT/build/wstt-linux-amd64.log" 2>&1 &
+amd64_pid=$!
+build_variant aarch64-unknown-linux-musl aarch64-linux-musl wstt-linux-arm64 > "$ROOT/build/wstt-linux-arm64.log" 2>&1 &
+arm64_pid=$!
+build_variant armv7-unknown-linux-musleabihf arm-linux-musleabihf wstt-linux-armv7 > "$ROOT/build/wstt-linux-armv7.log" 2>&1 &
+armv7_pid=$!
+
+build_status=0
+for pid in "$amd64_pid" "$arm64_pid" "$armv7_pid"; do
+  if ! wait "$pid"; then
+    build_status=1
+  fi
+done
+for asset in wstt-linux-amd64 wstt-linux-arm64 wstt-linux-armv7; do
+  echo "===== $asset build log ====="
+  cat "$ROOT/build/$asset.log"
+done
+if [[ "$build_status" != 0 ]]; then
+  echo "At least one Linux architecture build failed" >&2
+  exit 1
+fi
+rm -f "$ROOT/../app/src/main/assets/wstt"
+if command -v pwsh >/dev/null; then
+  pwsh -NoProfile -File "$ROOT/../scripts/server_asset_provenance.ps1" -Mode Write "${PROVENANCE_FEATURE_ARGS[@]}"
+  pwsh -NoProfile -File "$ROOT/../scripts/server_asset_provenance.ps1" -Mode Verify "${PROVENANCE_FEATURE_ARGS[@]}"
+elif command -v powershell.exe >/dev/null; then
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(wslpath -w "$ROOT/../scripts/server_asset_provenance.ps1")" -Mode Write "${PROVENANCE_FEATURE_ARGS[@]}"
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(wslpath -w "$ROOT/../scripts/server_asset_provenance.ps1")" -Mode Verify "${PROVENANCE_FEATURE_ARGS[@]}"
+else
+  echo "Server assets built. Run scripts/server_asset_provenance.ps1 -Mode Write and -Mode Verify before packaging an APK." >&2
+  exit 1
+fi

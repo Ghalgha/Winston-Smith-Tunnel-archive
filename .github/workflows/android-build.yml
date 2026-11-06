@@ -1,0 +1,323 @@
+name: Android CI
+
+on:
+  push:
+    branches: [main, wsl-infra-hardening]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: android-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  rust-client-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up Rust 1.97.1
+        run: rustup toolchain install 1.97.1 --profile minimal
+      - name: Cache Rust client test dependencies
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust-client/target
+          key: rust-client-tests-${{ runner.os }}-1.97.1-${{ hashFiles('rust-client/Cargo.lock') }}
+          restore-keys: |
+            rust-client-tests-${{ runner.os }}-1.97.1-
+      - name: Run Rust client unit tests
+        run: cargo +1.97.1 test --locked --manifest-path rust-client/Cargo.toml --all-targets
+
+  linux-server:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - name: Cache build tools and Rust dependencies
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin
+            ~/.cache/zig-0.15.2
+            rust-server/target
+            rust-server/build
+          key: linux-server-${{ runner.os }}-rust-1.97.1-zig-0.15.2-${{ hashFiles('rust-server/Cargo.toml', 'rust-server/Cargo.lock', 'rust-server/build.rs', 'rust-server/*.rs', 'rust-server/**/*.rs', 'rust-server/build_linux.sh') }}
+          restore-keys: |
+            linux-server-${{ runner.os }}-rust-1.97.1-zig-0.15.2-
+            android-build-${{ runner.os }}-rust-1.97.1-
+      - name: Verify PowerShell syntax for build and WSL scripts
+        run: |
+          pwsh --version
+          pwsh -NoProfile -Command '$files = @("scripts/test_wsl_unified.ps1", "rust-server/build_linux_variants.ps1", "scripts/server_asset_provenance.ps1", "scripts/native_client_provenance.ps1", "scripts/build_both_parallel.ps1"); foreach ($file in $files) { $tokens = $null; $parseErrors = $null; [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file), [ref]$tokens, [ref]$parseErrors); if ($parseErrors.Count) { $parseErrors | ForEach-Object { Write-Error $_ }; exit 1 } }'
+      - name: Install Zig 0.15.2 (checksum verified)
+        run: |
+          set -euo pipefail
+          ZIG_VERSION=0.15.2
+          ZIG_HOME="$HOME/.cache/zig-${ZIG_VERSION}"
+          if [ ! -x "$ZIG_HOME/zig" ]; then
+            ARCHIVE="$RUNNER_TEMP/zig-x86_64-linux-${ZIG_VERSION}.tar.xz"
+            mkdir -p "$ZIG_HOME"
+            curl --fail --location --retry 3 \
+              "https://ziglang.org/download/${ZIG_VERSION}/zig-x86_64-linux-${ZIG_VERSION}.tar.xz" \
+              --output "$ARCHIVE"
+            echo "02aa270f183da276e5b5920b1dac44a63f1a49e55050ebde3aecc9eb82f93239  $ARCHIVE" | sha256sum --check
+            tar -xJf "$ARCHIVE" --strip-components=1 -C "$ZIG_HOME"
+          fi
+          echo "$ZIG_HOME" >> "$GITHUB_PATH"
+          "$ZIG_HOME/zig" version
+      - name: Set up Rust toolchain and all required targets once
+        run: |
+          rustup toolchain install 1.97.1 --profile minimal --component rustfmt --component clippy
+          rustup default 1.97.1
+          rustup target add \
+            x86_64-unknown-linux-musl \
+            aarch64-unknown-linux-musl \
+            armv7-unknown-linux-musleabihf
+          echo "WSTT_RUST_TOOLCHAIN_READY=1" >> "$GITHUB_ENV"
+      - name: Run Rust checks and build Linux server binaries
+        run: |
+          if ! command -v cargo-zigbuild >/dev/null 2>&1; then
+            cargo install cargo-zigbuild --locked
+          else
+            echo "Using cached cargo-zigbuild: $(cargo zigbuild --version 2>/dev/null || cargo-zigbuild --version)"
+          fi
+          chmod +x rust-server/build_linux.sh
+          bash -n app/src/main/assets/deploy.sh
+          bash -n scripts/run_wsl_checks.sh
+          if grep -REq 'mitigations=off|net\.ipv4\.conf\.(all|default)\.rp_filter|/proc/sys/net/ipv4/conf/(all|default)/rp_filter|sysctl --system' app/src/main/assets/deploy.sh rust-server --include='*.rs'; then
+            echo 'WSTT installer changes host-wide security or routing policy' >&2
+            exit 1
+          fi
+          grep -Fq 'delete_marked_rules "$table" "$chain" "$marker" ip6tables' app/src/main/assets/deploy.sh
+          if grep -Eq 'net\.core\.default_qdisc|net\.ipv4\.tcp_congestion_control|net\.ipv4\.tcp_(sack|dsack|reordering|window_scaling|fastopen|slow_start_after_idle)' rust-server/tokio_io.rs; then
+            echo 'WSTT runtime must not rewrite host-wide TCP tuning' >&2
+            exit 1
+          fi
+          grep -Fq 'WSTT_MANAGED' rust-server/tokio_io.rs
+          if grep -Fq 'client.ip().is_private()' rust-server/tproxy.rs; then
+            echo 'WSTT transparent proxy must accept only its own tunnel subnet' >&2
+            exit 1
+          fi
+          if grep -Eq 'net\.ipv6\.conf\.(default\.(disable_ipv6|forwarding|accept_ra)|all\.(disable_ipv6|accept_ra))' app/src/main/assets/deploy.sh rust-server/*.rs; then
+            echo 'WSTT must not change host-wide IPv6 defaults or router-advertisement policy' >&2
+            exit 1
+          fi
+          if grep -Fq 'install -d -m 0755 /run/lock' app/src/main/assets/deploy.sh; then
+            echo 'WSTT must preserve the host /run/lock directory permissions' >&2
+            exit 1
+          fi
+          if grep -Eq 'chmod[[:space:]]+666[[:space:]]+/dev/net/tun' app/src/main/assets/deploy.sh; then
+            echo 'WSTT installer must not make the host TUN device world-writable' >&2
+            exit 1
+          fi
+          if grep -Eq 'secret_eq\((key|token), &app\.startup_main_password\)' rust-server/web_panel.rs; then
+            echo 'WSTT must not accept a retired startup password for web-panel authentication' >&2
+            exit 1
+          fi
+          grep -Fq 'android:scheme="wstt"' app/src/main/AndroidManifest.xml
+          grep -Fq 'android:scheme="csqtt"' app/src/main/AndroidManifest.xml
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          import sys
+
+          source_extensions = {
+              ".rs", ".kt", ".kts", ".xml", ".toml", ".ps1", ".psm1",
+              ".sh", ".bat", ".yml", ".yaml", ".properties", ".gradle",
+          }
+          violations = []
+          for path in Path(".").rglob("*"):
+              if not path.is_file() or path.suffix.lower() not in source_extensions:
+                  continue
+              if any(part in {".git", "build", "target", ".gradle", "node_modules"} for part in path.parts):
+                  continue
+              relative = path.as_posix()
+              content = path.read_text(encoding="utf-8", errors="replace")
+              legacy = "cs" + "qtt"
+              content = re.sub(re.escape(legacy + "://"), "", content, flags=re.IGNORECASE)
+              content = content.replace('android:scheme="' + legacy + '"', "")
+              if re.search(re.escape(legacy), relative, re.IGNORECASE) or re.search(re.escape(legacy), content, re.IGNORECASE):
+                  violations.append(relative)
+          if violations:
+              print("Legacy identifier found outside URI-scheme compatibility:", *violations, sep="\n", file=sys.stderr)
+              sys.exit(1)
+          PY
+          python3 - <<'PY'
+          import pathlib, re, sys
+          source = pathlib.Path("rust-server/web_panel.rs").read_text()
+          handlers = re.findall(r'on(?:click|change|input|error)="([^"]*)"', source)
+          if any("${" in value and "esc(JSON.stringify(" not in value for value in handlers):
+              print("Unsafe dynamic value in an HTML event attribute", file=sys.stderr)
+              sys.exit(1)
+          if "· ${p.username}" in source:
+              print("Unescaped proxy username in rendered HTML", file=sys.stderr)
+              sys.exit(1)
+          PY
+          if grep -q 'force_release_peer_port' app/src/main/assets/deploy.sh; then
+            echo 'WSTT installer must not forcibly terminate unknown UDP port listeners' >&2
+            exit 1
+          fi
+          rust-server/build_linux.sh --tests
+          for asset in wstt-linux-amd64 wstt-linux-arm64 wstt-linux-armv7; do
+            test -s "app/src/main/assets/$asset"
+          done
+      - name: Upload verified Linux server assets
+        uses: actions/upload-artifact@v7
+        with:
+          name: wstt-linux-server-assets-${{ github.sha }}
+          path: |
+            app/src/main/assets/wstt-linux-amd64
+            app/src/main/assets/wstt-linux-arm64
+            app/src/main/assets/wstt-linux-armv7
+            app/src/main/assets/wstt.server-provenance.json
+          if-no-files-found: error
+          retention-days: 1
+
+  android-native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - name: Cache Android native Rust dependencies
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin
+            rust-client/target
+          key: android-native-${{ runner.os }}-rust-1.97.1-${{ hashFiles('rust-client/Cargo.lock') }}
+          restore-keys: |
+            android-native-${{ runner.os }}-rust-1.97.1-
+      - name: Set up Rust 1.97.1 and Android targets
+        run: |
+          rustup toolchain install 1.97.1 --profile minimal
+          rustup default 1.97.1
+          rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
+          echo "WSTT_RUST_TOOLCHAIN_READY=1" >> "$GITHUB_ENV"
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
+      - name: Install Android NDK
+        run: sdkmanager --install "ndk;28.2.13676358"
+      - name: Build and verify native Android libraries
+        run: |
+          chmod +x scripts/build_android_native.sh
+          scripts/build_android_native.sh
+      - name: Upload verified Android native libraries
+        uses: actions/upload-artifact@v7
+        with:
+          name: wstt-android-native-${{ github.sha }}
+          path: |
+            app/src/main/jniLibs/**
+            app/src/main/libclient.provenance.json
+          if-no-files-found: error
+          retention-days: 1
+
+  android-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [linux-server, android-native]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Download verified Linux server assets
+        uses: actions/download-artifact@v7
+        with:
+          name: wstt-linux-server-assets-${{ github.sha }}
+          path: app/src/main/assets
+      - name: Download verified Android native libraries
+        uses: actions/download-artifact@v7
+        with:
+          name: wstt-android-native-${{ github.sha }}
+          path: app/src/main
+      - name: Verify transferred production assets
+        run: |
+          pwsh -NoProfile -File scripts/server_asset_provenance.ps1 -Mode Verify
+          test -s app/src/main/libclient.provenance.json
+          for asset in wstt-linux-amd64 wstt-linux-arm64 wstt-linux-armv7; do
+            test -s "app/src/main/assets/$asset"
+          done
+          for abi in arm64-v8a armeabi-v7a x86_64; do
+            test -s "app/src/main/jniLibs/$abi/libclient.so"
+          done
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'emulator platform-tools'
+      - name: Enable KVM access for the Android emulator
+        run: |
+          set -euo pipefail
+          if [ ! -e /dev/kvm ]; then
+            echo "/dev/kvm is not available on this runner" >&2
+            exit 1
+          fi
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm
+      - name: Verify hardware acceleration is available
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:?ANDROID_HOME is not set}}"
+          "${SDK_ROOT}/emulator/emulator" -accel-check
+      - name: Install Android platform and build tools
+        run: |
+          sdkmanager --install "platforms;android-37.0" "build-tools;37.0.0"
+          SDK_ROOT="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          if [ -d "$SDK_ROOT/platforms/android-37.0" ] && [ ! -e "$SDK_ROOT/platforms/android-37" ]; then
+            ln -s android-37.0 "$SDK_ROOT/platforms/android-37"
+          fi
+          test -d "$SDK_ROOT/platforms/android-37"
+      - uses: gradle/actions/setup-gradle@v6
+      - name: Build debug APK and run Android unit tests
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :app:testDebugUnitTest :app:assembleDebug
+          for abi in arm64-v8a armeabi-v7a x86_64; do
+            found=false
+            for apk in app/build/outputs/apk/debug/*.apk; do
+              if unzip -l "$apk" | grep -q "lib/$abi/libclient.so"; then
+                found=true
+                break
+              fi
+            done
+            if [ "$found" != true ]; then
+              echo "Missing native client library for $abi in debug APK outputs" >&2
+              exit 1
+            fi
+          done
+      - name: Run Android instrumentation tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          arch: x86_64
+          emulator-options: -accel on -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: bash scripts/run_android_instrumentation.sh
+      - name: Upload Android emulator diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: WSTT-${{ github.sha }}-emulator-diagnostics
+          path: ci-diagnostics/
+          if-no-files-found: ignore
+          retention-days: 7
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: WSTT-${{ github.sha }}-CI-debug
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 7

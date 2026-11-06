@@ -1,0 +1,304 @@
+[CmdletBinding()]
+param(
+    [Parameter(Mandatory = $true)]
+    [ValidateSet("Write", "Verify")]
+    [string]$Mode,
+    [string]$Root,
+    [switch]$Diagnostics
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+if ([string]::IsNullOrWhiteSpace($Root)) {
+    $projectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
+}
+else {
+    $projectRoot = [IO.Path]::GetFullPath($Root)
+}
+
+$assetDirectory = Join-Path $projectRoot "app\src\main\assets"
+$manifestPath = Join-Path $assetDirectory "wstt.server-provenance.json"
+$cargoTomlPath = Join-Path $projectRoot "rust-server\Cargo.toml"
+$cargoLockPath = Join-Path $projectRoot "rust-server\Cargo.lock"
+$wireProtocolPath = Join-Path $projectRoot "shared\wire_protocol.rs"
+$wireProtocolRevisionPath = Join-Path $projectRoot "rust-server\main.rs"
+$schema = "wstt.server-asset-provenance.v4"
+$expectedFeatures = if ($Diagnostics) { @("diagnostics") } else { @() }
+$marker = "WSTT_RUST_SERVER_PRODUCTION_V1"
+$assetSpecs = @(
+    [pscustomobject]@{ AssetName = "wstt-linux-amd64"; Target = "x86_64-unknown-linux-musl"; ElfClass = 2; ElfMachine = 62 },
+    [pscustomobject]@{ AssetName = "wstt-linux-arm64"; Target = "aarch64-unknown-linux-musl"; ElfClass = 2; ElfMachine = 183 },
+    [pscustomobject]@{ AssetName = "wstt-linux-armv7"; Target = "armv7-unknown-linux-musleabihf"; ElfClass = 1; ElfMachine = 40 }
+)
+
+function Assert-RegularFile {
+    param([string]$Path, [string]$Label)
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        throw "$Label not found: $Path"
+    }
+    if ((Get-Item -LiteralPath $Path).Length -le 0) {
+        throw "$Label is empty: $Path"
+    }
+}
+
+function Get-Sha256 {
+    param([string]$Path)
+
+    $stream = [IO.File]::Open($Path, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
+    $hasher = [Security.Cryptography.SHA256]::Create()
+    try {
+        return ([BitConverter]::ToString($hasher.ComputeHash($stream))).Replace("-", "")
+    }
+    finally {
+        $hasher.Dispose()
+        $stream.Dispose()
+    }
+}
+
+function Get-CargoPackage {
+    Assert-RegularFile -Path $cargoTomlPath -Label "Server Cargo.toml"
+    $insidePackage = $false
+    $name = $null
+    $version = $null
+    foreach ($line in Get-Content -LiteralPath $cargoTomlPath) {
+        $trimmed = $line.Trim()
+        if ($trimmed -eq "[package]") {
+            $insidePackage = $true
+            continue
+        }
+        if ($insidePackage -and $trimmed.StartsWith("[")) {
+            break
+        }
+        if ($insidePackage -and $trimmed -match '^(name|version)\s*=\s*"([^"]+)"') {
+            if ($matches[1] -eq "name") {
+                $name = $matches[2]
+            }
+            else {
+                $version = $matches[2]
+            }
+        }
+    }
+    if ([string]::IsNullOrWhiteSpace($name) -or [string]::IsNullOrWhiteSpace($version)) {
+        throw "Unable to read Rust server package identity"
+    }
+    return [pscustomobject]@{ Name = $name; Version = $version }
+}
+
+function Get-WireProtocolRevision {
+    Assert-RegularFile -Path $wireProtocolRevisionPath -Label "Wire protocol revision source"
+    $match = [regex]::Match(
+        [IO.File]::ReadAllText($wireProtocolRevisionPath),
+        'WIRE_PROTOCOL_REVISION\s*:\s*&str\s*=\s*"([^"]+)"'
+    )
+    if (-not $match.Success) {
+        throw "Wire protocol revision is missing"
+    }
+    return $match.Groups[1].Value
+}
+
+function Get-GitText {
+    param([string[]]$Arguments)
+
+    $output = & git -C $projectRoot @Arguments
+    if ($LASTEXITCODE -ne 0) {
+        throw "Git command failed: git $($Arguments -join ' ')"
+    }
+    return (@($output) -join "`n").Trim()
+}
+
+function Get-SourceCommit {
+    return Get-GitText -Arguments @("rev-parse", "HEAD")
+}
+
+function Get-BuildInputHash {
+    $paths = @(
+        "rust-server",
+        "shared/dtls.rs",
+        "shared/wire_protocol.rs",
+        "app/src/main/assets/domains.txt",
+        "scripts/server_asset_provenance.ps1"
+    )
+
+    $changedPaths = @(& git -C $projectRoot diff --name-only HEAD -- @paths)
+    if ($LASTEXITCODE -ne 0) {
+        throw "Unable to inspect tracked Rust server build inputs"
+    }
+    if ($changedPaths.Count -gt 0) {
+        throw "Tracked Rust server build inputs are modified in the working tree: $($changedPaths -join ', ')"
+    }
+
+    $trackedPaths = @(& git -C $projectRoot ls-files --full-name -- @paths)
+    if ($LASTEXITCODE -ne 0) {
+        throw "Unable to enumerate tracked Rust server build inputs"
+    }
+    $trackedSet = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($trackedPath in $trackedPaths) {
+        [void]$trackedSet.Add([string]$trackedPath)
+    }
+
+    $rootPrefix = $projectRoot.TrimEnd([char[]]@([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)) +
+        [IO.Path]::DirectorySeparatorChar
+    $untrackedInputs = [System.Collections.Generic.List[string]]::new()
+    $pendingDirectories = [System.Collections.Generic.Stack[string]]::new()
+    $pendingDirectories.Push((Join-Path $projectRoot "rust-server"))
+    while ($pendingDirectories.Count -gt 0) {
+        $directory = $pendingDirectories.Pop()
+        foreach ($entry in Get-ChildItem -LiteralPath $directory -Force) {
+            $relativePath = $entry.FullName.Substring($rootPrefix.Length)
+            $relativePath = $relativePath.Replace([IO.Path]::DirectorySeparatorChar, "/").Replace([IO.Path]::AltDirectorySeparatorChar, "/")
+
+            if ($entry.PSIsContainer) {
+                if (($entry.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+                    if (-not $trackedSet.Contains($relativePath)) {
+                        $untrackedInputs.Add($relativePath)
+                    }
+                    continue
+                }
+                if ($relativePath -match '^rust-server/(build|target|dist)$' -or $entry.Name -eq ".git") {
+                    continue
+                }
+                $pendingDirectories.Push($entry.FullName)
+                continue
+            }
+
+            if (-not $trackedSet.Contains($relativePath)) {
+                $untrackedInputs.Add($relativePath)
+            }
+        }
+    }
+
+    foreach ($singleFile in @("shared/dtls.rs", "shared/wire_protocol.rs", "app/src/main/assets/domains.txt", "scripts/server_asset_provenance.ps1")) {
+        $fullPath = Join-Path $projectRoot ($singleFile.Replace("/", [IO.Path]::DirectorySeparatorChar))
+        if ((Test-Path -LiteralPath $fullPath -PathType Leaf) -and -not $trackedSet.Contains($singleFile)) {
+            $untrackedInputs.Add($singleFile)
+        }
+    }
+    if ($untrackedInputs.Count -gt 0) {
+        throw "Untracked Rust server build inputs are present: $($untrackedInputs -join ', ')"
+    }
+
+    $tree = Get-GitText -Arguments (@("ls-tree", "-r", "--full-tree", "HEAD", "--") + $paths)
+    if ([string]::IsNullOrWhiteSpace($tree)) {
+        throw "Git returned an empty Rust server build-input tree"
+    }
+
+    $hash = [Security.Cryptography.SHA256]::Create()
+    try {
+        $bytes = [Text.Encoding]::UTF8.GetBytes($tree + "`n")
+        return ([BitConverter]::ToString($hash.ComputeHash($bytes))).Replace("-", "")
+    }
+    finally {
+        $hash.Dispose()
+    }
+}
+
+function Assert-ServerBinary {
+    param($Spec, [string]$Revision)
+
+    $binaryPath = Join-Path $assetDirectory $Spec.AssetName
+    Assert-RegularFile -Path $binaryPath -Label "Linux server asset $($Spec.AssetName)"
+    [byte[]]$bytes = [IO.File]::ReadAllBytes($binaryPath)
+    if ($bytes.Length -lt 20 -or $bytes[0] -ne 0x7f -or $bytes[1] -ne 0x45 -or $bytes[2] -ne 0x4c -or $bytes[3] -ne 0x46) {
+        throw "Linux server asset $($Spec.AssetName) is not ELF"
+    }
+    if ($bytes[4] -ne $Spec.ElfClass -or $bytes[5] -ne 1) {
+        throw "ELF class or endianness mismatch for $($Spec.AssetName)"
+    }
+    $machine = [int]$bytes[18] -bor ([int]$bytes[19] -shl 8)
+    if ($machine -ne $Spec.ElfMachine) {
+        throw "ELF machine mismatch for $($Spec.AssetName): expected $($Spec.ElfMachine), got $machine"
+    }
+    if (-not ([Text.Encoding]::ASCII.GetString($bytes).Contains($Revision))) {
+        throw "Linux server asset $($Spec.AssetName) does not expose wire protocol revision $Revision"
+    }
+    $file = Get-Item -LiteralPath $binaryPath
+    return [pscustomobject]@{
+        assetName = $Spec.AssetName
+        target = $Spec.Target
+        elfClass = $Spec.ElfClass
+        elfMachine = $Spec.ElfMachine
+        binarySize = [int64]$file.Length
+        binarySha256 = Get-Sha256 -Path $binaryPath
+    }
+}
+
+$package = Get-CargoPackage
+$revision = Get-WireProtocolRevision
+$sourceCommit = Get-SourceCommit
+$buildInputHash = Get-BuildInputHash
+
+if ($Mode -eq "Write") {
+    Assert-RegularFile -Path $cargoLockPath -Label "Server Cargo.lock"
+    $artifacts = @($assetSpecs | ForEach-Object { Assert-ServerBinary -Spec $_ -Revision $revision })
+    $manifest = [ordered]@{
+        schema = $schema
+        marker = $marker
+        producer = "rust-server/build_linux.bat"
+        runtime = "rust"
+        package = $package.Name
+        version = $package.Version
+        features = $expectedFeatures
+        wireProtocolRevision = $revision
+        sourceCommit = $sourceCommit
+        buildInputSha256 = $buildInputHash
+        cargoTomlSha256 = Get-Sha256 -Path $cargoTomlPath
+        cargoLockSha256 = Get-Sha256 -Path $cargoLockPath
+        artifacts = $artifacts
+        generatedAtUtc = [DateTime]::UtcNow.ToString("o")
+    }
+    $temporaryPath = "$manifestPath.tmp.$PID"
+    [IO.File]::WriteAllText($temporaryPath, ($manifest | ConvertTo-Json -Depth 4) + [Environment]::NewLine, (New-Object Text.UTF8Encoding($false)))
+    Move-Item -LiteralPath $temporaryPath -Destination $manifestPath -Force
+    Write-Output "Wrote Rust server provenance: $manifestPath"
+    exit 0
+}
+
+Assert-RegularFile -Path $manifestPath -Label "Rust server provenance"
+try {
+    $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+}
+catch {
+    throw "Invalid Rust server provenance JSON: $manifestPath"
+}
+
+if ($manifest.schema -ne $schema -or
+    $manifest.marker -ne $marker -or
+    $manifest.producer -ne "rust-server/build_linux.bat" -or
+    $manifest.runtime -ne "rust" -or
+    (($manifest.features -join ",") -ne ($expectedFeatures -join ","))) {
+    throw "Rust server provenance identity mismatch"
+}
+if ($manifest.package -ne $package.Name -or
+    $manifest.version -ne $package.Version -or
+    $manifest.wireProtocolRevision -ne $revision) {
+    throw "Rust server package or wire protocol identity changed after build"
+}
+if ($manifest.sourceCommit -ne $sourceCommit -or
+    $manifest.cargoTomlSha256 -ne (Get-Sha256 -Path $cargoTomlPath) -or
+    $manifest.cargoLockSha256 -ne (Get-Sha256 -Path $cargoLockPath) -or
+    $manifest.buildInputSha256 -ne $buildInputHash) {
+    throw "Rust server source changed after the production asset build"
+}
+$manifestArtifacts = @($manifest.artifacts)
+if ($manifestArtifacts.Count -ne $assetSpecs.Count) {
+    throw "Rust server provenance artifact count mismatch"
+}
+foreach ($spec in $assetSpecs) {
+    $matches = @($manifestArtifacts | Where-Object { $_.assetName -eq $spec.AssetName })
+    if ($matches.Count -ne 1) {
+        throw "Rust server provenance is missing $($spec.AssetName)"
+    }
+    $actual = Assert-ServerBinary -Spec $spec -Revision $revision
+    $record = $matches[0]
+    if ($record.target -ne $actual.target -or
+        [int]$record.elfClass -ne [int]$actual.elfClass -or
+        [int]$record.elfMachine -ne [int]$actual.elfMachine -or
+        [int64]$record.binarySize -ne [int64]$actual.binarySize -or
+        $record.binarySha256 -ne $actual.binarySha256) {
+        throw "Rust server asset does not match provenance: $($spec.AssetName)"
+    }
+}
+
+Write-Output "Rust server provenance verified: $marker"
