@@ -1,6 +1,5 @@
 package com.wstt.client.ui.utils
 
-import java.security.MessageDigest
 import javax.crypto.Cipher
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
@@ -14,7 +13,6 @@ data class WsttLink(
 )
 
 private val cipherKey: SecretKeySpec by lazy {
-    val digest = MessageDigest.getInstance("SHA-256")
     val keyBytes = byteArrayOf(224, 87, 15, 32, 209, 216, 128, 109, 132, 43, 211, 131, 153, 103, 255, 127, 49, 97, 104, 206, 120, 125, 97, 73, 120, 24, 8, 163, 155, 86, 192, 168)
     SecretKeySpec(keyBytes, "AES")
 }
