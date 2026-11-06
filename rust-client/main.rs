@@ -146,6 +146,7 @@ struct Arguments {
 }
 
 fn main() {
+    std::hint::black_box(turn::WSTT_TURN_TRANSPORT_IDENTITY);
     std::panic::set_hook(Box::new(|info| {
         let msg = format!("[PANIC] Rust client task failed: {info}\n");
         #[cfg(unix)]
