@@ -358,7 +358,8 @@ fn url_encode(input: &str) -> String {
 }
 
 const WSTT_CIPHER_KEY: [u8; 32] = [
-    224, 87, 15, 32, 209, 216, 128, 109, 132, 43, 211, 131, 153, 103, 255, 127, 49, 97, 104, 206, 120, 125, 97, 73, 120, 24, 8, 163, 155, 86, 192, 168,
+    224, 87, 15, 32, 209, 216, 128, 109, 132, 43, 211, 131, 153, 103, 255, 127, 49, 97, 104, 206,
+    120, 125, 97, 73, 120, 24, 8, 163, 155, 86, 192, 168,
 ];
 
 pub fn encrypt_wstt_link(payload: &str) -> String {
@@ -419,9 +420,7 @@ pub fn decrypt_wstt_link(raw_link: &str) -> Option<String> {
     use sha2::{Digest, Sha256};
 
     let raw_link = raw_link.trim();
-    let payload = raw_link
-        .strip_prefix("wstt://")
-        .trim();
+    let payload = raw_link.strip_prefix("wstt://").unwrap_or(raw_link).trim();
     let clean = payload.replace(['\n', '\r'], "");
     let bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
         .decode(&clean)
