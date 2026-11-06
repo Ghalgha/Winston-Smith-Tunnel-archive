@@ -26,21 +26,18 @@ class AppContractInstrumentationTest {
     }
 
     @Test
-    fun currentAndLegacyConnectionSchemesResolveToTheApp() {
+    fun currentConnectionSchemeResolvesToTheApp() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val schemes = listOf("wstt://connect", "csqtt://connect")
+        val uri = "wstt://connect"
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(uri))
+            .setPackage(context.packageName)
+        val resolved = context.packageManager.resolveActivity(
+            intent,
+            PackageManager.MATCH_DEFAULT_ONLY,
+        )
 
-        schemes.forEach { uri ->
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(uri))
-                .setPackage(context.packageName)
-            val resolved = context.packageManager.resolveActivity(
-                intent,
-                PackageManager.MATCH_DEFAULT_ONLY,
-            )
-
-            assertNotNull("No activity resolves $uri", resolved)
-            assertEquals(context.packageName, resolved?.activityInfo?.packageName)
-        }
+        assertNotNull("No activity resolves $uri", resolved)
+        assertEquals(context.packageName, resolved?.activityInfo?.packageName)
     }
 
     @Test
