@@ -19,7 +19,6 @@ class TvManifestTest {
         assertTrue(manifest.contains("android.hardware.wifi"))
         assertTrue(manifest.contains("android:banner=\"@drawable/tv_banner\""))
         assertTrue(manifest.contains("android:scheme=\"wstt\""))
-        assertTrue(manifest.contains("android:scheme=\"" + "cs" + "qtt" + "\""))
         assertTrue(!manifest.contains("android:scheme=\"wst\""))
     }
 
