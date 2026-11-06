@@ -357,8 +357,8 @@ fn url_encode(input: &str) -> String {
     out
 }
 
-const WSTT_CIPHER_KEY_SEED: &[u8] = &[
-    119, 115, 116, 116, 45, 108, 105, 110, 107, 45, 107, 101, 121, 45, 118, 49,
+const WSTT_CIPHER_KEY: [u8; 32] = [
+    224, 87, 15, 32, 209, 216, 128, 109, 132, 43, 211, 131, 153, 103, 255, 127, 49, 97, 104, 206, 120, 125, 97, 73, 120, 24, 8, 163, 155, 86, 192, 168,
 ];
 
 pub fn encrypt_wstt_link(payload: &str) -> String {
@@ -367,7 +367,7 @@ pub fn encrypt_wstt_link(payload: &str) -> String {
     use hmac::{Hmac, KeyInit, Mac};
     use sha2::{Digest, Sha256};
 
-    let key_hash = Sha256::digest(WSTT_CIPHER_KEY_SEED);
+    let key_hash = WSTT_CIPHER_KEY;
     let unbound = match UnboundKey::new(&AES_256_GCM, &key_hash) {
         Ok(k) => k,
         Err(_) => {
