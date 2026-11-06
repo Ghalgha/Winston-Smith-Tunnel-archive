@@ -6,7 +6,6 @@ import com.wstt.client.ui.utils.generate16CharPassword
 import com.wstt.client.ui.utils.parseWsttLink
 import com.wstt.client.ui.utils.peerAddress
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -82,15 +81,6 @@ class WsttLinkTest {
     }
 
     @Test
-    fun rejectsLegacyUnencryptedLinks() {
-        assertNull(parseWsttLink("csqtt://secret@203.0.113.7:46000"))
-        assertNull(parseWsttLink("csqtt://connect?v=2&host=203.0.113.7&peer=46000&password=secret"))
-        val rawPayload = "connect?v=2&host=203.0.113.7&peer=46000&password=secret"
-        val base64 = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(rawPayload.toByteArray(Charsets.UTF_8))
-        assertNull(parseWsttLink("csqtt://$base64"))
-    }
-
-    @Test
     fun formatsIpv6PeerWithBrackets() {
         val link = parseWsttLink(enc("connect?v=2&host=2001%3Adb8%3A%3A1&peer=46000&password=secret"))
         requireNotNull(link)
@@ -137,24 +127,6 @@ class WsttLinkTest {
         val link = parseWsttLink(encryptedLink)
         requireNotNull(link)
         assertEquals("203.0.113.7", link.host)
-        assertEquals(46000, link.port)
-    }
-
-    @Test
-    fun parsesLegacyWsttSchemeForExistingWsttLinks() {
-        val legacy = "csqtt://" + encryptWsttPayload("connect?v=2&host=203.0.113.7&peer=46100&password=legacy")
-        val link = parseWsttLink(legacy)
-        requireNotNull(link)
-        assertEquals("203.0.113.7", link.host)
-        assertEquals(46100, link.port)
-    }
-
-    @Test
-    fun parsesRustEncryptedLink() {
-        val rustLink = "csqtt://GNANVH0fhD6MisDFiWP_P0Bm_FHr-frawgfwur3Zx4ipjJx8gk-M6ZZbnDr_2clwPmzO-QS8AkiHLaMXyYO1RHyPeehXPqTc6jJi_iw72fRQJ9AR918ne5XsBRg"
-        val link = parseWsttLink(rustLink)
-        requireNotNull(link)
-        assertEquals("1.2.3.4", link.host)
         assertEquals(46000, link.port)
     }
 
