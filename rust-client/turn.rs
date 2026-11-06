@@ -1,4 +1,6 @@
 #[cfg(test)]
+
+pub(crate) const WSTT_TURN_TRANSPORT_IDENTITY: &[u8] = b"WSTT_RUST_TURN_SANS_IO_V1";
 use crate::turn_core::{AF_IPV4, NativeAddress};
 use crate::{
     dns,
