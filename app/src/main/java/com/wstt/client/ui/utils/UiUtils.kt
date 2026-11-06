@@ -13,11 +13,9 @@ data class WsttLink(
     val vkAccessToken: String = "",
 )
 
-private val WSTT_CIPHER_KEY_SEED = byteArrayOf(119, 115, 116, 116, 45, 108, 105, 110, 107, 45, 107, 101, 121, 45, 118, 49)
-
 private val cipherKey: SecretKeySpec by lazy {
     val digest = MessageDigest.getInstance("SHA-256")
-    val keyBytes = digest.digest(WSTT_CIPHER_KEY_SEED)
+    val keyBytes = byteArrayOf(224, 87, 15, 32, 209, 216, 128, 109, 132, 43, 211, 131, 153, 103, 255, 127, 49, 97, 104, 206, 120, 125, 97, 73, 120, 24, 8, 163, 155, 86, 192, 168)
     SecretKeySpec(keyBytes, "AES")
 }
 
