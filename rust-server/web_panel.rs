@@ -366,7 +366,7 @@ pub fn encrypt_wstt_link(payload: &str) -> String {
     use aws_lc_rs::aead::{AES_256_GCM, Aad, LessSafeKey, Nonce, UnboundKey};
     use base64::Engine;
     use hmac::{Hmac, KeyInit, Mac};
-    use sha2::{Digest, Sha256};
+    use sha2::Sha256;
 
     let key_hash = WSTT_CIPHER_KEY;
     let unbound = match UnboundKey::new(&AES_256_GCM, &key_hash) {
@@ -417,8 +417,6 @@ pub fn encrypt_wstt_link(payload: &str) -> String {
 pub fn decrypt_wstt_link(raw_link: &str) -> Option<String> {
     use aws_lc_rs::aead::{AES_256_GCM, Aad, LessSafeKey, Nonce, UnboundKey};
     use base64::Engine;
-    use sha2::{Digest, Sha256};
-
     let raw_link = raw_link.trim();
     let payload = raw_link.strip_prefix("wstt://").unwrap_or(raw_link).trim();
     let clean = payload.replace(['\n', '\r'], "");
