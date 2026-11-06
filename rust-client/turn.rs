@@ -1,6 +1,4 @@
 #[cfg(test)]
-
-pub(crate) const WSTT_TURN_TRANSPORT_IDENTITY: &[u8] = b"WSTT_RUST_TURN_SANS_IO_V1";
 use crate::turn_core::{AF_IPV4, NativeAddress};
 use crate::{
     dns,
@@ -35,6 +33,8 @@ use tokio::{
     sync::{Notify, OwnedSemaphorePermit, Semaphore, watch},
     task::JoinHandle,
 };
+
+pub(crate) const WSTT_TURN_TRANSPORT_IDENTITY: &[u8] = b"WSTT_RUST_TURN_SANS_IO_V1";
 
 const CONTROL_MAX: usize = 2048;
 const MAGIC_COOKIE: [u8; 4] = [0x21, 0x12, 0xa4, 0x42];
