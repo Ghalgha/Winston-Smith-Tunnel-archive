@@ -431,7 +431,7 @@ pub fn decrypt_wstt_link(raw_link: &str) -> Option<String> {
         .ok()?;
 
     if bytes.len() >= 28 {
-        let key_hash = Sha256::digest(WSTT_CIPHER_KEY_SEED);
+        let key_hash = WSTT_CIPHER_KEY;
         if let Ok(unbound) = UnboundKey::new(&AES_256_GCM, &key_hash) {
             let key = LessSafeKey::new(unbound);
             let mut iv = [0u8; 12];
