@@ -13,7 +13,12 @@ data class WsttLink(
 )
 
 private val cipherKey: SecretKeySpec by lazy {
-    val keyBytes = byteArrayOf(224, 87, 15, 32, 209, 216, 128, 109, 132, 43, 211, 131, 153, 103, 255, 127, 49, 97, 104, 206, 120, 125, 97, 73, 120, 24, 8, 163, 155, 86, 192, 168)
+    val keyBytes = byteArrayOf(
+        224.toByte(), 87, 15, 32, 209.toByte(), 216.toByte(), 128.toByte(), 109,
+        132.toByte(), 43, 211.toByte(), 131.toByte(), 153.toByte(), 103, 255.toByte(), 127,
+        49, 97, 104, 206.toByte(), 120, 125, 97, 73, 120, 24, 8, 163.toByte(),
+        155.toByte(), 86, 192.toByte(), 168.toByte()
+    )
     SecretKeySpec(keyBytes, "AES")
 }
 
