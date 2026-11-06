@@ -13,7 +13,7 @@ data class WsttLink(
     val vkAccessToken: String = "",
 )
 
-private val WSTT_CIPHER_KEY_SEED = byteArrayOf(99, 115, 113, 116, 116, 45, 99, 104, 105, 112, 101, 114, 45, 107, 101, 121)
+private val WSTT_CIPHER_KEY_SEED = byteArrayOf(119, 115, 116, 116, 45, 108, 105, 110, 107, 45, 107, 101, 121, 45, 118, 49)
 
 private val cipherKey: SecretKeySpec by lazy {
     val digest = MessageDigest.getInstance("SHA-256")
@@ -87,16 +87,13 @@ fun parseWsttLink(raw: String): WsttLink? {
     val trimmed = raw.trim()
     val payloadStart = when {
         trimmed.startsWith("wstt://", ignoreCase = true) -> 7
-        trimmed.startsWith("csqtt://", ignoreCase = true) -> 8 // legacy WSTT links
         else -> return null
     }
     val decoded = decryptWsttPayload(trimmed.substring(payloadStart).trim()) ?: return null
     if (decoded.contains("host=") || decoded.contains("connect?")) {
         val candidate = when {
             decoded.startsWith("wstt://connect?", ignoreCase = true) -> decoded
-            decoded.startsWith("csqtt://connect?", ignoreCase = true) -> "wstt://connect?" + decoded.substring(8)
             decoded.startsWith("connect?", ignoreCase = true) -> "wstt://$decoded"
-            decoded.startsWith("csqtt://", ignoreCase = true) -> "wstt://connect?" + decoded.substring(8)
             else -> "wstt://connect?$decoded"
         }
         val decodedUri = runCatching { java.net.URI(candidate) }.getOrNull()
